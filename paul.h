@@ -107,6 +107,7 @@ struct param_list{
    double noiseRel;
 
    int sinkType;
+   int sinkNumber;
    double sinkPar1;
    double sinkPar2;
    double sinkPar3;

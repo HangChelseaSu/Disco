@@ -3,6 +3,7 @@
 #include "geometry.h"
 
 static int sinkType = 0;
+static int sinkNumber = 0;
 static double sinkPar1 = 0.0;
 static double sinkPar2 = 0.0;
 static double sinkPar3 = 0.0;
@@ -54,6 +55,7 @@ void prim2cons( double * , double * , double * , double );
 void setSinkParams(struct domain *theDomain)
 {
     sinkType = theDomain->theParList.sinkType;
+    sinkNumber = theDomain->theParList.sinkNumber;
     sinkPar1 = theDomain->theParList.sinkPar1;
     sinkPar2 = theDomain->theParList.sinkPar2;
     sinkPar3 = theDomain->theParList.sinkPar3;
@@ -160,7 +162,9 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       double rate, surfdiff;
       //double gmag3
       int pi;
-      for (pi=0; pi<Npl; pi++){
+      int numSinks = Npl;
+      if (sinkNumber>0) numSinks = sinkNumber;
+      for (pi=0; pi<sinkNumber; pi++){
           double cosp = cos(thePlanets[pi].phi);
           double sinp = sin(thePlanets[pi].phi);
           px = thePlanets[pi].r*cosp;

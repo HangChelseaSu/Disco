@@ -144,6 +144,7 @@ int read_par_file( struct domain * theDomain ){
          err += readvar( pfile , "Noise_Abs" , VAR_DOUB  , &(theList->noiseAbs));
          err += readvar( pfile , "Noise_Rel" , VAR_DOUB  , &(theList->noiseRel));
          err += readvar(pfile, "Sink_Type", VAR_INT , &(theList->sinkType));
+         err += readvar(pfile, "Sink_Number", VAR_INT , &(theList->sinkNumber));
          err += readvar(pfile, "Sink_Par1", VAR_DOUB, &(theList->sinkPar1));
          err += readvar(pfile, "Sink_Par2", VAR_DOUB, &(theList->sinkPar2));
          err += readvar(pfile, "Sink_Par3", VAR_DOUB, &(theList->sinkPar3));
