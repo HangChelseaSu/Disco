@@ -4,6 +4,7 @@
 #include "../omega.h"
 
 static double gamma_law = 0.0; 
+static double mach = 1.0; 
 static double RHO_FLOOR = 0.0; 
 static double PRE_FLOOR = 0.0; 
 static double explicit_viscosity = 0.0;
@@ -18,6 +19,7 @@ void setHydroParams( struct domain * theDomain ){
    RHO_FLOOR = theDomain->theParList.Density_Floor;
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
    explicit_viscosity = theDomain->theParList.viscosity;
+   mach = theDomain->theParList.Disk_Mach;
    include_viscosity = theDomain->theParList.visc_flag;
    alpha_flag = theDomain->theParList.alpha_flag;
    if(theDomain->theParList.NoBC_Rmin == 1)
@@ -220,10 +222,7 @@ void visc_flux(const double * prim, const double * gradr, const double * gradp,
    if( alpha_flag ){
       double alpha = explicit_viscosity;
       double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-      double h = c*pow( r , 1.5 );
-      //nu = alpha*c*h;
-      double omgot = get_om(x);
-      nu = alpha*c*c/omgot;
+      nu = r*alpha*c/mach;	//assumes isothermal
    }
 
    double rho = prim[RHO];
@@ -268,10 +267,7 @@ void visc_source(const double * prim, const double * gradr, const double *gradp,
    if( alpha_flag ){
       double alpha = explicit_viscosity;
       double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-      double h = c*pow( r , 1.5 );
-      //nu = alpha*c*h;
-      double omgot = get_om(x);
-      nu = alpha*c*c/omgot;
+      nu = r*alpha*c/mach;	//assumes isothermal
    }
 
    double rho = prim[RHO];
@@ -368,10 +364,7 @@ double mindt(const double * prim , double w ,
           get_centroid_arr(xp, xm, x);
           double alpha = explicit_viscosity;
           double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-          double h = c*pow( r , 1.5 );
-          //nu = alpha*c*h;
-          double omgot = get_om(x);
-          nu = alpha*c*c/omgot;
+          nu = x[0]*alpha*c/mach;	//assumes isothermal
        }
 
        double dt_visc = 0.5*dx*dx/nu;
