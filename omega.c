@@ -9,7 +9,7 @@ static double enOmPar = 0.0;
 static int cs2Choice = 0;
 static double cs2Par = 0.0;
 static double Omega0 = 0.0;
-static int Npl = 0.0;
+static int Npl = 0;
 
 static double Mach = 0.0;
 static double r0 = 0.0;
@@ -23,6 +23,7 @@ static struct planet *thePlanets = NULL;
 
 
 double phigrav( double , double , double , int); //int here is type
+double fgrav( double , double , double , int); //int here is type
 
 
 void setOmegaParams( struct domain * theDomain ){
@@ -97,7 +98,7 @@ double get_om( const double *x ){
 
     return om;
 }
-  
+
 double get_om1( const double *x){
     double r = x[0];
     r = sqrt(r*r + eps*eps);
@@ -126,6 +127,31 @@ double get_om1( const double *x){
   
 double get_om2( const double *x){
     return 0.0;
+}
+
+double get_height_om( const double *x){
+    double omtot2 = 0.0;
+    int pi;
+
+    double r = x[0];
+    double phi = x[1];
+
+    double cosp = cos(phi);
+    double sinp = sin(phi);
+    double gx = r*cosp;
+    double gy = r*sinp;
+
+    double px, py, script_r;
+    for (i=0; i<Npl; i++){
+      cosp = cos(thePlanets[pi].phi);
+      sinp = sin(thePlanets[pi].phi);
+      px = thePlanets[pi].r*cosp;
+      py = thePlanets[pi].r*sinp;
+      script_r = (px-gx)*(px-gx) + (py-gy)*(py-gy);
+      double f1 = fgrav( thePlanets[pi].M , script_r , thePlanets[pi].eps , thePlanets[pi].type);
+      omtot2 += fgrav/(script_r + 0.0625*thePlanets[pi].eps);	//Technically, should not include any extra softening, but avoid dividing by zero
+    }
+    return sqrt(omtot2);
 }
 
 double get_cs2( const double *x ){

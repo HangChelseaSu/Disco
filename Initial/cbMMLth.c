@@ -49,27 +49,7 @@ void initial(double *prim, double *x)
     double alpha = visc;
     double nu = visc;
     if (alpha_flag == 1){
-      if (Npl < 2){
-          nu = alpha*cs2/sqrt(om);
-      }
-      else{
-        double omtot = 0;
-        double cosp, sinp, px, py, dx, dy, gx, gy, mag;
-        gx = r*cos(phi);
-        gy = r*sin(phi);
-        for(np = 0; np<Npl; np++){
-          cosp = cos(thePlanets[np].phi);
-          sinp = sin(thePlanets[np].phi);
-          px = thePlanets[np].r*cosp;
-          py = thePlanets[np].r*sinp;
-          dx = gx-px;
-          dy = gy-py;
-          mag = dx*dx + dy*dy + thePlanets[np].eps*thePlanets[np].eps;
-          omtot +=	thePlanets[np].M*pow(mag, -1.5);
-        }  	
-        nu = alpha*cs2/sqrt(omtot);
-        om = sqrt(omtot);
-      }
+      nu = alpha*cs2/get_height_om(x);
     }
 
     double phitot = 0.0;
@@ -84,10 +64,9 @@ void initial(double *prim, double *x)
 
     double sig0 = 1.0/(3.0*M_PI*nu);
     efact = exp(-pow((R/redge),-xi));
-    
     rho = sig0*efact + epsfl;
     double drho = sig0*efact*xi*pow((R/redge),-xi)/R;
- 
+
     double v = -1.5*nu/(R);
     double P = -rho*phitot/(Mach*Mach);
 
