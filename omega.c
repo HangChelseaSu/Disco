@@ -147,7 +147,7 @@ double get_height_om( const double *x){
       sinp = sin(thePlanets[pi].phi);
       px = thePlanets[pi].r*cosp;
       py = thePlanets[pi].r*sinp;
-      script_r = (px-gx)*(px-gx) + (py-gy)*(py-gy);
+      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
       double f1 = fgrav( thePlanets[pi].M , script_r , thePlanets[pi].eps , thePlanets[pi].type);
       omtot2 += fgrav/(script_r + 0.0625*thePlanets[pi].eps);	//Technically, should not include any extra softening, but avoid dividing by zero
     }

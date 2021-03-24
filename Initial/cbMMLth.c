@@ -42,16 +42,7 @@ void initial(double *prim, double *x)
 
     double rho, efact, fth, dfth;
 
-    //double om = 1.0;
-    double om = pow(R,-1.5);
-    if (R<0.1) om = pow(0.1, -1.5);
     int np;
-    double alpha = visc;
-    double nu = visc;
-    if (alpha_flag == 1){
-      nu = alpha*cs2/get_height_om(x);
-    }
-
     double phitot = 0.0;
     double dphitot = 0.0;
     for (np = 0; np<Npl; np++){
@@ -62,18 +53,28 @@ void initial(double *prim, double *x)
       dphitot += thePlanets[np].M*(r - thePlanets[np].r*cos(phi - thePlanets[np].phi))/(denom*sqdenom);
     }
 
+    double nu = visc;
+    double dnu = 0.0;
+    if (alpha_flag == 1){
+      double ihom = 1.0/get_height_om(x);
+      dnu = nu*(-dphitot*ihom/(Mach*Mach) + 1.5*cs2*ihom*ihom*pow(r,-2.5)) //approximates dOmega/dr as Keplerian
+      nu = nu*cs2*ihom;
+    }
+
     double sig0 = 1.0/(3.0*M_PI*nu);
+    double dsig0 = -dnu/(3.0*M_PI*nu*nu);
+
     efact = exp(-pow((R/redge),-xi));
     rho = sig0*efact + epsfl;
-    double drho = sig0*efact*xi*pow((R/redge),-xi)/R;
+    double drho = sig0*efact*xi*pow((R/redge),-xi)/R + efact*dsig0;
 
     double v = -1.5*nu/(R);
-    double P = -rho*phitot/(Mach*Mach);
+    double P = rho*cs2(x)/gam;
 
     double multom = 1.0 + 0.75*massq/(R*R*(1.0 + massq)*(1.0 + massq));
     double addom = rho*dphitot + phitot*drho;
     addom *= 1.0/(Mach*Mach*r*rho);
-    om = sqrt(fabs(om*om*multom + addom));
+    double om = sqrt(fabs(om*om*multom + addom));
 
     prim[RHO] = rho;
     prim[PPP] = P;
