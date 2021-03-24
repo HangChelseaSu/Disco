@@ -149,7 +149,7 @@ double get_height_om( const double *x){
       py = thePlanets[pi].r*sinp;
       script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
       double f1 = fgrav( thePlanets[pi].M , script_r , thePlanets[pi].eps , thePlanets[pi].type);
-      omtot2 += fgrav/(script_r + 0.0625*thePlanets[pi].eps);	//Technically, should not include any extra softening, but avoid dividing by zero
+      omtot2 += f1/(script_r + 0.0625*thePlanets[pi].eps);	//Technically, should not include any extra softening, but avoid dividing by zero
     }
     return sqrt(omtot2);
 }
