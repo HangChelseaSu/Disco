@@ -1,4 +1,5 @@
 #include "../paul.h"
+#include "../omega.h"
 
 static double gam = 0.0;
 static double visc = 0.0;
@@ -12,8 +13,6 @@ static double rin = 0.0;
 static double redge = 0.0;
 static double rswitch = 0.0;
 static double epsfl = 0.0;
-
-double get_cs2(double *);
 
 void setICparams( struct domain * theDomain )
 {
@@ -57,7 +56,7 @@ void initial(double *prim, double *x)
     double dnu = 0.0;
     if (alpha_flag == 1){
       double ihom = 1.0/get_height_om(x);
-      dnu = nu*(-dphitot*ihom/(Mach*Mach) + 1.5*cs2*ihom*ihom*pow(r,-2.5)) //approximates dOmega/dr as Keplerian
+      dnu = nu*(-dphitot*ihom/(Mach*Mach) + 1.5*cs2*ihom*ihom*pow(r,-2.5)); //approximates dOmega/dr as Keplerian
       nu = nu*cs2*ihom;
     }
 
@@ -69,7 +68,7 @@ void initial(double *prim, double *x)
     double drho = sig0*efact*xi*pow((R/redge),-xi)/R + efact*dsig0;
 
     double v = -1.5*nu/(R);
-    double P = rho*cs2(x)/gam;
+    double P = rho*cs2/gam;
 
     double multom = 1.0 + 0.75*massq/(R*R*(1.0 + massq)*(1.0 + massq));
     double addom = rho*dphitot + phitot*drho;

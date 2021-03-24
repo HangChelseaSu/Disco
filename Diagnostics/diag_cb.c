@@ -39,11 +39,11 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    double vm2 =  vx*vx + vy*vy;
    double rdv = vx*gx + vy*gy;
    Qrz[2] = (vm2 - 1./r)*gx - rdv*vx;	//e_x
-   QrZ[2] *= rho;
+   Qrz[2] *= rho;
    Qrz[3] = (vm2 - 1./r)*gy - rdv*vy;	//e_y
-   QrZ[3] *= rho;
+   Qrz[3] *= rho;
 
-   QrZ[4] = 0.0;
+   Qrz[4] = 0.0;
 
    double Fr,Fp,Fz,rp;
    Fp = 0.0;

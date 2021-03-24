@@ -142,7 +142,7 @@ double get_height_om( const double *x){
     double gy = r*sinp;
 
     double px, py, script_r;
-    for (i=0; i<Npl; i++){
+    for (pi=0; pi<Npl; pi++){
       cosp = cos(thePlanets[pi].phi);
       sinp = sin(thePlanets[pi].phi);
       px = thePlanets[pi].r*cosp;
