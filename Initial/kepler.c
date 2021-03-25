@@ -29,7 +29,7 @@ void initial( double * prim , double * x ){
    double cs2 = get_cs2(x);
    double visc = nu;
    if (alpha_flag == 1) visc = nu*cs2/omega;
-   double rho = 1.0;
+   double rho = 1.0/visc;
    //if (nu > 0.0) rho = rho/nu;
    double Pp = rho*cs2/gam;
 

@@ -163,8 +163,8 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       //double gmag3
       int pi;
       int numSinks = Npl;
-      if (sinkNumber>0) numSinks = sinkNumber;
-      for (pi=0; pi<sinkNumber; pi++){
+      if ((sinkNumber>0) & (sinkNumber<numSinks)) numSinks = sinkNumber;
+      for (pi=0; pi<numSinks; pi++){
           double cosp = cos(thePlanets[pi].phi);
           double sinp = sin(thePlanets[pi].phi);
           px = thePlanets[pi].r*cosp;
