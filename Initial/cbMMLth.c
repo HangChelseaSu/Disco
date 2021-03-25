@@ -41,6 +41,9 @@ void initial(double *prim, double *x)
 
     double rho, efact, fth, dfth;
 
+    double om = pow(r, -1.5);
+    if (r<0.1) om = pow(0.1, -1.5);
+
     int np;
     double phitot = 0.0;
     double dphitot = 0.0;
@@ -73,7 +76,7 @@ void initial(double *prim, double *x)
     double multom = 1.0 + 0.75*massq/(R*R*(1.0 + massq)*(1.0 + massq));
     double addom = rho*dphitot + phitot*drho;
     addom *= 1.0/(Mach*Mach*r*rho);
-    double om = sqrt(fabs(om*om*multom + addom));
+    om = sqrt(fabs(om*om*multom + addom));
 
     prim[RHO] = rho;
     prim[PPP] = P;
