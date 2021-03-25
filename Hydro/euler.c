@@ -221,8 +221,8 @@ void visc_flux(const double * prim, const double * gradr, const double * gradp,
 
    if( alpha_flag ){
       double alpha = explicit_viscosity;
-      double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-      nu = r*alpha*c/mach;	//assumes isothermal
+      double c2 = gamma_law*prim[PPP]/prim[RHO];
+      nu = alpha*c2/get_height_om(x);
    }
 
    double rho = prim[RHO];
@@ -266,8 +266,8 @@ void visc_source(const double * prim, const double * gradr, const double *gradp,
 
    if( alpha_flag ){
       double alpha = explicit_viscosity;
-      double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-      nu = r*alpha*c/mach;	//assumes isothermal
+      double c2 = gamma_law*prim[PPP]/prim[RHO];
+      nu = alpha*c2/get_height_om(x);
    }
 
    double rho = prim[RHO];
@@ -363,8 +363,8 @@ double mindt(const double * prim , double w ,
           double x[3];
           get_centroid_arr(xp, xm, x);
           double alpha = explicit_viscosity;
-          double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-          nu = x[0]*alpha*c/mach;	//assumes isothermal
+          double c2 = gamma_law*prim[PPP]/prim[RHO];
+          nu = alpha*c2/get_height_om(x);
        }
 
        double dt_visc = 0.5*dx*dx/nu;
