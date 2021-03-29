@@ -98,10 +98,12 @@ Noise_Rel       0.0     // Amplitude of Relative Noise
 
 //Sink & Nozzle Parameters
 Sink_Type       0       //0: No Sink
+Sink_Number     0		//0: all planets have sinks. else: first N planets have sinks
 Sink_Par1       0.0     //(double)
 Sink_Par2       0.0     //(double)
 Sink_Par3       0.0     //(double)
 Sink_Par4       0.0     //(double)
+
 Nozzle_Type     0       //0: No Nozzle, 1: Circular Nozzle
 Nozzle_Par1     0.0     //(double)
 Nozzle_Par2     0.0     //(double)
@@ -109,7 +111,7 @@ Nozzle_Par3     0.0     //(double)
 Nozzle_Par4     0.0     //(double)
 
 //Cooling parameters
-Cool_Type       0       //0: No cooling, 1: beta cooling, 2: thindisk cooling
+Cool_Type       0       //0: No cooling, 1: beta cooling, 2: beta relaxation
 Cool_Par1       1.e-2     //(double)
 Cool_Par2       0.0     //(double)
 Cool_Par3       0.0     //(double)
