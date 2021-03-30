@@ -70,6 +70,7 @@ Eccentricity	0.0
 Drift_Rate		0.0 //-2.5e-4
 Drift_Exp		0.66666667
 Grav2D          1
+Softening       0.05
 
 //Rotating Frame
 RotFrame            0       //0=off, 1=on
