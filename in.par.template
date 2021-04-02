@@ -104,6 +104,7 @@ Sink_Par1       0.0     //(double)
 Sink_Par2       0.0     //(double)
 Sink_Par3       0.0     //(double)
 Sink_Par4       0.0     //(double)
+Sink_Par5       0.0     //(double)
 
 Nozzle_Type     0       //0: No Nozzle, 1: Circular Nozzle
 Nozzle_Par1     0.0     //(double)
