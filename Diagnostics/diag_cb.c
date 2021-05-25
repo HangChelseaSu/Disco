@@ -8,7 +8,7 @@ void setDiagParams( struct domain * theDomain ){
 }
 
 int num_diagnostics(void){
-   return(5);
+   return(6);
 }
 
 void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
@@ -44,6 +44,7 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    Qrz[3] *= rho;
 
    Qrz[4] = 0.0;
+   Qrz[5] = rho*vp;
 
    double Fr,Fp,Fz,rp;
    Fp = 0.0;
@@ -51,7 +52,7 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    int pi;
    for (pi=0; pi<2; pi++) {
      struct planet * pl = theDomain->thePlanets + pi;
-     planetaryForce( pl , r , phi , z , &Fr , &Fp , &Fz , 0 );
+     planetaryForce( pl , r , phi , z , &Fr , &Fp , &Fz , 1 );
      rp = theDomain->thePlanets[pi].r;
      Qrz[4] += rho*rp*Fp;				//Torque density
    }
