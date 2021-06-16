@@ -159,6 +159,7 @@ void geom_grad(const double *prim, double *grad, const double *xp, const double 
     double r = get_centroid(xp[0], xm[0], 1);
     for(q = 0; q<NUM_Q; q++)
     {
+        /*
         if(q == URR || (NUM_C>BZZ && q==BRR))
         {
             double SL = prim[q]/r;
@@ -168,6 +169,9 @@ void geom_grad(const double *prim, double *grad, const double *xp, const double 
             else if( fabs(PLM*SL) < fabs(S) )
                 grad[q] = PLM*SL;
         }
+        */
+        if(q == UPP)
+            grad[q] = -prim[UPP] / r;
         else
             grad[q] = 0.0;
     }
@@ -188,15 +192,6 @@ void geom_interpolate(const double *prim, const double *gradp,
                       double dphi, double dxT, double * primI,
                       double w, int dim)
 {
-    double r = x[0];
-    double sp = sin(dphi);
-    double cp = cos(dphi);
-
-    double ur_pt = cp*prim[URR] + sp*r*prim[UPP];
-    double up_pt = -sp*prim[URR]/r + cp*prim[UPP];
-
-    if(dim == 1)
-        up_pt *= r/(r+dxT);
 
     int q;
     for(q=0; q<NUM_Q; q++)
@@ -206,6 +201,154 @@ void geom_interpolate(const double *prim, const double *gradp,
         for(q=0; q<NUM_Q; q++)
             primI[q] += dxT * gradT[q];
 
-    primI[URR] = (1.0-w) * primI[URR] + w * ur_pt;
-    primI[UPP] = (1.0-w) * primI[UPP] + w * up_pt;
+    double r = x[0];
+    double sdp = sin(dphi);
+    double cdp = cos(dphi);
+
+    /*
+    ur_pt = cdp*prim[URR] + sdp*r*prim[UPP];
+    up_pt = -sdp*prim[URR]/r + cdp*prim[UPP];
+
+    if(dim == 1)
+        up_pt *= r/(r+dxT);
+    */
+
+    // Amend velocity interpolation to include Christoffel terms
+    // so interpolation uses covariant derivative instead of coordinate
+    
+    //double ur_pt = prim[URR];
+    //double up_pt = prim[UPP];
+    
+    double ur_pt = primI[URR] - dphi * r * prim[UPP];
+    double up_pt = primI[UPP] + dphi * prim[URR] / r;
+    double dr = 0.0;
+    if(dim == 1)
+    {
+        up_pt += dxT * prim[UPP] / r;
+        dr = dxT;
+    }
+
+    primI[URR] = (1.0-w) * primI[URR]
+                    + w * ( cdp * ur_pt + r*sdp * up_pt);
+    primI[UPP] = (1.0-w) * primI[UPP]
+                    + w * (-sdp * ur_pt + r*cdp * up_pt) / (r + dr);
+}
+
+void geom_rebase_to_cart(const double *prim, const double *x, double *cartPrim)
+{
+    int q;
+    for(q=0; q<NUM_Q; q++)
+        cartPrim[q] = prim[q];
+
+    double r = x[0];
+    double cp = cos(x[1]);
+    double sp = sin(x[1]);
+    cartPrim[URR] = cp * prim[URR] - r * sp * prim[UPP];
+    cartPrim[UPP] = sp * prim[URR] + r * cp * prim[UPP];
+}
+
+void geom_rebase_from_cart(const double *cartPrim, const double *x,
+                           double *prim)
+{
+    int q;
+    for(q=0; q<NUM_Q; q++)
+        prim[q] = cartPrim[q];
+
+    double r = x[0];
+    double cp = cos(x[1]);
+    double sp = sin(x[1]);
+    prim[URR] =  cp * cartPrim[URR] + sp * cartPrim[UPP];
+    prim[UPP] = (-sp * cartPrim[URR] + cp * cartPrim[UPP]) / r;
+}
+
+void geom_gradCart_to_grad(const double *cartGrad, const double *prim,
+                           const double *x, double *grad, int dim)
+{
+    int q;
+    for(q=0; q<NUM_Q; q++)
+        grad[q] = cartGrad[q];
+
+    double r = x[0];
+    double cp = cos(x[1]);
+    double sp = sin(x[1]);
+    // grad[Uxx] is now the covariant derivative of Uxx in polar coords
+    grad[URR] =  cp * cartGrad[URR] + sp * cartGrad[UPP];
+    grad[UPP] = (-sp * cartGrad[URR] + cp * cartGrad[UPP]) / r;
+
+    if(dim == 0) // phi
+    {
+        grad[URR] -= -r * prim[UPP];  // G^r_pp * v^p
+        grad[UPP] -= prim[URR] / r;   // G^p_pr * v^r
+    }
+    else if (dim == 1)
+    {
+        grad[UPP] -= prim[UPP] / r;   // G^p_rp * v^p
+    }
+}
+
+void geom_cart_interp_grad_trans(const double *primL, const double *primR,
+                                 const double *gradpL, const double *gradpR,
+                                 double dpL, double dpR, const double *x,
+                                 double dxL, double dxR, 
+                                 double *gradCIL, double *gradCIR,
+                                 int dim)
+{
+    int q;
+
+    double idx = 1.0 / (dxR - dxL);
+    for(q=0; q<NUM_Q; q++)
+    {
+        gradCIL[q] = idx * (primR[q] + dpR * gradpR[q]
+                            - (primL[q] + dpL * gradpL[q]));
+        gradCIR[q] = gradCIL[q];
+    }
+
+    double xL[3] = {x[0], x[1]-dpL, x[2]};
+    double xR[3] = {x[0], x[1]-dpR, x[2]};
+    if(dim == 1)
+    {
+        xL[0] += dxL;
+        xR[0] += dxR;
+    }
+    else if(dim == 2)
+    {
+        xL[2] += dxL;
+        xR[2] += dxR;
+    }
+
+    double rL = xL[0];
+    double rR = xR[0];
+    double sL = sin(xL[1]);
+    double cL = cos(xL[1]);
+    double sR = sin(xR[1]);
+    double cR = cos(xR[1]);
+
+    double uxL = cL * primL[URR] - rL * sL * primL[UPP];
+    double uyL = sL * primL[URR] + rL * cL * primL[UPP];
+    double uxR = cR * primR[URR] - rR * sR * primR[UPP];
+    double uyR = sR * primR[URR] + rR * cR * primR[UPP];
+
+    double DurDpL = gradpL[URR] - rL * primL[UPP];
+    double DupDpL = gradpL[UPP] + primL[URR] / rL;
+    double DurDpR = gradpR[URR] - rR * primR[UPP];
+    double DupDpR = gradpR[UPP] + primR[URR] / rR;
+
+    double duxdpL = cL * DurDpL - rL * sL * DupDpL;
+    double duydpL = sL * DurDpL + rL * cL * DupDpL;
+    double duxdpR = cR * DurDpR - rR * sR * DupDpR;
+    double duydpR = sR * DurDpR + rR * cR * DupDpR;
+
+    double gradUX = idx * (uxR + dpR * duxdpR - (uxL + dpL * duxdpL));
+    double gradUY = idx * (uyR + dpR * duydpR - (uyL + dpL * duydpL));
+
+    gradCIL[URR] =  cL * gradUX + sL * gradUY;
+    gradCIL[UPP] = (-sL * gradUX + cL * gradUY) / rL;
+    gradCIR[URR] =  cR * gradUX + sR * gradUY;
+    gradCIR[UPP] = (-sR * gradUX + cR * gradUY) / rR;
+
+    if(dim == 1)
+    {
+        gradCIL[UPP] -= primL[UPP] / rL;
+        gradCIR[UPP] -= primR[UPP] / rR;
+    }
 }

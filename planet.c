@@ -105,6 +105,14 @@ void adjust_gas( struct planet * pl , double * x , double * prim , double gam ){
 }
 
 void planetaryForce( struct planet * pl , double r , double phi , double z , double * fr , double * fp , double * fz , int mode ){
+    /*
+     * Calculates the specific gravitational force (ie. acceleration) between
+     * the gas and planet.
+     * The force is returned in an orthonormal basis in cylindrical coords:
+     *    |F| = sqrt(fr*fr + fp*fp + fz*fz)
+     * mode == 0 computes the force components At The Gas Position
+     * mode == 1 computes the force components At The Planet Position
+     */
 
    double rp = pl->r;
    double pp = pl->phi;

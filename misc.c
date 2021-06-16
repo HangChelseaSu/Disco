@@ -778,7 +778,10 @@ void dump_grid(struct domain *theDomain, char filename[])
 
    int i,j,k, q;
 
-   FILE *f = fopen(filename, "w");
+   char fullName[256];
+   sprintf(fullName, "%s.%05d.txt", filename, theDomain->count_steps);
+
+   FILE *f = fopen(fullName, "w");
 
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
       for( j=NgRa ; j<Nr-NgRb ; ++j ){
@@ -799,6 +802,12 @@ void dump_grid(struct domain *theDomain, char filename[])
                 fprintf(f, " %.12le", c->cons[q]);
             for(q=0; q<NUM_Q; q++)
                 fprintf(f, " %.12le", c->RKcons[q]);
+            for(q=0; q<NUM_Q; q++)
+                fprintf(f, " %.12le", c->gradr[q]);
+            for(q=0; q<NUM_Q; q++)
+                fprintf(f, " %.12le", c->gradp[q]);
+            for(q=0; q<NUM_Q; q++)
+                fprintf(f, " %.12le", c->gradz[q]);
             fprintf(f, "\n");
          }    
       }    

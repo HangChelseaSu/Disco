@@ -36,6 +36,8 @@ int planet_motion_analytic(void);
 void boundary_trans( struct domain * , int );
 void exchangeData( struct domain * , int );
 
+void dump_grid(struct domain *, char filename[]);
+
 //int get_num_rzFaces( int , int , int );
 
 void checkNaNs(struct domain *theDomain, char label[])
@@ -113,6 +115,8 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
       prof_tock(theDomain->prof, PROF_RECON_Z);
    }
    prof_tock(theDomain->prof, PROF_RECON);
+
+   dump_grid(theDomain, "grid");
 
    //Flux
    prof_tick(theDomain->prof, PROF_FLUX);

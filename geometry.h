@@ -1,5 +1,5 @@
 #ifndef DISCO_GEOMETRY_H
-#define DISCO_GEOMMETRY_H
+#define DISCO_GEOMETRY_H
 
 #include "paul.h"
 
@@ -31,6 +31,18 @@ void geom_interpolate(const double *prim, const double *gradp,
                       const double *gradT, const double *x,
                       double dphi, double dxT, double * primI, double weight,
                       int dim);
+void geom_rebase_to_cart(const double *prim, const double *x,
+                         double *cartPrim);
+void geom_rebase_from_cart(const double *cartPrim, const double *x,
+                           double *prim);
+void geom_gradCart_to_grad(const double *cartGrad, const double *prim,
+                           const double *x, double *grad, int dim);
+void geom_cart_interp_grad_trans(const double *primL, const double *primR,
+                                 const double *gradpL, const double *gradpR,
+                                 double dpL, double dpR, const double *x,
+                                 double dxL, double dxR, 
+                                 double *gradCIL, double *gradCIR,
+                                 int dim);
 
 void get_centroid_arr(const double *xp, const double *xm, double *x);
 void get_vec_contravariant(const double *x, double *v, double *vc);
