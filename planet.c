@@ -45,6 +45,15 @@ double phigrav( double M , double r , double eps , int type)
     {
         return M / (r - 2*M);
     }
+    else if(type == PLWEGGC)
+    {
+        //potential "C" from Wegg 2012, ApJ 749
+        double sq6 = sqrt(6);
+        double Alpha = -4*(2.0+sq6)/3;
+        double Rx = M*(4.0*sq6 - 9);
+        double Ry = -4*M*(2*sq6 - 3.0)/3.0;
+        return -Alpha*M/r - (1-Alpha)*M/(r-Rx) - M*Ry/(r*r);
+    }
     else if(type == PLSURFACEGRAV)
     {
         return M*r; // M is gravitational acceleration
@@ -78,6 +87,15 @@ double fgrav( double M , double r , double eps , int type)
     {
         return M; // M is gravitational acceleration
                   // only makes sense if grav2D is on
+    }
+    else if(type == PLWEGGC)
+    {
+        //potential "C" from Wegg 2012, ApJ 749
+        double sq6 = sqrt(6);
+        double Alpha = -4*(2.0+sq6)/3;
+        double Rx = M*(4.0*sq6 - 9);
+        double Ry = -4*M*(2*sq6 - 3.0)/3.0;
+        return -Alpha*M/(r*r) - (1-Alpha)*M/((r-Rx)*(r-Rx)) - 2*M*Ry/(r*r*r);
     }
     else if(type == PLSPLINE)
     {
