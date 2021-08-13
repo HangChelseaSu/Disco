@@ -42,11 +42,11 @@ void initial( double * prim , double * x ){
 
    if (r <= rbl + 0.5*dbl) { 
       omega = C + r*B;
-      rho = exp(Mach*Mach*(1./r + C*C*0.5*r*r + 2.0*C*B*r*r*r/3.0 + B*B*0.25*r*r*r*r - off1));
+      rho = exp(gam*Mach*Mach*(1./r + C*C*0.5*r*r + 2.0*C*B*r*r*r/3.0 + B*B*0.25*r*r*r*r - off1));
    }
    if (r < rbl - 0.5*dbl) {
       omega = om0;
-      rho = exp(Mach*Mach*(1./r + om0*om0*0.5*r*r + off2 - off1 - off3)); 
+      rho = exp(gam*Mach*Mach*(1./r + om0*om0*0.5*r*r + off2 - off1 - off3)); 
    }
 
    double visc = nu;
@@ -56,7 +56,8 @@ void initial( double * prim , double * x ){
    double Pp = rho*cs2/gam;
 
    double X = 0.0; 
-   if( r*cos(x[1]) > 0.0 ) X = 1.0; 
+   if( r > rbl - 0.5*dbl ) X = (r-(rbl-dbl*0.5))/dbl; 
+   if( r > rbl + 0.5*dbl ) X = 1.0; 
 
    prim[RHO] = rho;
    prim[PPP] = Pp;
