@@ -275,7 +275,7 @@ void report( struct domain * theDomain ){
       //          t,Torque,Power,Fr,rho_min,rhoavg_min,PsiR,PsiI,Mass,Mdot,S_R,
       //          L1_rho,L1_isen,L1_B,Br2,aM,bM);
       //fprintf(rFile,"%le %le %le ",  t,Torque,Torque2);
-      fprintf(rFile,"%.7le %.7le",  t, q);
+      fprintf(rFile,"%.7le %.7le ",  t, q);
       for( j=0; j<Npl; ++j){
          fprintf(rFile,"%le ", Lg_pls[j]);
       }
