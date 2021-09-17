@@ -7,10 +7,8 @@ static double gamma_law = 0.0;
 static double mach = 1.0; 
 static double RHO_FLOOR = 0.0; 
 static double PRE_FLOOR = 0.0; 
-static double explicit_viscosity = 0.0;
 static int include_viscosity = 0;
 static int isothermal = 0;
-static int alpha_flag = 0;
 static int polar_sources = 0;
 
 void setHydroParams( struct domain * theDomain ){
@@ -18,13 +16,13 @@ void setHydroParams( struct domain * theDomain ){
    isothermal = theDomain->theParList.isothermal_flag;
    RHO_FLOOR = theDomain->theParList.Density_Floor;
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
-   explicit_viscosity = theDomain->theParList.viscosity;
    mach = theDomain->theParList.Disk_Mach;
    include_viscosity = theDomain->theParList.visc_flag;
-   alpha_flag = theDomain->theParList.alpha_flag;
    if(theDomain->theParList.NoBC_Rmin == 1)
        polar_sources = 1;
 }
+
+double get_nu( const double *, const double *);
 
 int set_B_flag(void){
    return(0);
@@ -217,13 +215,7 @@ void visc_flux(const double * prim, const double * gradr, const double * gradp,
                const double * x, const double * n)
 {
    double r = x[0];
-   double nu = explicit_viscosity;
-
-   if( alpha_flag ){
-      double alpha = explicit_viscosity;
-      double c2 = gamma_law*prim[PPP]/prim[RHO];
-      nu = alpha*c2/get_height_om(x);
-   }
+   double nu = get_nu(x, prim);
 
    double rho = prim[RHO];
    double vr  = prim[URR];
@@ -262,13 +254,7 @@ void visc_source(const double * prim, const double * gradr, const double *gradp,
    double x[3];
    get_centroid_arr(xp, xm, x);
    double r = x[0];
-   double nu = explicit_viscosity;
-
-   if( alpha_flag ){
-      double alpha = explicit_viscosity;
-      double c2 = gamma_law*prim[PPP]/prim[RHO];
-      nu = alpha*c2/get_height_om(x);
-   }
+   double nu = get_nu(x, prim);
 
    double rho = prim[RHO];
    double vr  = prim[URR];
@@ -358,14 +344,9 @@ double mindt(const double * prim , double w ,
        if( dx>dL1 ) dx = dL1;
        if( dx>dL2 ) dx = dL2;
 
-       double nu = explicit_viscosity;
-       if( alpha_flag ){
-          double x[3];
-          get_centroid_arr(xp, xm, x);
-          double alpha = explicit_viscosity;
-          double c2 = gamma_law*prim[PPP]/prim[RHO];
-          nu = alpha*c2/get_height_om(x);
-       }
+       double x[3];
+       get_centroid_arr(xp, xm, x);
+       double nu = get_nu(x, prim);
 
        double dt_visc = 0.5*dx*dx/nu;
        if( dt > dt_visc )

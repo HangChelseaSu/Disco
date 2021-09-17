@@ -58,7 +58,7 @@ struct param_list{
    double LogRadius;
    double MaxShort, MaxLong;
    int Mesh_Motion, Riemann_Solver, Timestep;
-   int Absorb_BC, Initial_Regrid, visc_flag, include_atmos;
+   int Absorb_BC, Initial_Regrid, include_atmos;
 
    double CFL, PLM, maxDT;
    double Density_Floor, Pressure_Floor;
@@ -71,7 +71,12 @@ struct param_list{
    double RotOmega, RotD;
 
    double Adiabatic_Index;
+
+   int visc_flag;
+   int visc_par;
    double viscosity;
+   double visc_profile;
+
    int isothermal_flag;
    int Cs2_Profile;
    double Cs2_Par;
@@ -81,7 +86,6 @@ struct param_list{
    double Eccentricity;
    double Drift_Rate,Drift_Exp;
    int grav2D;
-   int alpha_flag;
 
    int restart_flag;
    int CT;

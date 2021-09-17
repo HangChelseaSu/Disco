@@ -7,24 +7,22 @@
 static double gamma_law = 0.0; 
 static double RHO_FLOOR = 0.0; 
 static double PRE_FLOOR = 0.0; 
-static double explicit_viscosity = 0.0;
 static int include_viscosity = 0;
 static int isothermal = 0;
-static int alpha_flag = 0;
 
 void setHydroParams( struct domain * theDomain ){
    gamma_law = theDomain->theParList.Adiabatic_Index;
    isothermal = theDomain->theParList.isothermal_flag;
    RHO_FLOOR = theDomain->theParList.Density_Floor;
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
-   explicit_viscosity = theDomain->theParList.viscosity;
    include_viscosity = theDomain->theParList.visc_flag;
-   alpha_flag = theDomain->theParList.alpha_flag;
 }
 
 int set_B_flag(void){
    return(0);
 }
+
+double get_nu( const double *, const double *);
 
 double get_omega( const double * prim , const double * x ){
    return( prim[UPP] );
@@ -166,7 +164,7 @@ void visc_flux(const double * prim, const double * gradx, const double * grady,
                const double * gradz, double * flux,
                const double * x, const double * n)
 {
-   double nu = explicit_viscosity;
+   double nu = get_nu(x, prim);
 
    double rho = prim[RHO];
    double vx  = prim[URR];
@@ -263,7 +261,9 @@ double mindt(const double * prim , double w , const double * xp , const double *
        if( dx>dL1 ) dx = dL1;
        if( dx>dL2 ) dx = dL2;
 
-       double nu = explicit_viscosity;
+       double x[3];
+       get_centroid_arr(xp, xm, x);
+       double nu = getnu(x, prim);
 
        double dt_visc = 0.5*dx*dx/nu;
        if( dt > dt_visc )

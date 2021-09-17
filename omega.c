@@ -6,8 +6,14 @@ static int meshOmChoice = 0;
 static double meshOmPar = 0.0;
 static int enOmChoice = 0;
 static double enOmPar = 0.0;
+
 static int cs2Choice = 0;
 static double cs2Par = 0.0;
+
+static int viscChoice = 0;
+static double viscPar = 0.0;
+static double viscVal = 0.0;
+
 static double Omega0 = 0.0;
 static int Npl = 0;
 
@@ -33,6 +39,11 @@ void setOmegaParams( struct domain * theDomain ){
    enOmPar = theDomain->theParList.Energy_Omega_Par;
    cs2Choice = theDomain->theParList.Cs2_Profile;
    cs2Par = theDomain->theParList.Cs2_Par;
+
+   viscChoice = theDomain->theParList.visc_profile;
+   viscPar = theDomain->theParList.visc_par;
+   viscVal = theDomain->theParList.viscosity;
+
    Omega0 = theDomain->theParList.RotOmega;
 
    Mach = theDomain->theParList.Disk_Mach;
@@ -207,3 +218,30 @@ double get_cs2( const double *x ){
     return cs2;
 }
 
+double get_nu(const double x[], const double prim[]){
+  double nu = viscVal;
+  //alpha viscosity
+  if (viscChoice == 1){
+    double c2 = gamma_law*prim[PPP]/prim[RHO];
+    nu *= c2/get_height_om(x);
+  }
+  //generic power law w.r.t. r=0
+  if (viscChoice == 2){
+    nu *= pow(fmax(x[0],1e-10), viscPar);
+  }
+  //power law for overall potential (e.g. for binaries)
+  if (viscChoice == 3){
+    double cosp, sinp, px, py, script_r, powsum;
+    for (pi=0; pi<Npl; pi++){
+      cosp = cos(thePlanets[pi].phi);
+      sinp = sin(thePlanets[pi].phi);
+      px = thePlanets[pi].r*cosp;
+      py = thePlanets[pi].r*sinp;
+      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy) + pow(thePlanets[pi].eps, 2.0) );
+      powsum += thePlanets[pi].M*pow(script_r, viscPar);
+    }
+    nu *= powsum;
+  }
+
+  return nu;
+}
