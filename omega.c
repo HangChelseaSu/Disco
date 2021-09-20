@@ -9,6 +9,7 @@ static double enOmPar = 0.0;
 
 static int cs2Choice = 0;
 static double cs2Par = 0.0;
+static double gamma_law = 0.0;
 
 static int viscChoice = 0;
 static double viscPar = 0.0;
@@ -33,6 +34,7 @@ double fgrav( double , double , double , int); //int here is type
 
 
 void setOmegaParams( struct domain * theDomain ){
+   gamma_law = theDomain->theParList.Adiabatic_Index;
    meshOmChoice = theDomain->theParList.Exact_Mesh_Omega;
    meshOmPar    = theDomain->theParList.Exact_Mesh_Omega_Par;
    enOmChoice = theDomain->theParList.Energy_Omega;
@@ -197,7 +199,6 @@ double get_cs2( const double *x ){
       double gy = r*sinp;
       int pi;
       double px, py, pr;
-      double n = 2.0;
       double phip = 0.0;
  
       for (pi = 0; pi<Npl; pi++)
@@ -207,7 +208,6 @@ double get_cs2( const double *x ){
         px = thePlanets[pi].r*cosp;
         py = thePlanets[pi].r*sinp;
         pr = (px-gx)*(px-gx) + (py-gy)*(py-gy);
-        //phip += thePlanets[pi].M/pow( pr + pow(thePlanets[pi].eps,n) , 1./n );
         phip += phigrav( thePlanets[pi].M , sqrt(pr) , thePlanets[pi].eps , thePlanets[pi].type );
       }
       cs2 = phip/(Mach*Mach);        
@@ -232,6 +232,9 @@ double get_nu(const double x[], const double prim[]){
   //power law for overall potential (e.g. for binaries)
   if (viscChoice == 3){
     double cosp, sinp, px, py, script_r, powsum;
+    int pi;
+    double gx = x[0]*cos(x[1]);
+    double gy = x[0]*sin(x[1]);
     for (pi=0; pi<Npl; pi++){
       cosp = cos(thePlanets[pi].phi);
       sinp = sin(thePlanets[pi].phi);
