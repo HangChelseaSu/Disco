@@ -73,9 +73,9 @@ struct param_list{
    double Adiabatic_Index;
 
    int visc_flag;
-   int visc_par;
+   int visc_profile;
    double viscosity;
-   double visc_profile;
+   double visc_par;
 
    int isothermal_flag;
    int Cs2_Profile;

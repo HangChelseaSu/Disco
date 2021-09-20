@@ -247,4 +247,5 @@ double get_nu(const double x[], const double prim[]){
   }
 
   return nu;
+  //return nu*pow(x[0], -1.0);
 }
