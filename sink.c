@@ -181,17 +181,17 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
         double cosp2 = cos(thePlanets[1].phi);
         double sinp2 = sin(thePlanets[1].phi);
         double rp2 = thePlanets[1].r;
-        double px2 = rp1*cosp1;
-        double py2 = rp1*sinp1;
+        double px2 = rp2*cosp2;
+        double py2 = rp2*sinp2;
         double omp2 = thePlanets[1].omega;
         double vp_p2 = rp2*omp2;
         double vp_r2 = thePlanets[1].vr;
         double vxp2 = vp_r2*cosp2 - vp_p2*sinp2;
         double vyp2 = vp_r2*sinp2 + vp_p2*cosp2;
+
         rbin = sqrt( (px1-px2)*(px1-px2) + (py1-py2)*(py1-py2) );
         dxbin = vxp1 - vxp2;
         dybin = vyp1 - vyp2;
-       }
       }
       //double gmag3
       if ((sinkNumber>0) & (sinkNumber<numSinks)) numSinks = sinkNumber;
@@ -209,7 +209,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           //gmag3 = dx*dx + dy*dy + thePlanets[pi].eps*thePlanets[pi].eps;
           //gmag3 = gmag3*sqrt(gmag3);
 
-          //the part tÌhat depends on sinkType
+          //the part that depends on sinkType
           double arg = 0.0;
           if(sinkType == 3){	//constant
             if (mag <= sinkPar3) arg = 1.0;
@@ -283,7 +283,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           thePlanets[pi].dM += acc_factor;
           thePlanets[pi].therm += prim[PPP]*acc_factor/(rho*(gamma_law-1.0));
 
-          thePlanets[pi].accE += acc_factor*(vxg*dxbin + vyg*dybin - 1./rbin);
+          thePlanets[pi].accE += acc_factor*(vxg*dxbin + vyg*dybin - 1.0/rbin);
 
           //not actually a sink, just torque accounting
           //thePlanets[pi].gravL += thePlanets[pi].M*rho*dV*dt*(dy*px - dx*py)/gmag3;
@@ -291,7 +291,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           rho0 = 1.0/(3.0*M_PI*visc);
           planetaryForce( thePlanets + pi, r, phi,  0.0, &fr, &fp, &fz, 1);
           thePlanets[pi].gravL -= (rho-rho0)*thePlanets[pi].r*fp*dV*dt;
-          thePlanets[pi].gravE += rho*dV*dt*(thePlanets[pi].vr*fr + thePlanets[pi].r*thePlanets[pi].om*fp);
+          thePlanets[pi].gravE += rho*dV*dt*(thePlanets[pi].vr*fr + thePlanets[pi].r*thePlanets[pi].omega*fp);
           //Torque -= (rho-1.0)*rp*fp*dV;
       }
     }
