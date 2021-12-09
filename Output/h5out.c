@@ -471,13 +471,6 @@ void output( struct domain * theDomain , char * filestart ){
          PlanetData[NpDat*p + 4] = pl->phi;
          PlanetData[NpDat*p + 5] = pl->eps;
          PlanetData[NpDat*p + 6] = (double)pl->type;
-
-         //PlanetData[NpDat*p + 7] = pl->dM;
-         //PlanetData[NpDat*p + 8] = pl->Ls;
-         //PlanetData[NpDat*p + 9] = pl->L;
-         //PlanetData[NpDat*p + 10] = pl->kin;
-         //PlanetData[NpDat*p + 11] = pl->therm;
-         //Do I need to add something for RK?
       }
       writeSimple(filename,"Data","Planets",PlanetData,H5T_NATIVE_DOUBLE);
    }

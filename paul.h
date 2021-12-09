@@ -270,15 +270,13 @@ struct planet{
    double gravL;
    double RK_gravL;
 
-   double kin;
-   double RK_kin;
    double therm;
    double RK_therm;
 
-   double linXmom;
-   double RK_linXmom;
-   double linYmom;
-   double RK_linYmom;
+   double accE;
+   double RK_accE;
+   double gravE;
+   double RK_gravE;
 
    double eps;
    double Fr;

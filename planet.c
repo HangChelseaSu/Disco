@@ -243,10 +243,9 @@ void planet_RK_copy( struct planet * pl ){
    pl->RK_accL  = pl->accL;
    pl->RK_Ls    = pl->Ls;
    pl->RK_therm = pl->therm;
-   pl->RK_kin   = pl->kin;
    pl->RK_gravL = pl->gravL;
-   pl->RK_linXmom = pl->linXmom;
-   pl->RK_linYmom = pl->linYmom;
+   pl->RK_accE = pl->accE;
+   pl->RK_gravE = pl->gravE;
 
 }
 
@@ -262,9 +261,8 @@ void planet_RK_adjust_aux( struct planet * pl , double RK ){
    pl->dM    = (1.-RK)*pl->dM    + RK*pl->RK_dM;
    pl->accL  = (1.-RK)*pl->accL  + RK*pl->RK_accL;
    pl->Ls    = (1.-RK)*pl->Ls    + RK*pl->RK_Ls;
-   pl->kin   = (1.-RK)*pl->kin   + RK*pl->RK_kin;
    pl->therm = (1.-RK)*pl->therm + RK*pl->RK_therm;
    pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
-   pl->linXmom = (1.-RK)*pl->linXmom + RK*pl->RK_linXmom;
-   pl->linYmom = (1.-RK)*pl->linYmom + RK*pl->RK_linYmom;
+   pl->accE = (1.-RK)*pl->accE + RK*pl->RK_accE;
+   pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
 }
