@@ -59,15 +59,14 @@ void report( struct domain * theDomain ){
    double BrBp = 0.0;
    double PdV  = 0.0;
 
-   double * M_acc, * La_pls, * Ls_pls, *kin_pls, *therm_pls, *Lg_pls, *xMom_pls, *yMom_pls;
+   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls, *Eacc_pls;
    M_acc = calloc(Npl, sizeof(double) );
    La_pls = calloc(Npl, sizeof(double) );
    Ls_pls = calloc(Npl, sizeof(double) );
    Lg_pls = calloc(Npl, sizeof(double) );
-   kin_pls = calloc(Npl, sizeof(double) );
    therm_pls = calloc(Npl, sizeof(double) );
-   xMom_pls = calloc(Npl, sizeof(double) );
-   yMom_pls = calloc(Npl, sizeof(double) );
+   Eacc_pls = calloc(Npl, sizeof(double) );
+   Eg_pls = calloc(Npl, sizeof(double) );
 
 
    double * Torque1_cut, *Torque2_cut;
@@ -82,12 +81,10 @@ void report( struct domain * theDomain ){
       La_pls[j] = thePlanets[j].accL;
       Ls_pls[j] = thePlanets[j].Ls;
       therm_pls[j] = thePlanets[j].therm;
-      kin_pls[j] = thePlanets[j].kin;
       Lg_pls[j] = thePlanets[j].gravL;
-      xMom_pls[j] = thePlanets[j].linXmom;
-      yMom_pls[j] = thePlanets[j].linYmom;
+      Eg_pls[j] = thePlanets[j].gravE;
+      Eacc_pls[j] = thePlanets[j].accE;
 
-      
       thePlanets[j].dM = 0.0;
       thePlanets[j].RK_dM = 0.0;
       thePlanets[j].accL = 0.0;
@@ -96,14 +93,12 @@ void report( struct domain * theDomain ){
       thePlanets[j].RK_Ls = 0.0;
       thePlanets[j].therm = 0.0;
       thePlanets[j].RK_therm = 0.0;
-      thePlanets[j].kin = 0.0;
-      thePlanets[j].RK_kin = 0.0;
       thePlanets[j].gravL = 0.0;
       thePlanets[j].RK_gravL = 0.0;
-      thePlanets[j].linXmom = 0.0;
-      thePlanets[j].RK_linXmom = 0.0;
-      thePlanets[j].linYmom = 0.0;
-      thePlanets[j].RK_linYmom = 0.0;
+      thePlanets[j].accE = 0.0;
+      thePlanets[j].RK_accE = 0.0;
+      thePlanets[j].gravE = 0.0;
+      thePlanets[j].RK_gravE = 0.0;
       
 
   }
@@ -247,10 +242,9 @@ void report( struct domain * theDomain ){
    MPI_Allreduce( MPI_IN_PLACE , La_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Ls_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Lg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , kin_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , therm_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , xMom_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , yMom_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
+   MPI_Allreduce( MPI_IN_PLACE , Eg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
+   MPI_Allreduce( MPI_IN_PLACE , Eacc_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
 
 //   MPI_Allreduce( MPI_IN_PLACE , T_cut  , 10 , MPI_DOUBLE , MPI_SUM , grid_comm );
 //   MPI_Allreduce( MPI_IN_PLACE , P_cut  , 10 , MPI_DOUBLE , MPI_SUM , grid_comm );
@@ -282,7 +276,6 @@ void report( struct domain * theDomain ){
       for( j=0; j<Npl; ++j){
          fprintf(rFile,"%le ", M_acc[j]);
       }
-      
       for( j=0; j<Npl; ++j){
          fprintf(rFile,"%le ", La_pls[j]);
       }
@@ -290,16 +283,13 @@ void report( struct domain * theDomain ){
          fprintf(rFile,"%le ", Ls_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", kin_pls[j]);
-      }
-      for( j=0; j<Npl; ++j){
          fprintf(rFile,"%le ", therm_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", xMom_pls[j]);
+         fprintf(rFile,"%le ", Eg_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", yMom_pls[j]);
+         fprintf(rFile,"%le ", Eacc_pls[j]);
       }
       //fprintf(rFile,"%le %le %le %le %le %le %le %le %le ", Mass, Torque_c10, Torque2_c10, Torque_c075, Torque2_c075, Torque_c05, Torque2_c05, Torque, Torque2);
       fprintf(rFile, "%le %le %le ", Mass, Torque, Torque2);
@@ -308,19 +298,15 @@ void report( struct domain * theDomain ){
       }
       fprintf(rFile,"\n");
 
-      //fprintf(rFile,"%e %e %e ",t,Torque,Power);
-      //for( j=0 ; j<10 ; ++j ) fprintf(rFile,"%e %e ",T_cut[j],P_cut[j]);
-      //fprintf(rFile,"\n");
       fclose(rFile);
    }
    free(M_acc);
    free(La_pls);
    free(Ls_pls);
-   free(kin_pls);
    free(therm_pls);
    free(Lg_pls);
-   free(xMom_pls);
-   free(yMom_pls);
+   free(Eacc_pls);
+   free(Eg_pls);
    free(Torque1_cut);
    free(Torque2_cut);
 }
