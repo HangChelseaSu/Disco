@@ -81,7 +81,7 @@ void report( struct domain * theDomain ){
       Lg_pls[j] = thePlanets[j].gravL;
       Eg_pls[j] = thePlanets[j].gravE;
       Eacc_pls[j] = thePlanets[j].accE;
-      Esin_pls[j] = thePlanets[j].sinkE;
+      Esink_pls[j] = thePlanets[j].sinkE;
 
       thePlanets[j].dM = 0.0;
       thePlanets[j].RK_dM = 0.0;
@@ -163,7 +163,7 @@ void report( struct domain * theDomain ){
                double sinp = sin(phi);
                double dx = r*cosp-rp*cos(pp);
                double dy = r*sinp-rp*sin(pp);
-               double script_r = sqrt(dx*dx+dy*dy);
+               //double script_r = sqrt(dx*dx+dy*dy);
                //double rH = pow( thePlanets[1].M/3. , 1./3. );
                //Power  -= (rho-1.0)*( rp*om*fp + vr*fr )*dV;
                //Torque -= (rho-1.0)*rp*fp*dV;
