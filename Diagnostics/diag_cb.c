@@ -8,7 +8,7 @@ void setDiagParams( struct domain * theDomain ){
 }
 
 int num_diagnostics(void){
-   return(6);
+   return(7);
 }
 
 void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
@@ -30,7 +30,8 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    double vp = r*omega;
 
    Qrz[0] = rho;	//Sigma
-   Qrz[1] = 2.*M_PI*r*rho*vr; //Mdot
+   Qrz[1] = rho*vr; //Mdot
+   Qrz[6] = rho*fabs(vr); //Mdot
 
    double gx = r*cos(phi);
    double gy = r*sin(phi);

@@ -59,19 +59,16 @@ void report( struct domain * theDomain ){
    double BrBp = 0.0;
    double PdV  = 0.0;
 
-   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls, *Eacc_pls;
+   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls, *Eacc_pls, *Esink_pls;
    M_acc = calloc(Npl, sizeof(double) );
    La_pls = calloc(Npl, sizeof(double) );
    Ls_pls = calloc(Npl, sizeof(double) );
    Lg_pls = calloc(Npl, sizeof(double) );
    therm_pls = calloc(Npl, sizeof(double) );
    Eacc_pls = calloc(Npl, sizeof(double) );
+   Esink_pls = calloc(Npl, sizeof(double) );
    Eg_pls = calloc(Npl, sizeof(double) );
 
-
-   double * Torque1_cut, *Torque2_cut;
-   Torque1_cut = calloc(5, sizeof(double));
-   Torque2_cut = calloc(5, sizeof(double));
 
    //double S_R = 0.0;
    //double S_0 = 0.0;
@@ -84,6 +81,7 @@ void report( struct domain * theDomain ){
       Lg_pls[j] = thePlanets[j].gravL;
       Eg_pls[j] = thePlanets[j].gravE;
       Eacc_pls[j] = thePlanets[j].accE;
+      Esin_pls[j] = thePlanets[j].sinkE;
 
       thePlanets[j].dM = 0.0;
       thePlanets[j].RK_dM = 0.0;
@@ -97,6 +95,8 @@ void report( struct domain * theDomain ){
       thePlanets[j].RK_gravL = 0.0;
       thePlanets[j].accE = 0.0;
       thePlanets[j].RK_accE = 0.0;
+      thePlanets[j].sinkE = 0.0;
+      thePlanets[j].RK_sinkE = 0.0;
       thePlanets[j].gravE = 0.0;
       thePlanets[j].RK_gravE = 0.0;
       
@@ -177,15 +177,6 @@ void report( struct domain * theDomain ){
 
                double soft = theDomain->theParList.sinkPar3;
 
-               int n_cut;
-               double r_cut;
-               for (n_cut=0; n_cut<5; ++n_cut) {
-                 r_cut = (double)(n_cut + 1.)*soft;
-                 if (script_r > r_cut) {
-                   Torque1_cut[n_cut] -= t1v;
-                   Torque2_cut[n_cut] -= t2v;
-                 }
-               }
                //Fr -= (rho-1.0)*fr*dV;
 /*
                int n_cut;
@@ -194,7 +185,7 @@ void report( struct domain * theDomain ){
                   double scriptr2 = rp*rp + r*r - 2.*r*rp*cos(phi-pp);
                   if( scriptr2 > r_cut*r_cut ){
                      T_cut[n_cut] -= (rho-1.0)*rp*fp*dV;
-                     P_cut[n_cut] -= (rho-1.0)*( rp*om*fp + vr*fr )*dV;
+                     P_cut[n_wcut] -= (rho-1.0)*( rp*om*fp + vr*fr )*dV;
                   }
                }
 */
@@ -234,9 +225,6 @@ void report( struct domain * theDomain ){
    MPI_Allreduce( MPI_IN_PLACE , &Torque2 , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
 
 
-   MPI_Allreduce( MPI_IN_PLACE , Torque1_cut , 5 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , Torque2_cut , 5 , MPI_DOUBLE , MPI_SUM , grid_comm );
-
 
    MPI_Allreduce( MPI_IN_PLACE , M_acc  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , La_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
@@ -245,6 +233,7 @@ void report( struct domain * theDomain ){
    MPI_Allreduce( MPI_IN_PLACE , therm_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eacc_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
+   MPI_Allreduce( MPI_IN_PLACE , Esink_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
 
 //   MPI_Allreduce( MPI_IN_PLACE , T_cut  , 10 , MPI_DOUBLE , MPI_SUM , grid_comm );
 //   MPI_Allreduce( MPI_IN_PLACE , P_cut  , 10 , MPI_DOUBLE , MPI_SUM , grid_comm );
@@ -269,33 +258,32 @@ void report( struct domain * theDomain ){
       //          t,Torque,Power,Fr,rho_min,rhoavg_min,PsiR,PsiI,Mass,Mdot,S_R,
       //          L1_rho,L1_isen,L1_B,Br2,aM,bM);
       //fprintf(rFile,"%le %le %le ",  t,Torque,Torque2);
-      fprintf(rFile,"%.7le %.7le ",  t, q);
+      fprintf(rFile,"%.9le %.9le ",  t, q);
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", Lg_pls[j]);
+         fprintf(rFile,"%.9le ", Lg_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", M_acc[j]);
+         fprintf(rFile,"%.9le ", M_acc[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", La_pls[j]);
+         fprintf(rFile,"%.9le ", La_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", Ls_pls[j]);
+         fprintf(rFile,"%.9le ", Ls_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", therm_pls[j]);
+         fprintf(rFile,"%.9le ", therm_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", Eg_pls[j]);
+         fprintf(rFile,"%.9le ", Eg_pls[j]);
       }
       for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%le ", Eacc_pls[j]);
+         fprintf(rFile,"%.9le ", Eacc_pls[j]);
+      }
+      for( j=0; j<Npl; ++j){
+         fprintf(rFile,"%.9le ", Esink_pls[j]);
       }
       //fprintf(rFile,"%le %le %le %le %le %le %le %le %le ", Mass, Torque_c10, Torque2_c10, Torque_c075, Torque2_c075, Torque_c05, Torque2_c05, Torque, Torque2);
-      fprintf(rFile, "%le %le %le ", Mass, Torque, Torque2);
-      for (j=0; j<5; ++j){
-        fprintf(rFile, "%le %le ", Torque1_cut[j], Torque2_cut[j]);
-      }
       fprintf(rFile,"\n");
 
       fclose(rFile);
@@ -307,6 +295,4 @@ void report( struct domain * theDomain ){
    free(Lg_pls);
    free(Eacc_pls);
    free(Eg_pls);
-   free(Torque1_cut);
-   free(Torque2_cut);
 }

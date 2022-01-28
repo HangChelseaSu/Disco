@@ -270,7 +270,9 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           thePlanets[pi].dM += acc_factor;
           thePlanets[pi].therm += prim[PPP]*acc_factor/(rho*(gamma_law-1.0));
 
-          thePlanets[pi].accE += acc_factor*(-0.5*(vxp*vxp + vyp*vyp) - (1.0-thePlanets[pi].M)/rbin + vxg*vxp + vyg*vyp);
+          thePlanets[pi].accE += acc_factor*(-0.5*(vxp*vxp + vyp*vyp) - (1.0-thePlanets[pi].M)/rbin);
+          thePlanets[pi].sinkE +=acc_factor*(vxg*vxp + vyg*vyp);
+
 
           //not actually a sink, just torque accounting
           double fr,fp,fz;

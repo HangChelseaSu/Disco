@@ -264,5 +264,6 @@ void planet_RK_adjust_aux( struct planet * pl , double RK ){
    pl->therm = (1.-RK)*pl->therm + RK*pl->RK_therm;
    pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
    pl->accE = (1.-RK)*pl->accE + RK*pl->RK_accE;
+   pl->sinkE = (1.-RK)*pl->sinkE + RK*pl->RK_sinkE;
    pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
 }
