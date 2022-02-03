@@ -40,7 +40,7 @@ void initial(double *prim, double *x)
 
     double cs2 = get_cs2(x);
 
-    double rho, efact, fth, dfth;
+    double rho, efact;
 
     double om = pow(r, -1.5);
     if (r<0.1) om = pow(0.1, -1.5);
@@ -58,12 +58,10 @@ void initial(double *prim, double *x)
 
     double nu = get_nu(x, prim);
     double sig0 = 1.0/(3.0*M_PI*nu);
-    //double dsig0 = -dnu/(3.0*M_PI*nu*nu);
 
     efact = exp(-pow((R/redge),-xi));
     rho = sig0*efact + epsfl;
-    //double drho = sig0*efact*xi*pow((R/redge),-xi)/R + efact*dsig0;
-    double drho = sig0*efact*xi*pow((R/redge),-xi)/R; //+ efact*dsig0;
+    double drho = sig0*efact*xi*pow((R/redge),-xi)/R;
 
     double v = -1.5*nu/(R);
     double P = rho*cs2/gam;
