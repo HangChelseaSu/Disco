@@ -146,7 +146,6 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       get_centroid_arr(xp, xm, x);
       double r = x[0];
       double phi = x[1];
-      double z = x[2];
 
       double rho = prim[RHO];
       double vr  = prim[URR];
@@ -164,27 +163,21 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       int numSinks = Npl;
 
       double rbin = 1.0;
-      if (Npl == 2) {
+      //if (Npl == 2) {
         double cosp1 = cos(thePlanets[0].phi);
         double sinp1 = sin(thePlanets[0].phi);
         double rp1 = thePlanets[0].r;
         double px1 = rp1*cosp1;
         double py1 = rp1*sinp1;
-        double omp1 = thePlanets[0].omega;
-        double vp_p1 = rp1*omp1;
-        double vp_r1 = thePlanets[0].vr;
 
         double cosp2 = cos(thePlanets[1].phi);
         double sinp2 = sin(thePlanets[1].phi);
         double rp2 = thePlanets[1].r;
         double px2 = rp2*cosp2;
         double py2 = rp2*sinp2;
-        double omp2 = thePlanets[1].omega;
-        double vp_p2 = rp2*omp2;
-        double vp_r2 = thePlanets[1].vr;
 
         rbin = sqrt( (px1-px2)*(px1-px2) + (py1-py2)*(py1-py2) );
-      }
+      //}
       if ((sinkNumber>0) & (sinkNumber<numSinks)) numSinks = sinkNumber;
       for (pi=0; pi<numSinks; pi++){
           double cosp = cos(thePlanets[pi].phi);
@@ -254,13 +247,16 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           vg_r =  vxg*cosg + vyg*sing;
           vg_p = -vxg*sing + vyg*cosg;
 
-          thePlanets[pi].accL += vg_p*r*acc_factor;
+          //thePlanets[pi].accL += vg_p*r*acc_factor;
+          //thePlanets[pi].accL += vg_p*r*acc_factor;
+          thePlanets[pi].accL += acc_factor*(px*vyg - py*vxg);
+
 
           cons[DDD] -= acc_factor;
-          if (delta == 0.0) {
-            vg_r = vr;
-            vg_p = vp;
-          }
+          //if (delta == 0.0) {
+          //  vg_r = vr;
+          //  vg_p = vp;
+          //}
           cons[SRR] -= vg_r*acc_factor;
           cons[LLL] -= r*vg_p*acc_factor;
           cons[SZZ] -= vz*acc_factor;
@@ -272,6 +268,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
 
           thePlanets[pi].accE += acc_factor*(-0.5*(vxp*vxp + vyp*vyp) - (1.0-thePlanets[pi].M)/rbin);
           thePlanets[pi].sinkE +=acc_factor*(vxg*vxp + vyg*vyp);
+          //thePlanets[pi].sinkE +=acc_factor*(vg_p*vp_p + vg_r*vp_r);
 
 
           //not actually a sink, just torque accounting
