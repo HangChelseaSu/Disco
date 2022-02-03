@@ -178,7 +178,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
 
         rbin = sqrt( (px1-px2)*(px1-px2) + (py1-py2)*(py1-py2) );
       }
-      if ((sinkNumber>0) & (sinkNumber<numSinks)) numSinks = sinkNumber;
+      if ((sinkNumber>0) && (sinkNumber<numSinks)) numSinks = sinkNumber;
       for (pi=0; pi<numSinks; pi++){
           double cosp = cos(thePlanets[pi].phi);
           double sinp = sin(thePlanets[pi].phi);
