@@ -152,9 +152,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       double vp  = prim[UPP]*r;
       double vz  = prim[UZZ];
       double press  = prim[PPP];
-      double specenth;
-      if (gamma_law != 1.0) specenth = press*(1.0 + 1.0/(gamma_law - 1.0))/rho;
-      else specenth = press/rho;
+      double specenth = press*(1.0 + 1.0/(gamma_law - 1.0))/rho;
 
       double cosg = cos(phi);
       double sing = sin(phi);
@@ -257,7 +255,6 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           vg_p = -vxg*sing + vyg*cosg;
 
           thePlanets[pi].accL += acc_factor*(px*vyg - py*vxg + dx*vyp - dy*vxp);
-          //thePlanets[pi].accL += acc_factor*r*vg_p;
 
           cons[DDD] -= acc_factor;
           cons[SRR] -= vg_r*acc_factor;
@@ -268,13 +265,16 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
 
           thePlanets[pi].dM += acc_factor;
 
-          thePlanets[pi].accE -= 0.5*acc_factor*(vxp*vxp + vyp*vyp);
-          thePlanets[pi].accE -= acc_factor*thePlanets[1-pi].M/rbin;
-          //thePlanets[pi].accE += acc_factor*(vxg*vxp + vyg*vyp);
-          thePlanets[pi].sinkE += acc_factor*(vxg*vxp + vyg*vyp);
           double dxp = thePlanets[1-pi].r*cos(thePlanets[1-pi].phi) - px;
           double dyp = thePlanets[1-pi].r*sin(thePlanets[1-pi].phi) - py;
-          thePlanets[pi].accE -= acc_factor*(dx*dxp + dy*dyp)*thePlanets[1-pi].M*pow(rbin, -3.0);
+
+          //grouping these together avoids some cancellations and preserves precision when time-averaging
+          double accEpart = -(dx*dxp + dy*dyp)*thePlanets[1-pi].M*pow(rbin, -3.0);
+          accEpart -= 0.5*(vxp*vxp + vyp*vyp);
+          accEpart -= thePlanets[1-pi].M/rbin;
+          accEpart += vxg*vxp + vyg*vyp;
+          thePlanets[pi].accE += accEpart*acc_factor;
+
 
 
           //not actually a sink, just torque accounting

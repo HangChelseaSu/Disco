@@ -275,8 +275,6 @@ struct planet{
 
    double accE;
    double RK_accE;
-   double sinkE;
-   double RK_sinkE;
    double gravE;
    double RK_gravE;
 

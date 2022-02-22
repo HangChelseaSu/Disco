@@ -19,14 +19,13 @@ void report( struct domain * theDomain ){
    if (Npl > 1) q = ( thePlanets[1].M / thePlanets[0].M );
 
 
-   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls, *Eacc_pls, *Esink_pls;
+   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls, *Eacc_pls;
    M_acc = calloc(Npl, sizeof(double) );
    La_pls = calloc(Npl, sizeof(double) );
    Ls_pls = calloc(Npl, sizeof(double) );
    Lg_pls = calloc(Npl, sizeof(double) );
    therm_pls = calloc(Npl, sizeof(double) );
    Eacc_pls = calloc(Npl, sizeof(double) );
-   Esink_pls = calloc(Npl, sizeof(double) );
    Eg_pls = calloc(Npl, sizeof(double) );
 
 
@@ -38,7 +37,6 @@ void report( struct domain * theDomain ){
       Lg_pls[j] = thePlanets[j].gravL;
       Eg_pls[j] = thePlanets[j].gravE;
       Eacc_pls[j] = thePlanets[j].accE;
-      Esink_pls[j] = thePlanets[j].sinkE;
 
       thePlanets[j].dM = 0.0;
       thePlanets[j].RK_dM = 0.0;
@@ -52,8 +50,6 @@ void report( struct domain * theDomain ){
       thePlanets[j].RK_gravL = 0.0;
       thePlanets[j].accE = 0.0;
       thePlanets[j].RK_accE = 0.0;
-      thePlanets[j].sinkE = 0.0;
-      thePlanets[j].RK_sinkE = 0.0;
       thePlanets[j].gravE = 0.0;
       thePlanets[j].RK_gravE = 0.0;
 
@@ -71,7 +67,6 @@ void report( struct domain * theDomain ){
    MPI_Allreduce( MPI_IN_PLACE , therm_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eacc_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , Esink_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
 #endif
 
    if( rank==0 ){
@@ -98,9 +93,6 @@ void report( struct domain * theDomain ){
       for( j=0; j<Npl; ++j){
          fprintf(rFile,"%.15le ", Eacc_pls[j]);
       }
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile,"%.15le ", Esink_pls[j]);
-      }
       fprintf(rFile,"\n");
 
       fclose(rFile);
@@ -111,6 +103,5 @@ void report( struct domain * theDomain ){
    free(therm_pls);
    free(Lg_pls);
    free(Eacc_pls);
-   free(Esink_pls);
    free(Eg_pls);
 }
