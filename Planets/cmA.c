@@ -47,6 +47,8 @@ void initializePlanets( struct planet * thePlanets ){
 
    thePlanets[0].accE = 0.0;
    thePlanets[0].RK_accE = 0.0;
+   thePlanets[0].sinkE = 0.0;
+   thePlanets[0].RK_sinkE = 0.0;
    thePlanets[0].gravE = 0.0;
    thePlanets[0].RK_gravE = 0.0;
 
@@ -74,6 +76,8 @@ void initializePlanets( struct planet * thePlanets ){
    thePlanets[1].RK_gravE = 0.0;
    thePlanets[1].accE = 0.0;
    thePlanets[1].RK_accE = 0.0;
+   thePlanets[1].sinkE = 0.0;
+   thePlanets[1].RK_sinkE = 0.0;
 }
 
 void movePlanets( struct planet * thePlanets , double t , double dt ){

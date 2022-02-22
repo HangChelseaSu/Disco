@@ -151,6 +151,10 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       double vr  = prim[URR];
       double vp  = prim[UPP]*r;
       double vz  = prim[UZZ];
+      double press  = prim[PPP];
+      double specenth;
+      if (gamma_law != 1.0) specenth = press*(1.0 + 1.0/(gamma_law - 1.0))/rho;
+      else specenth = press/rho;
 
       double cosg = cos(phi);
       double sing = sin(phi);
@@ -163,6 +167,8 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       int numSinks = Npl;
 
       double rbin = 1.0;
+      double dxbin = 1.0;
+      double dybin = 1.0;
       if (Npl == 2) {
         double cosp1 = cos(thePlanets[0].phi);
         double sinp1 = sin(thePlanets[0].phi);
@@ -176,7 +182,10 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
         double px2 = rp2*cosp2;
         double py2 = rp2*sinp2;
 
-        rbin = sqrt( (px1-px2)*(px1-px2) + (py1-py2)*(py1-py2) );
+
+        dxbin = px2-px1;
+        dybin = py2-py1;
+        rbin = sqrt( dxbin*dxbin + dybin*dybin );
       }
       if ((sinkNumber>0) && (sinkNumber<numSinks)) numSinks = sinkNumber;
       for (pi=0; pi<numSinks; pi++){
@@ -227,11 +236,11 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           vxp = vp_r*cosp - vp_p*sinp;
           vyp = vp_r*sinp + vp_p*cosp;
 
-          vxg = vr*cosg - vp*sing;
-          vyg = vr*sing + vp*cosg;
+          double vxg1 = vr*cosg - vp*sing;
+          double vyg1 = vr*sing + vp*cosg;
 
-          vxr = vxg - vxp;
-          vyr = vyg - vyp;
+          vxr = vxg1 - vxp;
+          vyr = vyg1 - vyp;
           cphi = dx/mag;
           sphi = dy/mag;
 
@@ -247,27 +256,32 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           vg_r =  vxg*cosg + vyg*sing;
           vg_p = -vxg*sing + vyg*cosg;
 
-          thePlanets[pi].accL += acc_factor*(px*vyg - py*vxg);
-
+          thePlanets[pi].accL += acc_factor*(px*vyg - py*vxg + dx*vyp - dy*vxp);
+          //thePlanets[pi].accL += acc_factor*r*vg_p;
 
           cons[DDD] -= acc_factor;
           cons[SRR] -= vg_r*acc_factor;
           cons[LLL] -= r*vg_p*acc_factor;
           cons[SZZ] -= vz*acc_factor;
-          double v2 = vg_p*vg_p + vg_r*vg_r + vz*vz;
-          cons[TAU] -= acc_factor*(0.5*v2 + prim[PPP]/(rho*(gamma_law-1.0)));
+          double v2 = vxg*vxg + vyg*vyg;
+          cons[TAU] -= acc_factor*(specenth + 0.5*v2 - 0.5*(pow(vxg-vxg1, 2.0) + pow(vyg-vyg1, 2.0)) );
 
           thePlanets[pi].dM += acc_factor;
-          thePlanets[pi].therm += prim[PPP]*acc_factor/(rho*(gamma_law-1.0));
 
-          thePlanets[pi].accE += acc_factor*(-0.5*(vxp*vxp + vyp*vyp) - (1.0-thePlanets[pi].M)/rbin);
-          thePlanets[pi].sinkE +=acc_factor*(vxg*vxp + vyg*vyp);
+          thePlanets[pi].accE -= 0.5*acc_factor*(vxp*vxp + vyp*vyp);
+          thePlanets[pi].accE -= acc_factor*thePlanets[1-pi].M/rbin;
+          //thePlanets[pi].accE += acc_factor*(vxg*vxp + vyg*vyp);
+          thePlanets[pi].sinkE += acc_factor*(vxg*vxp + vyg*vyp);
+          double dxp = thePlanets[1-pi].r*cos(thePlanets[1-pi].phi) - px;
+          double dyp = thePlanets[1-pi].r*sin(thePlanets[1-pi].phi) - py;
+          thePlanets[pi].accE -= acc_factor*(dx*dxp + dy*dyp)*thePlanets[1-pi].M*pow(rbin, -3.0);
+
 
           //not actually a sink, just torque accounting
           double fr,fp,fz;
           planetaryForce( thePlanets + pi, r, phi,  0.0, &fr, &fp, &fz, 1);
-          thePlanets[pi].gravL -= rho*dV*dt*thePlanets[pi].r*fp;
-          thePlanets[pi].gravE -= rho*dV*dt*(thePlanets[pi].vr*fr + thePlanets[pi].r*thePlanets[pi].omega*fp);
+          thePlanets[pi].gravL -= rho*dV*dt*(px*(fr*sing + fp*cosg) - py*(fr*cosg - fp*sing));
+          thePlanets[pi].gravE -= rho*dV*dt*(vxp*(fr*cosg - fp*sing) + vyp*(fr*sing + fp*cosg));
       }
     }
 }
