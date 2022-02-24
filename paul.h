@@ -3,7 +3,7 @@
 
 enum{RHO,PPP,URR,UPP,UZZ,BRR,BPP,BZZ};
 enum{DDD,TAU,SRR,LLL,SZZ};
-enum{PLPOINTMASS, PLPW, PLSURFACEGRAV, PLSPLINE};
+enum{PLPOINTMASS, PLPW, PLSURFACEGRAV, PLSPLINE, PLWEGGC};
 enum{COOL_NONE, COOL_BETA, COOL_BETA_RELAX};
 
 #if USE_MPI
@@ -58,7 +58,7 @@ struct param_list{
    double LogRadius;
    double MaxShort, MaxLong;
    int Mesh_Motion, Riemann_Solver, Timestep;
-   int Absorb_BC, Initial_Regrid, visc_flag, include_atmos;
+   int Absorb_BC, Initial_Regrid, include_atmos;
 
    double CFL, PLM, maxDT;
    double Density_Floor, Pressure_Floor;
@@ -71,7 +71,12 @@ struct param_list{
    double RotOmega, RotD;
 
    double Adiabatic_Index;
+
+   int visc_flag;
+   int visc_profile;
    double viscosity;
+   double visc_par;
+
    int isothermal_flag;
    int Cs2_Profile;
    double Cs2_Par;
@@ -81,7 +86,6 @@ struct param_list{
    double Eccentricity;
    double Drift_Rate,Drift_Exp;
    int grav2D;
-   int alpha_flag;
 
    int restart_flag;
    int CT;
@@ -107,6 +111,7 @@ struct param_list{
    double noiseRel;
 
    int sinkType;
+   int sinkNumber;
    double sinkPar1;
    double sinkPar2;
    double sinkPar3;
@@ -265,15 +270,13 @@ struct planet{
    double gravL;
    double RK_gravL;
 
-   double kin;
-   double RK_kin;
    double therm;
    double RK_therm;
 
-   double linXmom;
-   double RK_linXmom;
-   double linYmom;
-   double RK_linYmom;
+   double accE;
+   double RK_accE;
+   double gravE;
+   double RK_gravE;
 
    double eps;
    double Fr;

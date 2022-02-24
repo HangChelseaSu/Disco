@@ -3,6 +3,7 @@
 #include "geometry.h"
 
 static int sinkType = 0;
+static int sinkNumber = 0;
 static double sinkPar1 = 0.0;
 static double sinkPar2 = 0.0;
 static double sinkPar3 = 0.0;
@@ -54,6 +55,7 @@ void prim2cons( double * , double * , double * , double );
 void setSinkParams(struct domain *theDomain)
 {
     sinkType = theDomain->theParList.sinkType;
+    sinkNumber = theDomain->theParList.sinkNumber;
     sinkPar1 = theDomain->theParList.sinkPar1;
     sinkPar2 = theDomain->theParList.sinkPar2;
     sinkPar3 = theDomain->theParList.sinkPar3;
@@ -144,12 +146,13 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       get_centroid_arr(xp, xm, x);
       double r = x[0];
       double phi = x[1];
-      double z = x[2];
 
       double rho = prim[RHO];
       double vr  = prim[URR];
       double vp  = prim[UPP]*r;
       double vz  = prim[UZZ];
+      double press  = prim[PPP];
+      double specenth = press*(1.0 + 1.0/(gamma_law - 1.0))/rho;
 
       double cosg = cos(phi);
       double sing = sin(phi);
@@ -158,9 +161,32 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
 
       double px, py, dx, dy, mag, eps, epsfactor;
       double rate, surfdiff;
-      //double gmag3
       int pi;
-      for (pi=0; pi<Npl; pi++){
+      int numSinks = Npl;
+
+      double rbin = 1.0;
+      double dxbin = 1.0;
+      double dybin = 1.0;
+      if (Npl == 2) {
+        double cosp1 = cos(thePlanets[0].phi);
+        double sinp1 = sin(thePlanets[0].phi);
+        double rp1 = thePlanets[0].r;
+        double px1 = rp1*cosp1;
+        double py1 = rp1*sinp1;
+
+        double cosp2 = cos(thePlanets[1].phi);
+        double sinp2 = sin(thePlanets[1].phi);
+        double rp2 = thePlanets[1].r;
+        double px2 = rp2*cosp2;
+        double py2 = rp2*sinp2;
+
+
+        dxbin = px2-px1;
+        dybin = py2-py1;
+        rbin = sqrt( dxbin*dxbin + dybin*dybin );
+      }
+      if ((sinkNumber>0) && (sinkNumber<numSinks)) numSinks = sinkNumber;
+      for (pi=0; pi<numSinks; pi++){
           double cosp = cos(thePlanets[pi].phi);
           double sinp = sin(thePlanets[pi].phi);
           px = thePlanets[pi].r*cosp;
@@ -171,10 +197,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           mag = dx*dx + dy*dy;
           mag = sqrt(mag);
 
-          //gmag3 = dx*dx + dy*dy + thePlanets[pi].eps*thePlanets[pi].eps;
-          //gmag3 = gmag3*sqrt(gmag3);
-
-          //the part tÌhat depends on sinkType
+          //the part that depends on sinkType
           double arg = 0.0;
           if(sinkType == 3){	//constant
             if (mag <= sinkPar3) arg = 1.0;
@@ -201,7 +224,6 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           rate = sinkPar1*thePlanets[pi].omega;
           surfdiff = rho*rate*arg;
 
-
           double delta = fmin(sinkPar2, 1.0);
           delta = fmax(0.0, sinkPar2);
           double rp, omp, vxp, vyp, vxg, vyg, vxr, vyr, vp_p, vp_r, vxn, vyn, cphi, sphi, vg_r, vg_p;
@@ -212,11 +234,11 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           vxp = vp_r*cosp - vp_p*sinp;
           vyp = vp_r*sinp + vp_p*cosp;
 
-          vxg = vr*cosg - vp*sing;
-          vyg = vr*sing + vp*cosg;
+          double vxg1 = vr*cosg - vp*sing;
+          double vyg1 = vr*sing + vp*cosg;
 
-          vxr = vxg - vxp;
-          vyr = vyg - vyp;
+          vxr = vxg1 - vxp;
+          vyr = vyg1 - vyp;
           cphi = dx/mag;
           sphi = dy/mag;
 
@@ -232,34 +254,34 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           vg_r =  vxg*cosg + vyg*sing;
           vg_p = -vxg*sing + vyg*cosg;
 
-          thePlanets[pi].accL += vg_p*r*acc_factor;
+          thePlanets[pi].accL += acc_factor*(px*vyg - py*vxg + dx*vyp - dy*vxp);
 
           cons[DDD] -= acc_factor;
-          if (delta == 0.0) {
-            // should already be true, but floating point errors might mess this up
-            vg_r = vr;
-            vg_p = vp;
-          }
           cons[SRR] -= vg_r*acc_factor;
           cons[LLL] -= r*vg_p*acc_factor;
           cons[SZZ] -= vz*acc_factor;
-          double v2 = vg_p*vg_p + vg_r*vg_r + vz*vz;
-          cons[TAU] -= acc_factor*(0.5*v2 + prim[PPP]/(rho*(gamma_law-1.0)));
+          double v2 = vxg*vxg + vyg*vyg;
+          cons[TAU] -= acc_factor*(specenth + 0.5*v2 - 0.5*(pow(vxg-vxg1, 2.0) + pow(vyg-vyg1, 2.0)) );
 
           thePlanets[pi].dM += acc_factor;
-          thePlanets[pi].kin += 0.5*v2*acc_factor;
-          thePlanets[pi].therm += prim[PPP]*acc_factor/(rho*(gamma_law-1.0));
 
-          thePlanets[pi].linXmom += acc_factor*vxg;
-          thePlanets[pi].linYmom += acc_factor*vyg;
+          double dxp = thePlanets[1-pi].r*cos(thePlanets[1-pi].phi) - px;
+          double dyp = thePlanets[1-pi].r*sin(thePlanets[1-pi].phi) - py;
+
+          //grouping these together avoids some cancellations and preserves precision when time-averaging
+          double accEpart = -(dx*dxp + dy*dyp)*thePlanets[1-pi].M*pow(rbin, -3.0);
+          accEpart -= 0.5*(vxp*vxp + vyp*vyp);
+          accEpart -= thePlanets[1-pi].M/rbin;
+          accEpart += vxg*vxp + vyg*vyp;
+          thePlanets[pi].accE += accEpart*acc_factor;
+
+
 
           //not actually a sink, just torque accounting
-          //thePlanets[pi].gravL += thePlanets[pi].M*rho*dV*dt*(dy*px - dx*py)/gmag3;
-          double fr,fp,fz, rho0;
-          rho0 = 1.0/(3.0*M_PI*visc);
+          double fr,fp,fz;
           planetaryForce( thePlanets + pi, r, phi,  0.0, &fr, &fp, &fz, 1);
-          thePlanets[pi].gravL -= (rho-rho0)*thePlanets[pi].r*fp*dV*dt;
-          //Torque -= (rho-1.0)*rp*fp*dV;
+          thePlanets[pi].gravL -= rho*dV*dt*(px*(fr*sing + fp*cosg) - py*(fr*cosg - fp*sing));
+          thePlanets[pi].gravE -= rho*dV*dt*(vxp*(fr*cosg - fp*sing) + vyp*(fr*sing + fp*cosg));
       }
     }
 }

@@ -114,7 +114,8 @@ int read_par_file( struct domain * theDomain ){
          err += readvar( pfile , "Restart"               , VAR_INT  , &(theList->restart_flag)    );
          err += readvar( pfile , "Use_Viscosity"         , VAR_INT  , &(theList->visc_flag)       );
          err += readvar( pfile , "Viscosity"             , VAR_DOUB , &(theList->viscosity)       );
-         err += readvar( pfile , "Use_As_Alpha"          , VAR_INT  , &(theList->alpha_flag)      );
+         err += readvar( pfile , "Viscosity_Profile"          , VAR_INT  , &(theList->visc_profile)      );
+         err += readvar( pfile , "Viscosity_Par"          , VAR_DOUB  , &(theList->visc_par)      );
          err += readvar( pfile , "Include_Atmos"         , VAR_INT  , &(theList->include_atmos)   );
          err += readvar( pfile , "T_Times_2pi"           , VAR_INT  , &tTimes_2pi );
          err += readvar( pfile , "P_Times_2pi"           , VAR_INT  , &pTimes_2pi );
@@ -144,6 +145,7 @@ int read_par_file( struct domain * theDomain ){
          err += readvar( pfile , "Noise_Abs" , VAR_DOUB  , &(theList->noiseAbs));
          err += readvar( pfile , "Noise_Rel" , VAR_DOUB  , &(theList->noiseRel));
          err += readvar(pfile, "Sink_Type", VAR_INT , &(theList->sinkType));
+         err += readvar(pfile, "Sink_Number", VAR_INT , &(theList->sinkNumber));
          err += readvar(pfile, "Sink_Par1", VAR_DOUB, &(theList->sinkPar1));
          err += readvar(pfile, "Sink_Par2", VAR_DOUB, &(theList->sinkPar2));
          err += readvar(pfile, "Sink_Par3", VAR_DOUB, &(theList->sinkPar3));

@@ -6,10 +6,17 @@ static int meshOmChoice = 0;
 static double meshOmPar = 0.0;
 static int enOmChoice = 0;
 static double enOmPar = 0.0;
+
 static int cs2Choice = 0;
 static double cs2Par = 0.0;
+static double gamma_law = 0.0;
+
+static int viscChoice = 0;
+static double viscPar = 0.0;
+static double viscVal = 0.0;
+
 static double Omega0 = 0.0;
-static int Npl = 0.0;
+static int Npl = 0;
 
 static double Mach = 0.0;
 static double r0 = 0.0;
@@ -23,15 +30,22 @@ static struct planet *thePlanets = NULL;
 
 
 double phigrav( double , double , double , int); //int here is type
+double fgrav( double , double , double , int); //int here is type
 
 
 void setOmegaParams( struct domain * theDomain ){
+   gamma_law = theDomain->theParList.Adiabatic_Index;
    meshOmChoice = theDomain->theParList.Exact_Mesh_Omega;
    meshOmPar    = theDomain->theParList.Exact_Mesh_Omega_Par;
    enOmChoice = theDomain->theParList.Energy_Omega;
    enOmPar = theDomain->theParList.Energy_Omega_Par;
    cs2Choice = theDomain->theParList.Cs2_Profile;
    cs2Par = theDomain->theParList.Cs2_Par;
+
+   viscChoice = theDomain->theParList.visc_profile;
+   viscPar = theDomain->theParList.visc_par;
+   viscVal = theDomain->theParList.viscosity;
+
    Omega0 = theDomain->theParList.RotOmega;
 
    Mach = theDomain->theParList.Disk_Mach;
@@ -97,7 +111,7 @@ double get_om( const double *x ){
 
     return om;
 }
-  
+
 double get_om1( const double *x){
     double r = x[0];
     r = sqrt(r*r + eps*eps);
@@ -126,6 +140,31 @@ double get_om1( const double *x){
   
 double get_om2( const double *x){
     return 0.0;
+}
+
+double get_height_om( const double *x){
+    double omtot2 = 0.0;
+    int pi;
+
+    double r = x[0];
+    double phi = x[1];
+
+    double cosp = cos(phi);
+    double sinp = sin(phi);
+    double gx = r*cosp;
+    double gy = r*sinp;
+
+    double px, py, script_r;
+    for (pi=0; pi<Npl; pi++){
+      cosp = cos(thePlanets[pi].phi);
+      sinp = sin(thePlanets[pi].phi);
+      px = thePlanets[pi].r*cosp;
+      py = thePlanets[pi].r*sinp;
+      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
+      double f1 = fgrav( thePlanets[pi].M , script_r , thePlanets[pi].eps , thePlanets[pi].type);
+      omtot2 += f1/(script_r + 0.0625*thePlanets[pi].eps);	//Technically, should not include any extra softening, but avoid dividing by zero
+    }
+    return sqrt(omtot2);
 }
 
 double get_cs2( const double *x ){
@@ -160,7 +199,6 @@ double get_cs2( const double *x ){
       double gy = r*sinp;
       int pi;
       double px, py, pr;
-      double n = 2.0;
       double phip = 0.0;
  
       for (pi = 0; pi<Npl; pi++)
@@ -170,7 +208,6 @@ double get_cs2( const double *x ){
         px = thePlanets[pi].r*cosp;
         py = thePlanets[pi].r*sinp;
         pr = (px-gx)*(px-gx) + (py-gy)*(py-gy);
-        //phip += thePlanets[pi].M/pow( pr + pow(thePlanets[pi].eps,n) , 1./n );
         phip += phigrav( thePlanets[pi].M , sqrt(pr) , thePlanets[pi].eps , thePlanets[pi].type );
       }
       cs2 = phip/(Mach*Mach);        
@@ -181,3 +218,34 @@ double get_cs2( const double *x ){
     return cs2;
 }
 
+double get_nu(const double x[], const double prim[]){
+  double nu = viscVal;
+  //alpha viscosity
+  if (viscChoice == 1){
+    double c2 = gamma_law*prim[PPP]/prim[RHO];
+    nu *= c2/get_height_om(x);
+  }
+  //generic power law w.r.t. r=0
+  if (viscChoice == 2){
+    nu *= pow(fmax(x[0],1e-10), viscPar);
+  }
+  //power law for overall potential (e.g. for binaries)
+  if (viscChoice == 3){
+    double cosp, sinp, px, py, script_r, powsum;
+    int pi;
+    double gx = x[0]*cos(x[1]);
+    double gy = x[0]*sin(x[1]);
+    for (pi=0; pi<Npl; pi++){
+      cosp = cos(thePlanets[pi].phi);
+      sinp = sin(thePlanets[pi].phi);
+      px = thePlanets[pi].r*cosp;
+      py = thePlanets[pi].r*sinp;
+      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy) + pow(thePlanets[pi].eps, 2.0) );
+      powsum += thePlanets[pi].M*pow(script_r, viscPar);
+    }
+    nu *= powsum;
+  }
+
+  return nu;
+  //return nu*pow(x[0], -1.0);
+}
