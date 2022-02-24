@@ -116,7 +116,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    }
    prof_tock(theDomain->prof, PROF_RECON);
 
-   dump_grid(theDomain, "grid");
+   //dump_grid(theDomain, "grid");
 
    //Flux
    prof_tick(theDomain->prof, PROF_FLUX);

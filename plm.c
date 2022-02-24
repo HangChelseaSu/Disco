@@ -34,9 +34,8 @@ void plm_phi( struct domain * theDomain ){
          if(Cartesian_Interp)
             w = getCartInterpWeight(x);
          for( i=0 ; i<Np[jk] ; ++i ){
-            int im = i-1;
-            if( im == -1 ) im = Np[jk]-1;
-            int ip = (i+1)%Np[jk];
+            int im = (i == 0) ? Np[jk]-1 : i-1;
+            int ip = (i == Np[jk]-1) ? 0 : i+1;
             struct cell * c  = &(theCells[jk][i]);
             struct cell * cL = &(theCells[jk][im]);
             struct cell * cR = &(theCells[jk][ip]);
@@ -116,7 +115,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
          }
       }
    }
-   if(0 && dim == 1)
+   if(1 && dim == 1)
    {
       for( k=0 ; k<Nz ; ++k ){
          double z = get_centroid(z_kph[k], z_kph[k-1], 2);
@@ -135,163 +134,154 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
    if(PLM == 0.0)
        return;
 
-   //Add weighted slopes
-   int n;
-   for( n=0 ; n<Nf ; ++n ){
-      struct face * f  = &( theFaces[n] );
-      double phi = f->cm[1];
-      struct cell * cL = f->L;
-      struct cell * cR = f->R;
-      double dxL = f->dxL;
-      double dxR = f->dxR;
-      double phiL = cL->piph - .5*cL->dphi;
-      double phiR = cR->piph - .5*cR->dphi;
-      double dpL = get_signed_dp(phi,phiL);
-      double dpR = get_signed_dp(phi,phiR);
-      double dA  = f->dA;
+   //printf("Doing grads!\n");
+   
+    //Calc total weight
+    for(j = 0; j < Nr; j++)
+        for(k = 0; k < Nz; k++)
+        {
+            int jk = j+Nr*k;
+            for(i = 0; i < Np[jk]; i++)
+                theCells[jk][i].tempDoub = 0.0;
+        }
+    int n;
+    for(n = 0; n < Nf; n++)
+    {
+        struct face *f  = &(theFaces[n]);
+        (f->L)->tempDoub += f->dA;
+        (f->R)->tempDoub += f->dA;
+    }
 
-      double *gradL = dim==1 ? cL->gradr : cL->gradz;
-      double *gradR = dim==1 ? cR->gradr : cR->gradz;
+   
+    //Add weighted slopes
+    for(n=0; n<Nf; ++n)
+    {
+        struct face * f  = &( theFaces[n] );
+        double phi = f->cm[1];
+        struct cell * cL = f->L;
+        struct cell * cR = f->R;
+        double dxL = f->dxL;
+        double dxR = f->dxR;
+        double phiL = cL->piph - .5*cL->dphi;
+        double phiR = cR->piph - .5*cR->dphi;
+        double dpL = get_signed_dp(phi,phiL);
+        double dpR = get_signed_dp(phi,phiR);
+        double dA  = f->dA;
 
-      double w = 0.0;
-      if(theDomain->theParList.Cartesian_Interp)
-          w = getCartInterpWeight(f->cm);
-      if(w > 0.0)
-      {
-         double gradCIL[NUM_Q], gradCIR[NUM_Q];
-         geom_cart_interp_grad_trans(cL->prim, cR->prim, cL->gradp, cR->gradp,
-                                     dpL, dpR, f->cm, -dxL, dxR,
-                                     gradCIL, gradCIR, dim);
-         for(q=0; q<NUM_Q; q++)
-         {
-             double WL = cL->prim[q] + dpL*cL->gradp[q];
-             double WR = cR->prim[q] + dpR*cR->gradp[q];
-             double S = (WR-WL)/(dxR+dxL);
+        double dA_fL = dA / cL->tempDoub;
+        double dA_fR = dA / cR->tempDoub;
 
-             gradL[q] = ((1-w) * S + w * gradCIL[q]) * dA;
-             gradR[q] = ((1-w) * S + w * gradCIR[q]) * dA;
-         }
-      }
-      else
-      {
-         for( q=0 ; q<NUM_Q ; ++q )
-         {
-            double WL = cL->prim[q] + dpL*cL->gradp[q];
-            double WR = cR->prim[q] + dpR*cR->gradp[q];
-            double S = (WR-WL)/(dxR+dxL);
+        double *gradL = dim==1 ? cL->gradr : cL->gradz;
+        double *gradR = dim==1 ? cR->gradr : cR->gradz;
+
+        double w = 0.0;
+        if(theDomain->theParList.Cartesian_Interp)
+            w = getCartInterpWeight(f->cm);
+
+        if(w > 0.0)
+        {
+            double gradCIL[NUM_Q], gradCIR[NUM_Q];
+            geom_cart_interp_grad_trans(cL->prim, cR->prim,
+                                        cL->gradp, cR->gradp,
+                                        dpL, dpR, f->cm, -dxL, dxR,
+                                        gradCIL, gradCIR, dim);
+            for(q=0; q<NUM_Q; q++)
+            {
+                double WL = cL->prim[q] + dpL*cL->gradp[q];
+                double WR = cR->prim[q] + dpR*cR->gradp[q];
+                double S = (WR-WL)/(dxR+dxL);
+
+                gradL[q] += ((1-w) * S + w * gradCIL[q]) * dA_fL;
+                gradR[q] += ((1-w) * S + w * gradCIR[q]) * dA_fR;
+            }
+        }
+        else
+        {
+            for( q=0 ; q<NUM_Q ; ++q )
+            {
+                double WL = cL->prim[q] + dpL*cL->gradp[q];
+                double WR = cR->prim[q] + dpR*cR->gradp[q];
+                double S = (WR-WL)/(dxR+dxL);
             
-            gradL[q] += S*dA;
-            gradR[q] += S*dA;
-         }
-      }
-   }
-
-   //Divide by total weight
-   for( j=0 ; j<Nr ; ++j ){
-      for( k=0 ; k<Nz ; ++k ){
-         int jk = j+Nr*k;
-         for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phip = c->piph;
-            double phim = phip - c->dphi;
-            double xp[3] = {r_jph[j  ],phip,z_kph[k  ]};
-            double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
-            if( dim==1 ) xm[0] = r_jph[j];
-            else xm[2] = z_kph[k];
-            double dAp = get_dA(xp,xm,dim);
-            if( dim==1 ){
-               xp[0] = r_jph[j-1];
-               xm[0] = r_jph[j-1];
-            }else{
-               xp[2] = z_kph[k-1];
-               xm[2] = z_kph[k-1];
+                gradL[q] += S*dA_fL;
+                gradR[q] += S*dA_fR;
             }
-            double dAm = get_dA(xp,xm,dim);
-            double dAtot = dAp+dAm;
-            if( (dim==1 && j==0   ) || (dim==2 && k==0   ) ) dAtot = dAp;
-            if( (dim==1 && j==Nr-1) || (dim==2 && k==Nz-1) ) dAtot = dAm;
+        }
+    }
+
+    //Slope Limiting
+    
+    for( n=0 ; n<Nf ; ++n )
+    {
+        struct face * f  = &( theFaces[n] );
+        double phi = f->cm[1];
+        struct cell * cL = f->L;
+        struct cell * cR = f->R;
+        double dxL = f->dxL;
+        double dxR = f->dxR;
+        double phiL = cL->piph - .5*cL->dphi;
+        double phiR = cR->piph - .5*cR->dphi;
+        double dpL = get_signed_dp(phi,phiL);
+        double dpR = get_signed_dp(phiR,phi);
       
-            double *grad = dim==1 ? c->gradr : c->gradz;
-            for( q=0 ; q<NUM_Q ; ++q ){
-               grad[q] /= dAtot;
-            }
-         }    
-      }    
-   }
-/*
-   //Slope Limiting
-   for( n=0 ; n<Nf ; ++n ){
-      struct face * f  = &( theFaces[n] );
-      double phi = f->cm[1];
-      struct cell * cL = f->L;
-      struct cell * cR = f->R;
-      double dxL = f->dxL;
-      double dxR = f->dxR;
-      double phiL = cL->piph - .5*cL->dphi;
-      double phiR = cR->piph - .5*cR->dphi;
-      double dpL = get_signed_dp(phi,phiL);
-      double dpR = get_signed_dp(phiR,phi);
+        double *gradL = dim==1 ? cL->gradr : cL->gradz;
+        double *gradR = dim==1 ? cR->gradr : cR->gradz;
       
-      double *gradL = dim==1 ? cL->gradr : cL->gradz;
-      double *gradR = dim==1 ? cR->gradr : cR->gradz;
-      
-      double w = 0.0;
-      if(theDomain->theParList.Cartesian_Interp)
-          w = getCartInterpWeight(f->cm);
-      if(w > 0.0)
-      {
-         double gradCIL[NUM_Q], gradCIR[NUM_Q];
-         geom_cart_interp_grad_trans(cL->prim, cR->prim, cL->gradp, cR->gradp,
-                                     dpL, dpR, f->cm, -dxL, dxR,
-                                     gradCIL, gradCIR, dim);
-         for(q=0; q<NUM_Q; q++)
-         {
-            double WL = cL->prim[q] + dpL*cL->gradp[q];
-            double WR = cR->prim[q] + dpR*cR->gradp[q];
-            double S = (WR-WL)/(dxR+dxL);
-            double SL = gradL[q];
-            double SR = gradR[q];
-            double SfL = (1-w) * S + w * gradCIL[q];
-            double SfR = (1-w) * S + w * gradCIR[q];
-            
-            if( SfL*SL < 0.0 ){
-               gradL[q] = 0.0; 
-            }else if( fabs(PLM*SfL) < fabs(SL) ){
-               gradL[q] = PLM*SfL;
+        double w = 0.0;
+        if(theDomain->theParList.Cartesian_Interp)
+            w = getCartInterpWeight(f->cm);
+        if(w > 0.0)
+        {
+            double gradCIL[NUM_Q], gradCIR[NUM_Q];
+            geom_cart_interp_grad_trans(cL->prim, cR->prim,
+                                        cL->gradp, cR->gradp,
+                                        dpL, dpR, f->cm, -dxL, dxR,
+                                        gradCIL, gradCIR, dim);
+            for(q=0; q<NUM_Q; q++)
+            {
+                double WL = cL->prim[q] + dpL*cL->gradp[q];
+                double WR = cR->prim[q] + dpR*cR->gradp[q];
+                double S = (WR-WL)/(dxR+dxL);
+                double SL = gradL[q];
+                double SR = gradR[q];
+                double SfL = (1-w) * S + w * gradCIL[q];
+                double SfR = (1-w) * S + w * gradCIR[q];
+                
+                if( SfL*SL < 0.0 )
+                    gradL[q] = 0.0; 
+                else if( fabs(PLM*SfL) < fabs(SL) )
+                    gradL[q] = PLM*SfL;
+                
+
+                if( SfR*SR < 0.0 )
+                    gradR[q] = 0.0; 
+                else if( fabs(PLM*SfR) < fabs(SR) )
+                    gradR[q] = PLM*SfR;
             }
+        }
+        else
+        {
+            for( q=0 ; q<NUM_Q ; ++q )
+            {
+                double WL = cL->prim[q] + dpL*cL->gradp[q];
+                double WR = cR->prim[q] - dpR*cR->gradp[q];
 
-            if( SfR*SR < 0.0 ){
-               gradR[q] = 0.0; 
-            }else if( fabs(PLM*SfR) < fabs(SR) ){
-               gradR[q] = PLM*SfR;
-            }    
-         }
-      }
-      else
-      {
-         for( q=0 ; q<NUM_Q ; ++q )
-         {
-            double WL = cL->prim[q] + dpL*cL->gradp[q];
-            double WR = cR->prim[q] - dpR*cR->gradp[q];
+                double S = (WR-WL)/(dxR+dxL);
+                double SL = gradL[q];
+                double SR = gradR[q];
+                if( S*SL < 0.0 )
+                    gradL[q] = 0.0; 
+                else if( fabs(PLM*S) < fabs(SL) )
+                    gradL[q] = PLM*S;
 
-            double S = (WR-WL)/(dxR+dxL);
-            double SL = gradL[q];
-            double SR = gradR[q];
-            if( S*SL < 0.0 ){
-               gradL[q] = 0.0; 
-            }else if( fabs(PLM*S) < fabs(SL) ){
-               gradL[q] = PLM*S;
+                if( S*SR < 0.0 )
+                    gradR[q] = 0.0; 
+                else if( fabs(PLM*S) < fabs(SR) )
+                    gradR[q] = PLM*S;
             }
-
-            if( S*SR < 0.0 ){
-               gradR[q] = 0.0; 
-            }else if( fabs(PLM*S) < fabs(SR) ){
-               gradR[q] = PLM*S;
-            }    
-         }
-      }
-   }
-   */
+        }
+    }
+    
 
    // Geometric boundaries don't have ghost zones, so the gradients there need
    // to be fixed.  

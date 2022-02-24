@@ -103,7 +103,7 @@ def analyzeSingle(filename):
 
     dV = geom.getDV(dat, opts, pars)
 
-    maskDistance = 0.5
+    maskDistance = 0.2
 
     dVmask = dV.copy()
     # dVmask[(x1 < pars['R_Min']+maskDistance)] = 0.0

@@ -26,8 +26,8 @@ do
 done
 
 #python3 Python/shearCartAnalysis.py output.*.h5
-# python3 Python/acousticwaveAnalysis.py output.*.h5
+python3 Python/acousticwaveAnalysis.py output.*.h5
 #python3 Python/alfvenwaveAnalysis.py output.*.h5
 #python3 Python/magnetosonicwaveAnalysis.py output.*.h5
 # python3 Python/advectionAnalysis.py output.*.h5
-python3 Python/entropywaveAnalysis.py output.*.h5
+# python3 Python/entropywaveAnalysis.py output.*.h5

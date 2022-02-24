@@ -293,6 +293,11 @@ void geom_cart_interp_grad_trans(const double *primL, const double *primR,
                                  double *gradCIL, double *gradCIR,
                                  int dim)
 {
+    /*
+     * In this function, dxL & dxR are SIGNED.  That is, dxL < 0.0
+     * and dxR > 0.0
+     */
+
     int q;
 
     double idx = 1.0 / (dxR - dxL);
@@ -346,9 +351,19 @@ void geom_cart_interp_grad_trans(const double *primL, const double *primR,
     gradCIR[URR] =  cR * gradUX + sR * gradUY;
     gradCIR[UPP] = (-sR * gradUX + cR * gradUY) / rR;
 
+    //
+    // gradCI are now the *covariant* derivatives at L and R.
+    // These are actually what we want, as the gradients are initialized with
+    // the 0th order values, which are just the negative of the
+    // christoffel-symbols part.  When gradCI are added, then, 
+    // we'll be left with the desired coordinate derivatives.
+    //
+
+    /*
     if(dim == 1)
     {
         gradCIL[UPP] -= primL[UPP] / rL;
         gradCIR[UPP] -= primR[UPP] / rR;
     }
+    */
 }
