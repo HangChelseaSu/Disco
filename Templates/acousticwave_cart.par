@@ -66,7 +66,7 @@ Use_Viscosity		0
 Viscosity		0.0 //2.5e-5 //.01
 Viscosity_Profile   0   //0=Flat, 1=alpha, 2=powerlaw, 3=power law (binary)
 Viscosity_Par   0.0
-Use_As_Alpha		0      //1
+
 
 //Planet Parameters	
 Mass_Ratio		0.0
@@ -111,7 +111,8 @@ Nozzle_Par1     0.0     //(double)
 Nozzle_Par2     0.0     //(double)
 Nozzle_Par3     0.0     //(double)
 Nozzle_Par4     0.0     //(double)
-//Cooling parameters
+
+//Damping parameters
 DampInner_Type       0       //0: No damping, 1: "time" is actual time, 2: "time" is fraction of orbital time
 DampInner_Time       1.e-2     //(double)
 DampInner_Len        1.0     //(double)
@@ -124,6 +125,8 @@ DampLower_Len        1.0     //(double)
 DampUpper_Type       0       //0: No damping, 1: "time" is actual time, 2: "time" is fraction of orbital time
 DampUpper_Time       1.e-2     //(double)
 DampUpper_Len        1.0     //(double)
+
+//Cooling parameters
 Cool_Type       0       //0: No cooling, 1: beta cooling, 2: beta relaxation
 Cool_Par1       1.e-2     //(double)
 Cool_Par2       0.0     //(double)
