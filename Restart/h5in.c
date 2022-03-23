@@ -1,4 +1,3 @@
-
 #include "../paul.h"
 #include <hdf5.h>
 #include <string.h>
@@ -310,10 +309,10 @@ void restart( struct domain * theDomain ){
          pl->r     = PlanetData[NpDat*p + 3];
          pl->phi   = PlanetData[NpDat*p + 4];
          pl->eps   = PlanetData[NpDat*p + 5];
-         if(NpDat > 6)
-            pl->type  = (int)PlanetData[NpDat*p + 6];
-         else
-            pl->type  = PLPOINTMASS;
+         //if(NpDat > 6)
+         //   pl->type  = (int)PlanetData[NpDat*p + 6];
+         //else
+         pl->type  = PLPOINTMASS;
 
       }
    }

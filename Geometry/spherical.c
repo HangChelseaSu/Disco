@@ -258,7 +258,6 @@ void geom_grad(const double *prim, double *grad, const double *xp, const double 
 void geom_polar_vec_adjust(const double *xp, const double *xm, double *fac)
 {
     //TODO: IMPLEMENT THIS!!!
-    
     fac[0] = 1.0;
     fac[1] = 1.0;
     fac[2] = 1.0;

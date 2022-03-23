@@ -120,7 +120,8 @@ int read_par_file( struct domain * theDomain ){
          err += readvar( pfile , "Restart"               , VAR_INT  , &(theList->restart_flag)    );
          err += readvar( pfile , "Use_Viscosity"         , VAR_INT  , &(theList->visc_flag)       );
          err += readvar( pfile , "Viscosity"             , VAR_DOUB , &(theList->viscosity)       );
-         err += readvar( pfile , "Use_As_Alpha"          , VAR_INT  , &(theList->alpha_flag)      );
+         err += readvar( pfile , "Viscosity_Profile"          , VAR_INT  , &(theList->visc_profile)      );
+         err += readvar( pfile , "Viscosity_Par"          , VAR_DOUB  , &(theList->visc_par)      );
          err += readvar( pfile , "Include_Atmos"         , VAR_INT  , &(theList->include_atmos)   );
          err += readvar( pfile , "T_Times_2pi"           , VAR_INT  , &tTimes_2pi );
          err += readvar( pfile , "P_Times_2pi"           , VAR_INT  , &pTimes_2pi );
@@ -150,15 +151,38 @@ int read_par_file( struct domain * theDomain ){
          err += readvar( pfile , "Noise_Abs" , VAR_DOUB  , &(theList->noiseAbs));
          err += readvar( pfile , "Noise_Rel" , VAR_DOUB  , &(theList->noiseRel));
          err += readvar(pfile, "Sink_Type", VAR_INT , &(theList->sinkType));
+         err += readvar(pfile, "Sink_Number", VAR_INT , &(theList->sinkNumber));
          err += readvar(pfile, "Sink_Par1", VAR_DOUB, &(theList->sinkPar1));
          err += readvar(pfile, "Sink_Par2", VAR_DOUB, &(theList->sinkPar2));
          err += readvar(pfile, "Sink_Par3", VAR_DOUB, &(theList->sinkPar3));
          err += readvar(pfile, "Sink_Par4", VAR_DOUB, &(theList->sinkPar4));
+         err += readvar(pfile, "Sink_Par5", VAR_DOUB, &(theList->sinkPar5));
          err += readvar(pfile, "Nozzle_Type", VAR_INT , &(theList->nozzleType));
          err += readvar(pfile, "Nozzle_Par1", VAR_DOUB, &(theList->nozzlePar1));
          err += readvar(pfile, "Nozzle_Par2", VAR_DOUB, &(theList->nozzlePar2));
          err += readvar(pfile, "Nozzle_Par3", VAR_DOUB, &(theList->nozzlePar3));
          err += readvar(pfile, "Nozzle_Par4", VAR_DOUB, &(theList->nozzlePar4));
+         err += readvar(pfile, "Cool_Type", VAR_INT , &(theList->coolType));
+         err += readvar(pfile, "Cool_Par1", VAR_DOUB, &(theList->coolPar1));
+         err += readvar(pfile, "Cool_Par2", VAR_DOUB, &(theList->coolPar2));
+         err += readvar(pfile, "Cool_Par3", VAR_DOUB, &(theList->coolPar3));
+         err += readvar(pfile, "Cool_Par4", VAR_DOUB, &(theList->coolPar4));
+         err += readvar(pfile, "DampInner_Type", VAR_INT , &(theList->dampInnerType));
+         err += readvar(pfile, "DampInner_Time", VAR_DOUB, &(theList->dampTimeInner));
+         err += readvar(pfile, "DampInner_Len", VAR_DOUB, &(theList->dampLenInner));
+         err += readvar(pfile, "DampOuter_Type", VAR_INT , &(theList->dampOuterType));
+         err += readvar(pfile, "DampOuter_Time", VAR_DOUB, &(theList->dampTimeOuter));
+         err += readvar(pfile, "DampOuter_Len", VAR_DOUB, &(theList->dampLenOuter));
+         err += readvar(pfile, "DampUpper_Type", VAR_INT , &(theList->dampUpperType));
+         err += readvar(pfile, "DampUpper_Time", VAR_DOUB, &(theList->dampTimeUpper));
+         err += readvar(pfile, "DampUpper_Len", VAR_DOUB, &(theList->dampLenUpper));
+         err += readvar(pfile, "DampLower_Type", VAR_INT , &(theList->dampLowerType));
+         err += readvar(pfile, "DampLower_Time", VAR_DOUB, &(theList->dampTimeLower));
+         err += readvar(pfile, "DampLower_Len", VAR_DOUB, &(theList->dampLenLower));
+         err += readvar(pfile, "Softening", VAR_DOUB, &(theList->grav_eps));
+
+
+
       }
 #if USE_MPI
       MPI_Barrier(MPI_COMM_WORLD);

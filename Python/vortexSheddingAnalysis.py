@@ -79,8 +79,6 @@ def analyzeSingle(filename):
     fig.savefig('stream_divV.pdf')
     plt.close(fig)
 
-
-
     return t, nx
 
 def analyze(filenames):

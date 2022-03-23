@@ -83,7 +83,6 @@ void add_diagnostics( struct domain * theDomain , double dt ){
                 double xp[3] = {r_jph[j  ] , phip , z_kph[k  ]};  
                 double xm[3] = {r_jph[j-1] , phim , z_kph[k-1]};
                 double xc[3];
-                //for( q=0 ; q<3 ; ++q ) xc[q] = .5*(xp[q]+xm[q]);
                 get_centroid_arr(xp, xm, xc);  
                 double dV = get_dV(xp,xm);
                 double Qrz[Nq];

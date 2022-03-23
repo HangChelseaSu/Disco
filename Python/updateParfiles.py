@@ -6,7 +6,7 @@ def loadTemplate(filename):
 
     template = []
     for line in f:
-        if line is "" or line.isspace():
+        if line == "" or line.isspace():
             continue
         words = line.split()
         if len(words) >= 2 and words[0][0].isalpha():

@@ -331,7 +331,7 @@ void possiblyOutput( struct domain * theDomain , int override ){
       theDomain->nrpt = n0;
       //longandshort( &theDomain , &L , &S , &iL , &iS , theDomain.theCells[0] , 0 , 0 );
       report( theDomain );
-      //if( theDomain->rank==0 ) printf("t = %.3e\n",t);
+      //if( theDomain->rank==0 ) printf("t = %.5e\n",t);
    }
    n0 = (int)( t*Nchk/t_fin );
    if( LogOut ) n0 = (int)( Nchk*log(t/t_min)/log(t_fin/t_min) );

@@ -1105,7 +1105,6 @@ def calculateDivV(x1, x2, x3, v1, v2, v3, dat, opts, pars, dV=None):
                 dA = getDA1grid(x1f[jf], x2p, x2m, x3f[k+1], x3f[k], opts)
                 h, _, _ = getScaleFactors(x1f[jf], x2i,
                                           0.5*(x3[aL+iL]+x3[aR+iR]), opts)
-                
                 divV[aL+iL] += 0.5*(vL+vR)*h*dA
                 divV[aR+iR] -= 0.5*(vL+vR)*h*dA
 
@@ -1155,6 +1154,7 @@ def calculateDivV(x1, x2, x3, v1, v2, v3, dat, opts, pars, dV=None):
 
             iL = 0
             iR = np.searchsorted(x2phR, x20)
+
             for i in range(n2[kL, j] + n2[kR, j]):
                 x2p = min(x2phL[iL], x2phR[iR])
                 x2m = max(x2mhL[iL], x2mhR[iR])
@@ -1184,3 +1184,161 @@ def calculateDivV(x1, x2, x3, v1, v2, v3, dat, opts, pars, dV=None):
 
     return divV
 
+def calculateCurlV(x1, x2, x3, v1, v2, v3, dat, opts, pars, dV=None):
+
+    index = dat[8]
+    n1 = index.shape[1]
+    n2 = dat[7]
+    n3 = index.shape[0]
+    x2_max = pars['Phi_Max']
+    x1f = dat[0]
+    x2ph = dat[3]
+    x3f = dat[1]
+
+    if dV is None:
+        dV = getDV(dat, opts, pars)
+    dv1dx2 = calculateGradX2(x2, v1, dat, pars)
+    dv2dx2 = calculateGradX2(x2, v2, dat, pars)
+    dv3dx2 = calculateGradX2(x2, v3, dat, pars)
+
+    vortZ = np.zeros(v1.shape)
+
+    # x2 part
+    print("x2 div")
+
+    for k in range(n3):
+        for j in range(n1):
+            a = index[k, j]
+            b = index[k, j] + n2[k, j]
+
+            dAph = getDA2grid(x1f[j+1], x1f[j], x2ph[a:b], x3f[k+1], x3f[k],
+                              opts)
+
+            #v = v2[a:b]
+            v = v1[a:b]
+            vR = np.roll(v, -1)
+            vph = 0.5*(v+vR)
+
+            #_, hph, _ = getScaleFactors(x1[a:b], x2ph[a:b], x3[a:b], opts)
+            hph, _, _ = getScaleFactors(x1[a:b], x2ph[a:b], x3[a:b], opts)
+
+            fph = vph*hph*dAph
+            fmh = np.roll(fph, 1)
+
+            #divV[a:b] += fph-fmh
+            vortZ[a:b] -= fph-fmh
+
+
+    # x1 part
+
+    print("x1 div")
+
+    for k in range(n3):
+        #for jf in range(1, 3):
+        for jf in range(1, n1):
+            #print(jf)
+            jL = jf-1
+            jR = jf
+            aL = index[k, jL]
+            bL = index[k, jL] + n2[k, jL]
+            aR = index[k, jR]
+            bR = index[k, jR] + n2[k, jR]
+
+            x2phL = unwrap(x2ph[aL:bL], x2_max)
+            x2phR = unwrap(x2ph[aR:bR], x2_max)
+            #v1L = v1[aL:bL]
+            #v1R = v1[aR:bR]
+            v2L = v2[aL:bL]
+            v2R = v2[aR:bR]
+            #dv1dx2L = dv1dx2[aL:bL]
+            #dv1dx2R = dv1dx2[aR:bR]
+            dv2dx2L = dv2dx2[aL:bL]
+            dv2dx2R = dv2dx2[aR:bR]
+
+            x20 = x2phL[0]
+            while x20 > x2phR[-1]:
+                x2phR += x2_max
+            while x20 <= x2phR[-1] - x2_max:
+                x2phR -= x2_max
+            x2mhL = np.roll(x2phL, 1)
+            x2mhL[0] -= x2_max
+            x2mhR = np.roll(x2phR, 1)
+            x2mhR[0] -= x2_max
+
+            iL0 = 0
+            iR0 = np.searchsorted(x2phR, x20)
+
+            #start changing things here
+
+            maxL = n2[k, jL]
+            maxR = n2[k, jR]
+
+            #not vectorized, but apparently not a bottleneck
+            iL = [iL0]
+            iR = [iR0]
+            diffL = np.zeros(maxL+maxR)
+            diffR = np.zeros(maxL+maxR)
+            for i in range( maxL + maxR-1):
+              if x2phL[iL[i]]+diffL[i] < x2phR[iR[i]]+diffR[i]:
+                iR.append(iR[-1])
+                iL.append((iL[-1]+1)%maxL)
+              else:
+                iR.append((iR[-1]+1)%maxR)
+                iL.append(iL[-1])
+              if x2phL[iL[-2]]>x2phL[iL[-1]]: diffL[i+1:]+=x2_max
+              if x2phR[iR[-2]]>x2phR[iR[-1]]: diffR[i+1:]+=x2_max
+
+            x2p = np.minimum(x2phL[iL]+diffL, x2phR[iR]+diffR)
+            x2m = np.maximum(x2mhL[iL]+diffL, x2mhR[iR]+diffR)
+
+            x2i = 0.5*(x2p + x2m)
+
+            x2L = 0.5*(x2phL[iL] + x2mhL[iL])+diffL
+            x2R = 0.5*(x2phR[iR] + x2mhR[iR])+diffR
+
+            vL = v2L[iL] + dv2dx2L[iL]*(x2i-x2L)
+            vR = v2R[iR] + dv2dx2R[iR]*(x2i-x2R)
+
+            dA = getDA1grid(x1f[jf], x2p, x2m, x3f[k+1], x3f[k], opts)
+            _, h, _ = getScaleFactors(x1f[jf], x2i, 0.0, opts)
+
+            np.add.at(vortZ, aL+iL, 0.5*(vL+vR)*h*dA)
+            np.subtract.at(vortZ, aR+iR, 0.5*(vL+vR)*h*dA)
+
+
+            '''
+            #old version. VERY slow, especially for large N
+            iL = iL0
+            iR = iR0
+            for i in range(n2[k, jL] + n2[k, jR]):
+                x2p = min(x2phL[iL], x2phR[iR])
+                x2m = max(x2mhL[iL], x2mhR[iR])
+                x2i = 0.5*(x2p + x2m)
+                x2L = 0.5*(x2phL[iL] + x2mhL[iL])
+                x2R = 0.5*(x2phR[iR] + x2mhR[iR])
+                vL = v2L[iL] + dv2dx2L[iL]*(x2i-x2L)
+                vR = v2R[iR] + dv2dx2R[iR]*(x2i-x2R)
+
+                dA = getDA1grid(x1f[jf], x2p, x2m, x3f[k+1], x3f[k], opts)
+                _, h, _ = getScaleFactors(x1f[jf], x2i, 0.5*(x3[aL+iL]+x3[aR+iR]), opts)
+                vortZ[aL+iL] += 0.5*(vL+vR)*h*dA
+                vortZ[aR+iR] -= 0.5*(vL+vR)*h*dA
+
+                if x2phL[iL] < x2phR[iR]:
+                    iL += 1
+                    if iL >= n2[k, jL]:
+                        iL = 0
+                        x2phL += x2_max
+                        x2mhL += x2_max
+                else:
+                    iR += 1
+                    if iR >= n2[k, jR]:
+                        iR = 0
+                        x2phR += x2_max
+                        x2mhR += x2_max
+            if iL != iL0 or iR != iR0:
+                print("PROBLEM", aL, bL-aL, iL0, iL,"|", aR, bR-aR, iR0, iR)
+            '''
+    vortZ /= dV
+
+    return vortZ

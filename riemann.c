@@ -1,4 +1,4 @@
-enum{_HLL_,_HLLC_,_HLLD_};
+enum{_HLL_,_HLLC_,_HLLD_,_HLLC_DAMPCENTER_};
 
 #include "paul.h"
 #include "hydro.h"
@@ -9,6 +9,7 @@ static int riemann_solver = 0;
 static int visc_flag = 0;
 static int use_B_fields = 0;
 static int Cartesian_Interp = 0;
+
 
 void setRiemannParams( struct domain * theDomain ){
    mesh_motion = theDomain->theParList.Mesh_Motion;
@@ -288,7 +289,9 @@ void solve_riemann(const double *primL, const double *primR,
       Ustr[q] = 0.0;
    }
 
-   if( riemann_solver == _HLL_ || riemann_solver == _HLLC_ ){
+   double r = x[0];
+
+   if( riemann_solver == _HLL_ || riemann_solver == _HLLC_ || riemann_solver == _HLLC_DAMPCENTER_ ){
       double Sl,Sr,Ss;
       double Bpack[5];
       vel( primL , primR , &Sl , &Sr , &Ss , n , x , Bpack );
@@ -302,7 +305,7 @@ void solve_riemann(const double *primL, const double *primR,
          prim2cons( primR , Ustr , x , 1.0, NULL, NULL);
 
       }else{
-         if( riemann_solver == _HLL_ ){
+         if( riemann_solver == _HLL_ || (r < 0.1 && riemann_solver == _HLLC_DAMPCENTER_) ){
             double Fl[NUM_Q];
             double Fr[NUM_Q];
             double Ul[NUM_Q];

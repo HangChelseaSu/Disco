@@ -152,7 +152,6 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         (f->L)->tempDoub += f->dA;
         (f->R)->tempDoub += f->dA;
     }
-
    
     //Add weighted slopes
     for(n=0; n<Nf; ++n)
@@ -283,7 +282,6 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         }
     }
     
-
    // Geometric boundaries don't have ghost zones, so the gradients there need
    // to be fixed.  
    

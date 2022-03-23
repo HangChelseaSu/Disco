@@ -86,7 +86,7 @@ def plotCheckpoint(file, vars=None, logvars=None, noGhost=False, om=None,
                 plotname = "plot_eq_{0:s}_lin_{1:s}.png".format(name, varnames[q])
                 
                 print("   Saving {0:s}...".format(plotname))
-                fig.savefig(plotname, dpi=200)
+                fig.savefig(plotname, dpi=1000)
                 plt.close(fig)
 
             if q in logvars:
@@ -99,7 +99,7 @@ def plotCheckpoint(file, vars=None, logvars=None, noGhost=False, om=None,
                 plotname = "plot_eq_{0:s}_log_{1:s}.png".format(name, varnames[q])
 
                 print("   Saving {0:s}...".format(plotname))
-                fig.savefig(plotname, dpi=200)
+                fig.savefig(plotname, dpi=1000)
                 plt.close(fig)
 
     

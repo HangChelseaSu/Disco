@@ -3,7 +3,6 @@
 
 enum{RHO,PPP,URR,UPP,UZZ,BRR,BPP,BZZ};
 enum{DDD,TAU,SRR,LLL,SZZ};
-enum{PLPOINTMASS, PLPW, PLSURFACEGRAV, PLALEX, PLQUAD};
 
 enum{PROF_TOT, PROF_DT, PROF_TIMESTEP, PROF_OUTPUT, PROF_RECON, PROF_FLUX,
      PROF_CT, PROF_SOURCE, PROF_C2P, PROF_BOUND, PROF_EXCHANGE,
@@ -13,6 +12,8 @@ enum{PROF_TOT, PROF_DT, PROF_TIMESTEP, PROF_OUTPUT, PROF_RECON, PROF_FLUX,
      PROF_EXCH_NP_COMM2, PROF_EXCH_NP_FIN,
      PROF_EXCH_PREP, PROF_EXCH_COMM, PROF_EXCH_FIN,
      NUM_PROF}; // NUM_PROF must be at end
+enum{PLPOINTMASS, PLPW, PLSURFACEGRAV, PLSPLINE, PLWEGGC, PLQUAD};
+enum{COOL_NONE, COOL_BETA, COOL_BETA_RELAX};
 
 #if USE_MPI
 #include <mpi.h>
@@ -66,7 +67,7 @@ struct param_list{
    double LogRadius;
    double MaxShort, MaxLong;
    int Mesh_Motion, Riemann_Solver, Timestep;
-   int Absorb_BC, Initial_Regrid, visc_flag, include_atmos;
+   int Absorb_BC, Initial_Regrid, include_atmos;
 
    double CFL, PLM, maxDT;
    int Cartesian_Interp;
@@ -81,7 +82,12 @@ struct param_list{
    double RotOmega, RotD;
 
    double Adiabatic_Index;
+
+   int visc_flag;
+   int visc_profile;
    double viscosity;
+   double visc_par;
+
    int isothermal_flag;
    int Cs2_Profile;
    double Cs2_Par;
@@ -91,7 +97,6 @@ struct param_list{
    double Eccentricity;
    double Drift_Rate,Drift_Exp;
    int grav2D;
-   int alpha_flag;
 
    int restart_flag;
    int CT;
@@ -117,15 +122,37 @@ struct param_list{
    double noiseRel;
 
    int sinkType;
+   int sinkNumber;
    double sinkPar1;
    double sinkPar2;
    double sinkPar3;
    double sinkPar4;
+   double sinkPar5;
    int nozzleType;
    double nozzlePar1;
    double nozzlePar2;
    double nozzlePar3;
    double nozzlePar4;
+   int coolType;
+   double coolPar1;
+   double coolPar2;
+   double coolPar3;
+   double coolPar4;
+
+   int dampInnerType;
+   int dampOuterType;
+   int dampUpperType;
+   int dampLowerType;
+   double dampTimeInner;
+   double dampLenInner;
+   double dampTimeOuter;
+   double dampLenOuter;
+   double dampTimeLower;
+   double dampLenLower;
+   double dampTimeUpper;
+   double dampLenUpper;
+
+   double grav_eps;
 };
 
 struct diagnostic_avg{
@@ -244,6 +271,25 @@ struct planet{
    double RK_M;
    double RK_omega;
    double RK_vr;
+
+   double dM;
+   double RK_dM;
+
+   double Ls;
+   double RK_Ls;
+   double accL;
+   double RK_accL;
+
+   double gravL;
+   double RK_gravL;
+
+   double therm;
+   double RK_therm;
+
+   double accE;
+   double RK_accE;
+   double gravE;
+   double RK_gravE;
 
    double eps;
    double Fr;

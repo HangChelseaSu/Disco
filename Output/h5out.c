@@ -266,7 +266,9 @@ void writePars(struct domain *theDomain, char filename[])
                     H5T_NATIVE_INT);
     dumpVal(filename, "Pars", "Viscosity", &(pars->viscosity),
                     H5T_NATIVE_DOUBLE);
-    dumpVal(filename, "Pars", "Use_As_Alpha", &(pars->alpha_flag),
+    dumpVal(filename, "Pars", "Viscosity_Par", &(pars->visc_par),
+                    H5T_NATIVE_DOUBLE);
+    dumpVal(filename, "Pars", "Viscosity_Profile", &(pars->visc_profile),
                     H5T_NATIVE_INT);
     dumpVal(filename, "Pars", "Include_Atmos", &(pars->include_atmos),
                     H5T_NATIVE_INT);
@@ -331,6 +333,8 @@ void writePars(struct domain *theDomain, char filename[])
                     H5T_NATIVE_DOUBLE);
     dumpVal(filename, "Pars", "Sink_Par4", &(pars->sinkPar4),
                     H5T_NATIVE_DOUBLE);
+    dumpVal(filename, "Pars", "Sink_Par5", &(pars->sinkPar5),
+                    H5T_NATIVE_DOUBLE);
     dumpVal(filename, "Pars", "Nozzle_Type", &(pars->nozzleType),
                     H5T_NATIVE_INT);
     dumpVal(filename, "Pars", "Nozzle_Par1", &(pars->nozzlePar1),
@@ -341,6 +345,21 @@ void writePars(struct domain *theDomain, char filename[])
                     H5T_NATIVE_DOUBLE);
     dumpVal(filename, "Pars", "Nozzle_Par4", &(pars->nozzlePar4),
                     H5T_NATIVE_DOUBLE);
+
+    dumpVal(filename, "Pars", "Cool_Type", &(pars->coolType),
+                    H5T_NATIVE_INT);
+    dumpVal(filename, "Pars", "Cool_Par1", &(pars->coolPar1),
+                    H5T_NATIVE_DOUBLE);
+    dumpVal(filename, "Pars", "Cool_Par2", &(pars->coolPar2),
+                    H5T_NATIVE_DOUBLE);
+    dumpVal(filename, "Pars", "Cool_Par3", &(pars->coolPar3),
+                    H5T_NATIVE_DOUBLE);
+    dumpVal(filename, "Pars", "Cool_Par4", &(pars->coolPar4),
+                    H5T_NATIVE_DOUBLE);
+    dumpVal(filename, "Pars", "Softening", &(pars->grav_eps),
+                    H5T_NATIVE_DOUBLE);
+
+
 }
 
 double get_dV( double * , double * );

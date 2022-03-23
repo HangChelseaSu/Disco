@@ -44,6 +44,15 @@ double phigrav( double M , double r , double eps , int type)
     {
         return M / (r - 2*M);
     }
+    else if(type == PLWEGGC)
+    {
+        //potential "C" from Wegg 2012, ApJ 749
+        double sq6 = sqrt(6);
+        double Alpha = -4*(2.0+sq6)/3;
+        double Rx = M*(4.0*sq6 - 9);
+        double Ry = -4*M*(2*sq6 - 3.0)/3.0;
+        return -Alpha*M/r - (1-Alpha)*M/(r-Rx) - M*Ry/(r*r);
+    }
     else if(type == PLSURFACEGRAV)
     {
         return M*r; // M is gravitational acceleration
@@ -53,7 +62,16 @@ double phigrav( double M , double r , double eps , int type)
     {
         return 0.5*M*r*r;
     }
-
+    else if(type == PLSPLINE)
+    {
+        eps = eps*2.8;
+        double u = r/eps;
+        double val;
+        if (u<0.5) val = 16.*u*u/3. - 48.*u*u*u*u/5. + 32.*u*u*u*u*u/5. - 14./5.;
+        else if (u < 1.0) val = 1./(15.*u) + 32.*u*u/3. - 16.*u*u*u + 48.*u*u*u*u/5. - 32.*pow(u, 5.0)/15. - 3.2;
+        else val = -1./u ;
+        return -1*M*val/eps;
+    }
     return 0.0;
 }
 
@@ -77,6 +95,25 @@ double fgrav( double M , double r , double eps , int type)
     {
         return M * r;
     }
+    else if(type == PLWEGGC)
+    {
+        //potential "C" from Wegg 2012, ApJ 749
+        double sq6 = sqrt(6);
+        double Alpha = -4*(2.0+sq6)/3;
+        double Rx = M*(4.0*sq6 - 9);
+        double Ry = -4*M*(2*sq6 - 3.0)/3.0;
+        return -Alpha*M/(r*r) - (1-Alpha)*M/((r-Rx)*(r-Rx)) - 2*M*Ry/(r*r*r);
+    }
+    else if(type == PLSPLINE)
+    {
+        eps = eps*2.8;
+        double u = r/eps;
+        double val;
+        if (u<0.5) val = 32.*u/3. - 192.*u*u*u/5. + 32.*u*u*u*u;
+        else if (u < 1.0) val = -1./(15.*u*u) + 64.*u/3. - 48.*u*u + 192.*u*u*u/5. - 32*u*u*u*u/3.;
+        else val = 1./u/u;
+        return M*val/eps/eps;
+    }
     return 0.0;
     
 }
@@ -94,6 +131,7 @@ void adjust_gas( struct planet * pl , double * x , double * prim , double gam ){
    double dy = r*sinp-rp*sin(pp);
    double script_r = sqrt(dx*dx+dy*dy);
 
+   //double z = M_PI*0.5; //x[2];
    double pot = phigrav( pl->M , script_r , pl->eps , pl->type);
 
    double c2 = gam*prim[PPP]/prim[RHO];
@@ -104,7 +142,8 @@ void adjust_gas( struct planet * pl , double * x , double * prim , double gam ){
 
 }
 
-void planetaryForce( struct planet * pl , double r , double phi , double z , double * fr , double * fp , double * fz , int mode ){
+void planetaryForce( struct planet * pl , double r , double phi , double z , double * fr , double * fp , double * fz , int mode )
+{
     /*
      * Calculates the specific gravitational force (ie. acceleration) between
      * the gas and planet.
@@ -150,11 +189,11 @@ void planetaryForce( struct planet * pl , double r , double phi , double z , dou
        cosap = 0.0;
        sinap = 0.0;
    }
-/*
+   /*
    double rH = rp*pow( pl->M/3.,1./3.);
    double pd = 0.8; 
    double fd = 1./(1.+exp(-( script_r/rH-pd)/(pd/10.)));
-*/
+   */
 
    double sint = script_r_perp/script_r;
    double cost = z/script_r;
@@ -162,7 +201,6 @@ void planetaryForce( struct planet * pl , double r , double phi , double z , dou
    *fr = cosap*f1*sint; //*fd;
    *fp = sinap*f1*sint; //*fd;
    *fz = f1*cost;
-
 }
 
 void planet_src( struct planet * pl , double * prim , double * cons , double * xp , double * xm , double dVdt ){
@@ -217,12 +255,30 @@ void planet_RK_copy( struct planet * pl ){
    pl->RK_M     = pl->M;
    pl->RK_omega = pl->omega;
    pl->RK_vr    = pl->vr;
+   pl->RK_dM    = pl->dM;
+   pl->RK_accL  = pl->accL;
+   pl->RK_Ls    = pl->Ls;
+   pl->RK_therm = pl->therm;
+   pl->RK_gravL = pl->gravL;
+   pl->RK_accE = pl->accE;
+   pl->RK_gravE = pl->gravE;
+
 }
 
-void planet_RK_adjust( struct planet * pl , double RK ){
+void planet_RK_adjust_kin( struct planet * pl , double RK ){
    pl->r     = (1.-RK)*pl->r     + RK*pl->RK_r;
    pl->phi   = (1.-RK)*pl->phi   + RK*pl->RK_phi;
    pl->M     = (1.-RK)*pl->M     + RK*pl->RK_M;
    pl->omega = (1.-RK)*pl->omega + RK*pl->RK_omega;
    pl->vr    = (1.-RK)*pl->vr    + RK*pl->RK_vr;
+}
+
+void planet_RK_adjust_aux( struct planet * pl , double RK ){
+   pl->dM    = (1.-RK)*pl->dM    + RK*pl->RK_dM;
+   pl->accL  = (1.-RK)*pl->accL  + RK*pl->RK_accL;
+   pl->Ls    = (1.-RK)*pl->Ls    + RK*pl->RK_Ls;
+   pl->therm = (1.-RK)*pl->therm + RK*pl->RK_therm;
+   pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
+   pl-> accE = (1.-RK)*pl->accE  + RK*pl->RK_accE;
+   pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
 }

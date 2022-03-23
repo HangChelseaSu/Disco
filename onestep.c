@@ -10,7 +10,10 @@ void clean_pi( struct domain * );
 void set_wcell( struct domain * );
 
 void adjust_RK_cons( struct domain * , double );
-void adjust_RK_planets( struct domain * , double );
+
+void adjust_RK_planets_aux( struct domain * , double );
+void adjust_RK_planets_kin( struct domain * , double );
+
 void move_cells( struct domain * , double );
 void calc_dp( struct domain * );
 void calc_prim( struct domain * );
@@ -90,7 +93,9 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    int bflag = set_B_flag();
 
    if( first_step ) set_wcell( theDomain );
+
    adjust_RK_cons( theDomain , RK );
+   adjust_RK_planets_aux( theDomain , RK );
 
    //Reconstruction
    prof_tick(theDomain->prof, PROF_RECON);
@@ -166,7 +171,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    
 
    if( !planet_motion_analytic() || first_step ){
-      adjust_RK_planets( theDomain , RK );
+      adjust_RK_planets_kin( theDomain , RK );
       movePlanets( theDomain->thePlanets , theDomain->t , dt );
    }
 
@@ -216,8 +221,6 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
          prof_tock(theDomain->prof, PROF_BOUND);
       }
    }
-   
-   prof_tock(theDomain->prof, PROF_BOUND);
    
    //TODO: This was BEFORE BCs, but if wrecks cell pointers...
    //      Here, the BCs may not be satisfied if boundary zones are AMR'd...

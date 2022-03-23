@@ -990,7 +990,9 @@ void drawColorBar(double RotationAngleX, double RotationAngleY,
         double y = (double)k*hb/(double)(Nv-1) - .5*hb;
         double val = ((double)k/(double)(Nv-1))*(maxval-minval) + minval;
         char valname[256];
+
         sprintf(valname,"%+.16e",val);
+
         glLineWidth(1.0f);
         glColor3f(0.0,0.0,0.0);
         glBegin(GL_LINE_LOOP);

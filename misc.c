@@ -243,13 +243,23 @@ void adjust_RK_cons( struct domain * theDomain , double RK ){
    }
 }
 
-void planet_RK_adjust( struct planet * , double );
+void planet_RK_adjust_kin( struct planet * , double );
 
-void adjust_RK_planets( struct domain * theDomain , double RK ){
+void adjust_RK_planets_kin( struct domain * theDomain , double RK ){
    int Npl = theDomain->Npl;
    int p;
    for( p=0 ; p<Npl ; ++p ){
-      planet_RK_adjust( theDomain->thePlanets+p , RK );
+      planet_RK_adjust_kin( theDomain->thePlanets+p , RK );
+   }
+}
+
+void planet_RK_adjust_aux( struct planet * , double );
+
+void adjust_RK_planets_aux( struct domain * theDomain , double RK ){
+   int Npl = theDomain->Npl;
+   int p;
+   for( p=0 ; p<Npl ; ++p ){
+      planet_RK_adjust_aux( theDomain->thePlanets+p , RK );
    }
 }
 
@@ -551,7 +561,9 @@ void setup_faces( struct domain * theDomain , int dim ){
 
 void planet_src( struct planet * , double * , double * , double * , double * , double );
 void omega_src( double * , double * , double * , double * , double );
-void sink_src( double * , double * , double * , double * , double );
+void sink_src( double * , double * , double * , double * , double, double );
+void cooling( double * , double * , double * , double * , double, double);
+void damping( double * , double * , double * , double * , double, double);
 
 void add_source( struct domain * theDomain , double dt ){
 
@@ -582,7 +594,9 @@ void add_source( struct domain * theDomain , double dt ){
             double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
             double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
             double dV = get_dV(xp,xm);
-            source( c->prim , c->cons , xp , xm , dV*dt);
+            
+            source( c->prim , c->cons , xp , xm , dV*dt  );
+            
             for( p=0 ; p<Npl ; ++p ){
                planet_src( thePlanets+p , c->prim , c->cons , xp , xm , dV*dt );
             }
@@ -590,11 +604,12 @@ void add_source( struct domain * theDomain , double dt ){
                 visc_source( c->prim, c->gradr, c->gradp, c->gradz, c->cons,
                             xp, xm, dV*dt);
             omega_src( c->prim , c->cons , xp , xm , dV*dt );
-            sink_src( c->prim , c->cons , xp , xm , dV*dt );
+            sink_src( c->prim , c->cons , xp , xm , dV, dt );
+            cooling( c->prim , c->cons , xp , xm , dV, dt );
+            damping( c->prim , c->cons , xp , xm , dV, dt );
          }    
       }    
    }   
-
 }
 
 void longandshort( struct domain * theDomain , double * L , double * S , int * iL , int * iS , struct cell * sweep , int j , int k ){

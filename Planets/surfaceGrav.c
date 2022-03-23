@@ -18,6 +18,8 @@ void initializePlanets( struct planet * thePlanets ){
    thePlanets[0].phi   = 0.0; 
    thePlanets[0].eps   = 0.0;
    thePlanets[0].type  = PLSURFACEGRAV;
+   thePlanets[0].RK_dM = 0.0;
+   thePlanets[0].dM = 0.0;
 }
 
 void movePlanets( struct planet * thePlanets , double dt ){

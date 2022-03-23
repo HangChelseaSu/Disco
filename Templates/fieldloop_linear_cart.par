@@ -52,6 +52,8 @@ Initial_Regrid		    0
 Density_Floor		    0.0 //1e-5
 Pressure_Floor		    1.0e-5 //1e-5
 Constrained_Transport   1
+Cartesian_Interp        0   // Fixes the pole at the cost of disks 0 off, 1 on  
+Cartesian_Interp_R0     0.1 // Radius within which Cartesian_Interp acts.
 
 //Hydro Parameters
 Adiabatic_Index		1.66666666667
@@ -62,6 +64,8 @@ Energy_Omega        0   //0=Fixed, 1=Rigid, 2=Kep, 3=Rig2Kep, 4=Gaussian
 Energy_Omega_Par    0.0 //unused so far
 Use_Viscosity		0
 Viscosity		    0.0
+Viscosity_Profile   0   //0=Flat, 1=alpha, 2=powerlaw, 3=power law (binary)
+Viscosity_Par   0.0
 Use_As_Alpha		0      
 
 //Planet Parameters	
@@ -70,6 +74,7 @@ Eccentricity	0.0
 Drift_Rate		0.0 //-2.5e-4
 Drift_Exp		0.66666667
 Grav2D          1
+Softening       0.05
 
 //Rotating Frame
 RotFrame            0       //0=off, 1=on
@@ -95,6 +100,37 @@ Init_Par8       0.0   // vz
 Noise_Type      0       // 0: No Noise, 1: URR and UPP 
 Noise_Abs       0.0     // Amplitude of Absolute Noise
 Noise_Rel       0.0     // Amplitude of Relative Noise
+//Sink & Nozzle Parameters
+Sink_Type       0       //0: No Sink
+Sink_Number     0		//0: all planets have sinks. else: first N planets have sinks
+Sink_Par1       0.0     //(double)
+Sink_Par2       0.0     //(double)
+Sink_Par3       0.0     //(double)
+Sink_Par4       0.0     //(double)
+Sink_Par5       0.0     //(double)
+Nozzle_Type     0       //0: No Nozzle, 1: Circular Nozzle
+Nozzle_Par1     0.0     //(double)
+Nozzle_Par2     0.0     //(double)
+Nozzle_Par3     0.0     //(double)
+Nozzle_Par4     0.0     //(double)
+//Cooling parameters
+DampInner_Type       0       //0: No damping, 1: "time" is actual time, 2: "time" is fraction of orbital time
+DampInner_Time       1.e-2     //(double)
+DampInner_Len        1.0     //(double)
+DampOuter_Type       0       //0: No damping, 1: "time" is actual time, 2: "time" is fraction of orbital time
+DampOuter_Time       1.e-2     //(double)
+DampOuter_Len        1.0     //(double)
+DampLower_Type       0       //0: No damping, 1: "time" is actual time, 2: "time" is fraction of orbital time
+DampLower_Time       1.e-2     //(double)
+DampLower_Len        1.0     //(double)
+DampUpper_Type       0       //0: No damping, 1: "time" is actual time, 2: "time" is fraction of orbital time
+DampUpper_Time       1.e-2     //(double)
+DampUpper_Len        1.0     //(double)
+Cool_Type       0       //0: No cooling, 1: beta cooling, 2: beta relaxation
+Cool_Par1       1.e-2     //(double)
+Cool_Par2       0.0     //(double)
+Cool_Par3       0.0     //(double)
+Cool_Par4       0.0     //(double)
 
 //Metric Parameters
 Metric_Par0     0    //(int)

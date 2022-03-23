@@ -10,7 +10,6 @@ static double PRE_FLOOR = 0.0;
 static double explicit_viscosity = 0.0;
 static int include_viscosity = 0;
 static int isothermal = 0;
-static int alpha_flag = 0;
 static int polar_sources_r = 0;
 static int polar_sources_th = 0;
 
@@ -19,9 +18,7 @@ void setHydroParams( struct domain * theDomain ){
    isothermal = theDomain->theParList.isothermal_flag;
    RHO_FLOOR = theDomain->theParList.Density_Floor;
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
-   explicit_viscosity = theDomain->theParList.viscosity;
    include_viscosity = theDomain->theParList.visc_flag;
-   alpha_flag = theDomain->theParList.alpha_flag;
    if(theDomain->theParList.NoBC_Rmin == 1)
        polar_sources_r = 1;
    if(theDomain->theParList.NoBC_Zmin == 1
@@ -218,6 +215,7 @@ void source( const double * prim , double * cons , const double * xp , const dou
    //
    double centrifugal_r = rho*r*sinth*sinth*up*up + rho*r*ut*ut;
    double centrifugal_th = rho*r*r*sinth*costh*up*up;
+
    if(polar_sources_r || polar_sources_th)
    {
       double adjust[3];
@@ -259,14 +257,7 @@ void visc_flux(const double * prim, const double * gradr, const double * gradp,
    double th = x[2];
    double sinth = sin(th);
    double costh = cos(th);
-   double nu = explicit_viscosity;
-
-   if( alpha_flag ){
-      double alpha = explicit_viscosity;
-      double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-      double h = c*pow( r , 1.5 );
-      nu = alpha*c*h;
-   }
+   double nu = get_nu(x, prim);
 
    double rho = prim[RHO];
    double vr  = prim[URR];
@@ -309,14 +300,7 @@ void visc_source(const double * prim, const double * gradr, const double *gradp,
    double th = x[2];
    double sinth = sin(th);
    double costh = cos(th);
-   double nu = explicit_viscosity;
-
-   if( alpha_flag ){
-      double alpha = explicit_viscosity;
-      double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-      double h = c*pow( r , 1.5 );
-      nu = alpha*c*h;
-   }
+   double nu = get_nu(x, prim);
 
    double rho = prim[RHO];
    double vr  = prim[URR];
@@ -378,8 +362,10 @@ void vel( const double * prim1 , const double * prim2 , double * Sl , double * S
 
 double mindt(const double * prim , double w , const double * xp , const double * xm ){
 
-   double r = get_centroid(xp[0], xm[0], 1);
-   double sinth = sin(get_centroid(xp[2], xm[2], 2));
+   double x[3];
+   get_centroid_arr(xp, xm, x);
+   double r = x[0];
+   double sinth = sin(x[2]);
    double Pp  = prim[PPP];
    double rho = prim[RHO];
    double vp  = (prim[UPP]-w)*r*sinth;
@@ -409,14 +395,7 @@ double mindt(const double * prim , double w , const double * xp , const double *
        if( dx>dL1 ) dx = dL1;
        if( dx>dL2 ) dx = dL2;
 
-       double nu = explicit_viscosity;
-
-       if( alpha_flag ){
-          double alpha = explicit_viscosity;
-          double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-          double h = c*pow( r*sinth , 1.5 );
-          nu = alpha*c*h;
-       }
+       double nu = get_nu(x, prim);
 
        double dt_visc = 0.5*dx*dx/nu;
        if( dt > dt_visc )
