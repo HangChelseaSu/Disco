@@ -100,6 +100,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
    double PLM = theDomain->theParList.PLM;
+   int Cartesian_Interp = theDomain->theParList.Cartesian_Interp;
    
    int i,j,k,q;
 
@@ -115,7 +116,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
          }
       }
    }
-   if(1 && dim == 1)
+   if(Cartesian_Interp && dim == 1)
    {
       for( k=0 ; k<Nz ; ++k ){
          double z = get_centroid(z_kph[k], z_kph[k-1], 2);
@@ -228,7 +229,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         double *gradR = dim==1 ? cR->gradr : cR->gradz;
       
         double w = 0.0;
-        if(theDomain->theParList.Cartesian_Interp)
+        if(Cartesian_Interp)
             w = getCartInterpWeight(f->cm);
         if(w > 0.0)
         {
