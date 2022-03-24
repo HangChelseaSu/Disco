@@ -7,8 +7,6 @@
 static double gamma_law = 0.0; 
 static double RHO_FLOOR = 0.0; 
 static double PRE_FLOOR = 0.0; 
-static double explicit_viscosity = 0.0;
-static int include_viscosity = 0;
 static int isothermal = 0;
 
 void setHydroParams( struct domain * theDomain ){
@@ -16,8 +14,6 @@ void setHydroParams( struct domain * theDomain ){
    isothermal = theDomain->theParList.isothermal_flag;
    RHO_FLOOR = theDomain->theParList.Density_Floor;
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
-   explicit_viscosity = theDomain->theParList.viscosity;
-   include_viscosity = theDomain->theParList.visc_flag;
 }
 
 int set_B_flag(void){
@@ -29,7 +25,7 @@ double get_omega( const double * prim , const double * x ){
 }
 
 
-void prim2cons( const double * prim , double * cons , const double * x , double dV ){
+void prim2cons( const double * prim , double * cons , const double * x , double dV, const double *xp, const double *xm ){
 
    double rho = prim[RHO];
    double Pp  = prim[PPP];
@@ -129,7 +125,7 @@ void getUstar( const double * prim , double * Ustar , const double * x , double 
    }
 }
 
-void cons2prim( const double * cons , double * prim , const double * x , double dV ){
+void cons2prim( const double * cons , double * prim , const double * x , double dV, const double *xp, const double *xm  ){
 
    double rho = cons[DDD]/dV;
    if( rho < RHO_FLOOR )   rho = RHO_FLOOR;
@@ -175,7 +171,7 @@ void cons2prim( const double * cons , double * prim , const double * x , double 
    }
 }
 
-void flux( const double * prim , double * flux , const double * x , const double * n ){
+void flux( const double * prim , double * flux , const double * x , const double * n, const double *xp, const double *xm  ){
 
    double rho = prim[RHO];
    double Pp  = prim[PPP];
@@ -429,4 +425,9 @@ double bfield_scale_factor(double x, int dim)
     // dim == 0: x, dim == 1: y, dim == 2: z
 
     return 1.0;
+}
+
+double getCartInterpWeight(const double *x)
+{
+    return 0.0;
 }

@@ -7,7 +7,6 @@
 static double gamma_law = 0.0; 
 static double RHO_FLOOR = 0.0; 
 static double PRE_FLOOR = 0.0; 
-static double explicit_viscosity = 0.0;
 static int include_viscosity = 0;
 static int isothermal = 0;
 static int polar_sources_r = 0;
@@ -36,7 +35,7 @@ double get_omega( const double * prim , const double * x ){
 
 
 void prim2cons( const double * prim , double * cons , const double * x ,
-                double dV ){
+                double dV, const double *xp, const double *xm ){
 
    double r = x[0];
    double sinth = sin(x[2]);
@@ -102,7 +101,7 @@ void getUstar( const double * prim , double * Ustar , const double * x , double 
 
 }
 
-void cons2prim( const double * cons , double * prim , const double * x , double dV ){
+void cons2prim( const double * cons , double * prim , const double * x , double dV, const double *xp, const double *xm ){
    
    double r = x[0];
    double sinth = sin(x[2]);
@@ -148,7 +147,7 @@ void cons2prim( const double * cons , double * prim , const double * x , double 
 
 }
 
-void flux( const double * prim , double * flux , const double * x , const double * n ){
+void flux( const double * prim , double * flux , const double * x , const double * n, const double *xp, const double *xm ){
   
    double r = x[0];
    double sinth = sin(x[2]);
@@ -424,4 +423,9 @@ double bfield_scale_factor(double x, int dim)
     // dim == 0: r, dim == 1: p, dim == 2: z
     
     return 1.0;
+}
+
+double getCartInterpWeight(const double *x)
+{
+    return 0.0;
 }

@@ -32,7 +32,7 @@ double get_omega( const double * prim , const double * x ){
 }
 
 
-void prim2cons( const double * prim , double * cons , const double * x , double dV ){
+void prim2cons( const double * prim , double * cons , const double * x , double dV, const double *xp, const double *xm){
 
    double r = x[0];
    double rho = prim[RHO];
@@ -135,7 +135,7 @@ void getUstar( const double * prim , double * Ustar , const double * x , double 
    }
 }
 
-void cons2prim( const double * cons , double * prim , const double * x , double dV ){
+void cons2prim( const double * cons , double * prim , const double * x , double dV, const double *xp, const double *xm ){
 
    double r = x[0];
    
@@ -184,7 +184,7 @@ void cons2prim( const double * cons , double * prim , const double * x , double 
 
 }
 
-void flux( const double * prim , double * flux , const double * x , const double * n ){
+void flux( const double * prim , double * flux , const double * x , const double * n, const double *xp, const double *xm ){
 
    double r = x[0];
    double rho = prim[RHO];
@@ -529,4 +529,9 @@ double bfield_scale_factor(double x, int dim)
         return 1.0/x;
     else
         return 1.0;
+}
+
+double getCartInterpWeight(const double *x)
+{
+    return 0.0;
 }
