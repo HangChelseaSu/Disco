@@ -2,6 +2,7 @@
 #include "paul.h"
 #include "hydro.h"
 #include "profiler.h"
+#include "analysis.h"
 
 void AMR( struct domain * ); 
 void move_BCs( struct domain * , double );
@@ -95,6 +96,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    if( first_step ) set_wcell( theDomain );
 
    adjust_RK_cons( theDomain , RK );
+   adjust_RK_diag( theDomain , RK );
    adjust_RK_planets_aux( theDomain , RK );
 
    //Reconstruction

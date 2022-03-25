@@ -4,6 +4,7 @@
 #include "geometry.h"
 #include "hydro.h"
 #include "omega.h"
+#include "analysis.h"
 
 
 int num_diagnostics( void );
@@ -47,8 +48,24 @@ void setupDomain( struct domain * theDomain ){
    theDomain->num_tools = num_tools;
    theDomain->theTools.t_avg = 0.0;
    theDomain->theTools.Qrz = (double *) malloc( Nr*Nz*num_tools*sizeof(double) );
-   int i;
-   for( i=0 ; i<Nr*Nz*num_tools ; ++i ) theDomain->theTools.Qrz[i] = 0.0;
+   theDomain->theTools.F_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                               * sizeof(double));
+   theDomain->theTools.Fvisc_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                   * sizeof(double));
+   theDomain->theTools.RK_F_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                  * sizeof(double));
+   theDomain->theTools.RK_Fvisc_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                      * sizeof(double));
+   theDomain->theTools.F_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                               * sizeof(double));
+   theDomain->theTools.Fvisc_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                   * sizeof(double));
+   theDomain->theTools.RK_F_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                  * sizeof(double));
+   theDomain->theTools.RK_Fvisc_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                      * sizeof(double));
+
+   zero_diagnostics(theDomain);
 
     //Setup independent of node layout: pick the right rand()'s
     double Pmax = theDomain->phi_max;
@@ -59,6 +76,7 @@ void setupDomain( struct domain * theDomain ){
         for(j=0; j<theDomain->Nr_glob; j++)
             rand();
 
+    int i;
     for( k=0 ; k<Nz ; ++k )
     {
         //Discard randoms from inner (global) annuli
@@ -275,7 +293,17 @@ void freeDomain( struct domain * theDomain ){
    theDomain->z_kph--;
    free( theDomain->z_kph );
    free( theDomain->thePlanets );
+
    free( theDomain->theTools.Qrz );
+   free( theDomain->theTools.F_r );
+   free( theDomain->theTools.Fvisc_r );
+   free( theDomain->theTools.F_z );
+   free( theDomain->theTools.Fvisc_z );
+   free( theDomain->theTools.RK_F_r );
+   free( theDomain->theTools.RK_Fvisc_r );
+   free( theDomain->theTools.RK_F_z );
+   free( theDomain->theTools.RK_Fvisc_z );
+
    free( theDomain->fIndex_r );
    free( theDomain->fIndex_z );
 

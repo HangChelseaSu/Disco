@@ -1,8 +1,8 @@
 #include "paul.h"
+#include "analysis.h"
 
 void planet_RK_copy( struct planet * );
 void onestep( struct domain * , double , double , int , int , double );
-void add_diagnostics( struct domain * , double );
 
 void timestep( struct domain * theDomain , double dt ){
    
@@ -22,6 +22,8 @@ void timestep( struct domain * theDomain , double dt ){
          memcpy( c->RK_Phi , c->Phi  , NUM_FACES*sizeof(double) );
       }
    }
+
+   copy_RK_diag(theDomain);
    for( p=0 ; p<Npl ; ++p ){
       planet_RK_copy( theDomain->thePlanets + p );
    }

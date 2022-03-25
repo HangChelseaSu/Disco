@@ -1,6 +1,7 @@
 
 #include "../paul.h"
 #include <hdf5.h>
+#include "analysis.h"
 
 void createFile( char * fname ){
    hid_t h5file = H5Fcreate( fname , H5F_ACC_TRUNC , H5P_DEFAULT , H5P_DEFAULT );
@@ -366,9 +367,6 @@ double get_dV( double * , double * );
 void prim2cons( double * , double * , double *, double );
 void cons2prim( double * , double * , double *, double );
 
-void zero_diagnostics( struct domain * );
-void avg_diagnostics( struct domain * );
-
 void output( struct domain * theDomain , char * filestart ){
 
    struct cell ** theCells = theDomain->theCells;
@@ -456,6 +454,17 @@ void output( struct domain * theDomain , char * filestart ){
       createDataset(filename,"Data","Planets",2,fdims2,H5T_NATIVE_DOUBLE);
       hsize_t fdims3[3] = {Nz_Tot, Nr_Tot, Ntools};
       createDataset(filename,"Data","Diagnostics",3,fdims3,H5T_NATIVE_DOUBLE);
+      
+      hsize_t fdims3_fr[3] = {Nz_Tot, Nr_Tot-1, NUM_Q};
+      createDataset(filename, "Data", "FluxHydroAvgR", 3, fdims3_fr,
+                    H5T_NATIVE_DOUBLE);
+      createDataset(filename, "Data", "FluxViscAvgR", 3, fdims3_fr,
+                    H5T_NATIVE_DOUBLE);
+      hsize_t fdims3_fz[3] = {Nz_Tot-1, Nr_Tot, NUM_Q};
+      createDataset(filename, "Data", "FluxHydroAvgZ", 3, fdims3_fz,
+                    H5T_NATIVE_DOUBLE);
+      createDataset(filename, "Data", "FluxViscAvgZ", 3, fdims3_fz,
+                    H5T_NATIVE_DOUBLE);
    }
 #if USE_MPI
    MPI_Barrier( theDomain->theComm );
@@ -509,14 +518,42 @@ void output( struct domain * theDomain , char * filestart ){
    if( Nr_Tot == 1 ){ j0 = 0; jSum = 1; }
    if( Nz_Tot == 1 ){ k0 = 0; kSum = 1; }
 
+   int jFrMin = jmin;
+   int jFrMax = jmax;
+   if(dim_rank[0] == dim_size[0]-1) jFrMax = jmax-1;
+   int jFrSize = jFrMax-jFrMin;
+
+   int kFzMin = kmin;
+   int kFzMax = kmax;
+   if(dim_rank[1] == dim_size[1]-1) kFzMax = kmax-1;
+   int kFzSize = kFzMax-kFzMin;
+
 
    int * Index   = (int *) malloc( jSize*kSize*sizeof(int) );
    int * Size    = (int *) malloc( jSize*kSize*sizeof(int) );
    int * Id_phi0 = (int *) malloc( jSize*kSize*sizeof(int) );
    double * diagRZwrite = (double *) malloc( jSize*kSize*Ntools*sizeof(double) );
+   double *fluxRwrite = NULL; 
+   double *fluxViscRwrite = NULL;
+   double *fluxZwrite = NULL; 
+   double *fluxViscZwrite = NULL;
+   if(jFrSize > 0)
+   {
+       fluxRwrite = (double *)malloc(jFrSize*kSize*NUM_Q*sizeof(double));
+       fluxViscRwrite = (double *)malloc(jFrSize*kSize*NUM_Q*sizeof(double));
+   }
+   if(kFzSize > 0)
+   {
+       fluxZwrite = (double *)malloc(jSize*kFzSize*NUM_Q*sizeof(double));
+       fluxViscZwrite = (double *)malloc(jSize*kFzSize*NUM_Q*sizeof(double));
+   }
    double * Qwrite = (double *) malloc( myNtot*Ndoub*sizeof(double) );
 
    double *Qrz = theDomain->theTools.Qrz;
+   double *F_r = theDomain->theTools.F_r;
+   double *Fvisc_r = theDomain->theTools.Fvisc_r;
+   double *F_z = theDomain->theTools.F_z;
+   double *Fvisc_z = theDomain->theTools.Fvisc_z;
 
 
    int index = 0;
@@ -541,6 +578,29 @@ void output( struct domain * theDomain , char * filestart ){
          }
          Id_phi0[jk] = Id;
       }
+   }
+
+   for(k=kmin; k<kmax; k++) {
+       for(j=jFrMin; j<jFrMax; j++) {
+           int jk = k*(Nr-1) + j;
+           int jk_w = (k-kmin)*jFrSize + j-jFrMin;
+           for(q=0; q<NUM_Q; q++)
+           {
+               fluxRwrite[NUM_Q*jk_w + q] = F_r[NUM_Q*jk + q];
+               fluxViscRwrite[NUM_Q*jk_w + q] = Fvisc_r[NUM_Q*jk + q];
+           }
+       }
+   }
+   for(k=kFzMin; k<kFzMax; k++) {
+       for(j=jmin; j<jmax; j++) {
+           int jk = k*Nr + j;
+           int jk_w = (k-kFzMin)*jSize + j-jmin;
+           for(q=0; q<NUM_Q; q++)
+           {
+               fluxZwrite[NUM_Q*jk_w + q] = F_z[NUM_Q*jk + q];
+               fluxViscZwrite[NUM_Q*jk_w + q] = Fvisc_z[NUM_Q*jk + q];
+           }
+       }
    }
 
    int runningTot = 0;
@@ -575,10 +635,46 @@ void output( struct domain * theDomain , char * filestart ){
          writePatch( filename , "Grid" , "Index"   , Index   , H5T_NATIVE_INT , 2 , start2 , loc_size2 , glo_size2 );
          writePatch( filename , "Grid" , "Np"      , Size    , H5T_NATIVE_INT , 2 , start2 , loc_size2 , glo_size2 );
          writePatch( filename , "Grid" , "Id_phi0" , Id_phi0 , H5T_NATIVE_INT , 2 , start2 , loc_size2 , glo_size2 );
+         // RZ Diagnostics
          int start3[3] = {k0, j0, 0};
          int loc_size3[3] = {kSize, jSize, Ntools};
          int glo_size3[3] = {Nz_Tot, Nr_Tot, Ntools};
          writePatch( filename , "Data" , "Diagnostics" , diagRZwrite , H5T_NATIVE_DOUBLE , 3 , start3 , loc_size3 , glo_size3 );
+         
+         // Flux Diagnostics
+         if(jFrSize > 0)
+         {
+             start3[0] = k0;
+             start3[1] = j0;
+             start3[2] = 0;
+             loc_size3[0] = kSize;
+             loc_size3[1] = jFrSize;
+             loc_size3[2] = NUM_Q;
+             glo_size3[0] = Nz_Tot;
+             glo_size3[1] = Nr_Tot-1;
+             glo_size3[2] = NUM_Q;
+             writePatch(filename, "Data", "FluxHydroAvgR", fluxRwrite,
+                        H5T_NATIVE_DOUBLE, 3, start3, loc_size3, glo_size3);
+             writePatch(filename, "Data", "FluxViscAvgR", fluxViscRwrite,
+                        H5T_NATIVE_DOUBLE, 3 , start3, loc_size3, glo_size3);
+         }
+         
+         if(kFzSize > 0)
+         {
+             start3[0] = k0;
+             start3[1] = j0;
+             start3[2] = 0;
+             loc_size3[0] = kFzSize;
+             loc_size3[1] = jSize;
+             loc_size3[2] = NUM_Q;
+             glo_size3[0] = Nz_Tot-1;
+             glo_size3[1] = Nr_Tot;
+             glo_size3[2] = NUM_Q;
+             writePatch(filename, "Data", "FluxHydroAvgZ", fluxZwrite,
+                        H5T_NATIVE_DOUBLE, 3, start3, loc_size3, glo_size3);
+             writePatch(filename, "Data", "FluxViscAvgZ", fluxViscZwrite ,
+                        H5T_NATIVE_DOUBLE, 3, start3, loc_size3, glo_size3 );
+         }
 
          //Write 1D Radial Data
          if( dim_rank[1] == 0 ){

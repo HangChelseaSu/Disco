@@ -118,6 +118,72 @@ def loadDiagRZ(filename):
     return t, r, z, diag, rjph, zkph
 
 
+def loadFluxR(filename):
+
+    f = h5.File(filename, "r")
+
+    t = f['Grid']['T'][0]
+    rjph = f['Grid']['r_jph'][...]
+    zkph = f['Grid']['z_kph'][...]
+    fluxHydro = f['Data']['FluxHydroAvgR'][...]
+    fluxVisc = f['Data']['FluxViscAvgR'][...]
+
+    f.close()
+
+    Nr = rjph.shape[0]-1
+    Nz = zkph.shape[0]-1
+
+    if Nr == 1:
+        print("No radial faces for fluxes")
+        return None
+
+    opts = loadOpts(filename)
+    dt = 1.0
+
+    Z = dg.getCentroid(zkph[:-1], zkph[1:], 2, opts)
+
+    r = np.empty((Nz, Nr-1))
+    z = np.empty((Nz, Nr-1))
+
+    r[:, :] = rjph[None, 1:-1]
+    z[:, :] = Z[:, None]
+
+    return t, r, z, fluxHydro, fluxVisc, dt, rjph, zkph
+
+
+def loadFluxZ(filename):
+
+    f = h5.File(filename, "r")
+
+    t = f['Grid']['T'][0]
+    rjph = f['Grid']['r_jph'][...]
+    zkph = f['Grid']['z_kph'][...]
+    fluxHydro = f['Data']['FluxHydroAvgZ'][...]
+    fluxVisc = f['Data']['FluxViscAvgZ'][...]
+
+    f.close()
+
+    Nr = rjph.shape[0]-1
+    Nz = zkph.shape[0]-1
+
+    if Nz == 1:
+        print("No z-faces for fluxes")
+        return None
+
+    opts = loadOpts(filename)
+    dt = 1.0
+
+    R = dg.getCentroid(rjph[:-1], rjph[1:], 1, opts)
+
+    r = np.empty((Nz-1, Nr))
+    z = np.empty((Nz-1, Nr))
+
+    r[:, :] = R[None, :]
+    z[:, :] = zkph[1:-1, None]
+
+    return t, r, z, fluxHydro, fluxVisc, dt, rjph, zkph
+
+
 def plotAx(ax, x, y, xscale, yscale, xlabel, ylabel, *args, **kwargs):
     ax.plot(x, y, *args, **kwargs)
     if xlabel is not None:

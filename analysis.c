@@ -1,10 +1,7 @@
 
 #include "paul.h"
 #include "geometry.h"
-
-int num_diagnostics(void);
-void get_diagnostics( double * x , double * prim , double * Qrz, 
-                        struct domain * theDomain );
+#include "analysis.h"
 
 void zero_diagnostics( struct domain * theDomain ){
 
@@ -13,15 +10,41 @@ void zero_diagnostics( struct domain * theDomain ){
    int Nq = theDomain->num_tools;
    struct diagnostic_avg * theTools = &(theDomain->theTools);
 
-   int i,k,q;
+   int j,k,q;
    for( k=0 ; k<Nz ; ++k ){
-      for( i=0 ; i<Nr ; ++i ){
+      for( j=0 ; j<Nr ; ++j ){
          for( q=0 ; q<Nq ; ++q ){
-            int iq = k*Nr*Nq + i*Nq + q;
+            int iq = k*Nr*Nq + j*Nq + q;
                theTools->Qrz[iq] = 0.0;
          }
       }
    }
+   
+   for( k=0 ; k<Nz ; ++k ){
+      for( j=0 ; j<Nr-1 ; ++j ){
+         int jk = k*(Nr-1) + j;
+         for( q=0 ; q<NUM_Q ; ++q ){
+               int iq = NUM_Q*jk + q;
+               theTools->F_r[iq] = 0.0;
+               theTools->Fvisc_r[iq] = 0.0;
+               theTools->RK_F_r[iq] = 0.0;
+               theTools->RK_Fvisc_r[iq] = 0.0;
+         }
+      }
+   }
+   for( k=0 ; k<Nz-1 ; ++k ){
+      for( j=0 ; j<Nr ; ++j ){
+         int jk = k*Nr + j;
+         for( q=0 ; q<NUM_Q ; ++q ){
+               int iq = NUM_Q*jk + q;
+               theTools->F_z[iq] = 0.0;
+               theTools->Fvisc_z[iq] = 0.0;
+               theTools->RK_F_z[iq] = 0.0;
+               theTools->RK_Fvisc_z[iq] = 0.0;
+         }
+      }
+   }
+   
    theTools->t_avg = 0.0;
 
 }
@@ -34,18 +57,97 @@ void avg_diagnostics( struct domain * theDomain ){
    struct diagnostic_avg * theTools = &(theDomain->theTools);
    double dt = theTools->t_avg;
 
-   int i,k,q; 
+   int j,k,q; 
    for(k=0; k<Nz; k++){
-      for( i=0 ; i<Nr ; ++i ){
+      for( j=0 ; j<Nr ; ++j ){
          for( q=0 ; q<Nq ; ++q ){
-            int iq = k*Nq*Nr + i*Nq + q; 
+            int iq = k*Nq*Nr + j*Nq + q; 
             theTools->Qrz[iq] /= dt; 
+         }
+      }
+   }
+
+   for(k=0; k<Nz; k++){
+      for( j=0 ; j<Nr-1 ; ++j ){
+         int jk = k*(Nr-1) + j;
+         for( q=0 ; q<NUM_Q ; ++q ){
+            int iq = NUM_Q*jk + q; 
+            theTools->F_r[iq] /= dt; 
+            theTools->Fvisc_r[iq] /= dt; 
+         }
+      }
+   }
+
+   for(k=0; k<Nz-1; k++){
+      for( j=0 ; j<Nr ; ++j ){
+         int jk = k*Nr + j;
+         for( q=0 ; q<NUM_Q ; ++q ){
+            int iq = NUM_Q*jk + q; 
+            theTools->F_z[iq] /= dt; 
+            theTools->Fvisc_z[iq] /= dt; 
          }
       }
    }
        
    theTools->t_avg = 0.0; 
 
+}
+
+void adjust_RK_diag(struct domain *theDomain, double RK)
+{
+    int Nr = theDomain->Nr;
+    int Nz = theDomain->Nz;
+    struct diagnostic_avg * theTools = &(theDomain->theTools);
+    int j,k,q; 
+
+    for(k=0; k<Nz; k++){
+        for( j=0 ; j<Nr-1 ; ++j ){
+            int jk = k*(Nr-1) + j;
+            for( q=0 ; q<NUM_Q ; ++q ){
+                int iq = NUM_Q*jk + q; 
+                theTools->F_r[iq] = (1-RK)*theTools->F_r[iq]
+                                    + RK*theTools->RK_F_r[iq]; 
+                theTools->Fvisc_r[iq] = (1-RK)*theTools->Fvisc_r[iq]
+                                        + RK*theTools->RK_Fvisc_r[iq]; 
+            }
+        }
+    }
+
+    for(k=0; k<Nz-1; k++){
+        for( j=0 ; j<Nr; ++j ){
+            int jk = k*Nr + j;
+            for( q=0 ; q<NUM_Q ; ++q ){
+                int iq = NUM_Q*jk + q; 
+                theTools->F_z[iq] = (1-RK)*theTools->F_z[iq]
+                                    + RK*theTools->RK_F_z[iq]; 
+                theTools->Fvisc_z[iq] = (1-RK)*theTools->Fvisc_z[iq]
+                                        + RK*theTools->RK_Fvisc_z[iq]; 
+            }
+        }
+    }
+}
+
+void copy_RK_diag(struct domain *theDomain)
+{
+    int Nr = theDomain->Nr;
+    int Nz = theDomain->Nz;
+    struct diagnostic_avg * theTools = &(theDomain->theTools);
+
+    if(Nr > 1)
+    {
+        memcpy(theTools->RK_F_r, theTools->F_r,
+               Nz*(Nr-1)*NUM_Q*sizeof(double));
+        memcpy(theTools->RK_Fvisc_r, theTools->Fvisc_r,
+               Nz*(Nr-1)*NUM_Q*sizeof(double));
+    }
+
+    if(Nz > 1)
+    {
+        memcpy(theTools->RK_F_z, theTools->F_z,
+               (Nz-1)*Nr*NUM_Q*sizeof(double));
+        memcpy(theTools->RK_Fvisc_z, theTools->Fvisc_z,
+               (Nz-1)*Nr*NUM_Q*sizeof(double));
+    }
 }
 
 

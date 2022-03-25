@@ -37,7 +37,8 @@ void solve_riemann( const double * , const double * ,
                     const double * , const double * , const double *,
                     const double * , const double * , const double *,
                     const double *, double , double , int ,
-                    double * , double * , double * , double * );
+                    double * , double * , double * , double * ,
+                    double *, double *);
 
 void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
                 const double *xp, const double *xm, double dAdt ){
@@ -83,7 +84,7 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
                  cL->gradr, gradp, cL->gradz,
                  cR->gradr, gradp, cR->gradz,
                  x , n , xp, xm, hn*cL->wiph , dAdt , 0 ,
-                 &Ez , &Br , &Er , &Bz );
+                 &Ez , &Br , &Er , &Bz , NULL, NULL);
    /*
    solve_riemann(primL , primR , cL->cons , cR->cons ,
                  cL->gradr, cL->gradp, cL->gradz,
@@ -133,7 +134,8 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
 }
 
 void riemann_trans( struct face * F , double dt , int dim , double rp,
-                    double rm, double zp, double zm){
+                    double rm, double zp, double zm,
+                    double *fdAdt_hydro, double *fdAdt_visc){
 
    struct cell * cL = F->L;
    struct cell * cR = F->R;
@@ -214,13 +216,15 @@ void riemann_trans( struct face * F , double dt , int dim , double rp,
                     grad, cL->gradp, cL->gradz,
                     grad, cR->gradp, cR->gradz,
                     F->cm , n , xp, xm, 0.0 , dAdt , dim ,
-                    &Erz , &Brz , &Ephi, NULL );
+                    &Erz , &Brz , &Ephi, NULL ,
+                    fdAdt_hydro, fdAdt_visc);
    else
       solve_riemann(primL , primR , cL->cons , cR->cons ,
                     cL->gradr, cL->gradp, grad,
                     cR->gradr, cR->gradp, grad,
                     F->cm , n , xp, xm, 0.0 , dAdt , dim ,
-                    &Erz , &Brz , &Ephi, NULL );
+                    &Erz , &Brz , &Ephi, NULL,
+                    fdAdt_hydro, fdAdt_visc);
  
    double fracL = F->dphi / cL->dphi;
    double fracR = F->dphi / cR->dphi;
@@ -277,7 +281,8 @@ void solve_riemann(const double *primL, const double *primR,
                    double w, double dAdt, 
                    int dim,
                    double *E1_riemann, double *B1_riemann,
-                   double *E2_riemann, double *B2_riemann)
+                   double *E2_riemann, double *B2_riemann,
+                   double *fdAdt_hydro, double *fdAdt_visc)
 {
 
    int q;
@@ -349,8 +354,8 @@ void solve_riemann(const double *primL, const double *primR,
       get_Ustar_HLLD( w , primL , primR , Flux , Ustr , x , n );
    }
 
+   double vFlux[NUM_Q] = {0};
    if( visc_flag ){
-      double vFlux[NUM_Q];
       double prim[NUM_Q];
       double gradr[NUM_Q];
       double gradp[NUM_Q];
@@ -363,12 +368,23 @@ void solve_riemann(const double *primL, const double *primR,
          vFlux[q] = 0.0;
       }
       visc_flux(prim, gradr, gradp, gradz, vFlux, x, n);
-      for( q=0 ; q<NUM_Q ; ++q ) Flux[q] += vFlux[q];
    }
 
    for( q=0 ; q<NUM_Q ; ++q ){
-      consL[q] -= (Flux[q] - w*Ustr[q])*dAdt;
-      consR[q] += (Flux[q] - w*Ustr[q])*dAdt;
+      consL[q] -= (Flux[q] + vFlux[q] - w*Ustr[q])*dAdt;
+      consR[q] += (Flux[q] + vFlux[q] - w*Ustr[q])*dAdt;
+   }
+
+   if(fdAdt_hydro != NULL)
+   {
+      for( q=0 ; q<NUM_Q ; ++q )
+         fdAdt_hydro[q] = (Flux[q] - w*Ustr[q])*dAdt;
+   }
+
+   if(fdAdt_visc != NULL)
+   {
+      for( q=0 ; q<NUM_Q ; ++q )
+         fdAdt_visc[q] = vFlux[q]*dAdt;
    }
 
    flux_to_E( Flux , Ustr , x , E1_riemann , B1_riemann , E2_riemann , B2_riemann , dim );

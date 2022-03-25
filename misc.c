@@ -438,7 +438,7 @@ void phi_flux( struct domain * theDomain , double dt ){
 
 void buildfaces( struct domain * , int , int );
 void riemann_trans( struct face * , double , int , double, double, double,
-                   double);
+                   double, double *, double *);
 
 void trans_flux( struct domain * theDomain , double dt , int dim ){
 
@@ -463,6 +463,9 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
     int *fI;
     struct face * theFaces;
 
+    double *fhydro_diag;
+    double *fvisc_diag;
+
     if( dim==1 )
     {
         fI = theDomain->fIndex_r;
@@ -481,6 +484,9 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
             kmin = NgZa;
             kmax = Nz-NgZb;
         }
+
+        fhydro_diag = theDomain->theTools.F_r;
+        fvisc_diag = theDomain->theTools.Fvisc_r;
     }
     else
     {
@@ -499,10 +505,13 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
         }
         kmin = NgZa==0 ? 0  : NgZa-1;
         kmax = NgZb==0 ? Nz-1 : Nz-NgZb;
+        
+        fhydro_diag = theDomain->theTools.F_z;
+        fvisc_diag = theDomain->theTools.Fvisc_z;
     }
 
 
-    int j, k;
+    int j, k, q;
     for(k=kmin; k<kmax; k++)
     {
         double zm, zp;
@@ -524,7 +533,18 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
             int JK = j + Nfr*k;
             int f;
             for(f=fI[JK]; f<fI[JK+1]; f++)
-                riemann_trans(theFaces + f, dt, dim, rp, rm, zp, zm);
+            {
+                double fdAdt_hydro[NUM_Q];
+                double fdAdt_visc[NUM_Q];
+                riemann_trans(theFaces + f, dt, dim, rp, rm, zp, zm,
+                              fdAdt_hydro, fdAdt_visc);
+
+                for(q=0; q<NUM_Q; q++)
+                {
+                    fhydro_diag[NUM_Q*JK+q] += fdAdt_hydro[q];
+                    fvisc_diag[NUM_Q*JK+q] += fdAdt_visc[q];
+                }
+            }
         }
     }
 
