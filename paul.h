@@ -157,6 +157,7 @@ struct param_list{
 
 struct diagnostic_avg{
    double * Qrz;
+   
    double * F_r;
    double * F_z;
    double * Fvisc_r;
@@ -165,6 +166,21 @@ struct diagnostic_avg{
    double * RK_F_z;
    double * RK_Fvisc_r;
    double * RK_Fvisc_z;
+
+   double * S;
+   double * Sgrav;
+   double * Svisc;
+   double * Ssink;
+   double * Scool;
+   double * Sdamp;
+
+   double * RK_S;
+   double * RK_Sgrav;
+   double * RK_Svisc;
+   double * RK_Ssink;
+   double * RK_Scool;
+   double * RK_Sdamp;
+
    double t_avg;
 };
 

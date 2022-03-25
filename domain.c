@@ -64,6 +64,19 @@ void setupDomain( struct domain * theDomain ){
                                                   * sizeof(double));
    theDomain->theTools.RK_Fvisc_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
                                                       * sizeof(double));
+   
+   theDomain->theTools.S = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Sgrav = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Svisc = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Ssink = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Scool = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Sdamp = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.RK_S = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.RK_Sgrav = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Svisc = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Ssink = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Scool = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Sdamp = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
 
    zero_diagnostics(theDomain);
 
@@ -303,6 +316,19 @@ void freeDomain( struct domain * theDomain ){
    free( theDomain->theTools.RK_Fvisc_r );
    free( theDomain->theTools.RK_F_z );
    free( theDomain->theTools.RK_Fvisc_z );
+   
+   free( theDomain->theTools.S );
+   free( theDomain->theTools.Sgrav );
+   free( theDomain->theTools.Svisc );
+   free( theDomain->theTools.Ssink );
+   free( theDomain->theTools.Scool );
+   free( theDomain->theTools.Sdamp );
+   free( theDomain->theTools.RK_S );
+   free( theDomain->theTools.RK_Sgrav );
+   free( theDomain->theTools.RK_Svisc );
+   free( theDomain->theTools.RK_Ssink );
+   free( theDomain->theTools.RK_Scool );
+   free( theDomain->theTools.RK_Sdamp );
 
    free( theDomain->fIndex_r );
    free( theDomain->fIndex_z );

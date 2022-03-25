@@ -184,6 +184,41 @@ def loadFluxZ(filename):
     return t, r, z, fluxHydro, fluxVisc, dt, rjph, zkph
 
 
+def loadSource(filename):
+
+    f = h5.File(filename, "r")
+
+    t = f['Grid']['T'][0]
+    rjph = f['Grid']['r_jph'][...]
+    zkph = f['Grid']['z_kph'][...]
+    srcHydro = f['Data']['SourceHydroAvg'][...]
+    srcGrav = f['Data']['SourceGravAvg'][...]
+    srcVisc = f['Data']['SourceViscAvg'][...]
+    srcSink = f['Data']['SourceSinkAvg'][...]
+    srcCool = f['Data']['SourceCoolAvg'][...]
+    srcDamp = f['Data']['SourceDampAvg'][...]
+
+    f.close()
+
+    Nr = rjph.shape[0]-1
+    Nz = zkph.shape[0]-1
+
+    opts = loadOpts(filename)
+    dt = 1.0
+
+    R = dg.getCentroid(rjph[:-1], rjph[1:], 1, opts)
+    Z = dg.getCentroid(zkph[:-1], zkph[1:], 2, opts)
+
+    r = np.empty((Nz, Nr))
+    z = np.empty((Nz, Nr))
+
+    r[:, :] = R[None, :]
+    z[:, :] = Z[:, None]
+
+    return t, r, z, srcHydro, srcGrav, srcVisc, srcSink, srcCool, srcDamp,\
+            dt, rjph, zkph
+
+
 def plotAx(ax, x, y, xscale, yscale, xlabel, ylabel, *args, **kwargs):
     ax.plot(x, y, *args, **kwargs)
     if xlabel is not None:

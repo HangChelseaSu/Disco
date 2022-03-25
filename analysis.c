@@ -44,6 +44,27 @@ void zero_diagnostics( struct domain * theDomain ){
          }
       }
    }
+
+   for(k=0; k<Nz; k++) {
+       for(j=0; j<Nr; j++) {
+           int jk = k*Nr + j;
+           for(q=0; q<NUM_Q; q++) {
+               int iq = NUM_Q*jk + q;
+               theTools->S[iq] = 0.0;
+               theTools->Sgrav[iq] = 0.0;
+               theTools->Svisc[iq] = 0.0;
+               theTools->Ssink[iq] = 0.0;
+               theTools->Scool[iq] = 0.0;
+               theTools->Sdamp[iq] = 0.0;
+               theTools->RK_S[iq] = 0.0;
+               theTools->RK_Sgrav[iq] = 0.0;
+               theTools->RK_Svisc[iq] = 0.0;
+               theTools->RK_Ssink[iq] = 0.0;
+               theTools->RK_Scool[iq] = 0.0;
+               theTools->RK_Sdamp[iq] = 0.0;
+           }
+       }
+   }
    
    theTools->t_avg = 0.0;
 
@@ -88,6 +109,21 @@ void avg_diagnostics( struct domain * theDomain ){
          }
       }
    }
+
+   for(k=0; k<Nz; k++){
+       for(j=0; j<Nr; j++){
+           int jk = k*Nr + j;
+           for(q=0; q<NUM_Q; q++) {
+               int iq = NUM_Q*jk + q;
+               theTools->S[iq] /= dt;
+               theTools->Sgrav[iq] /= dt;
+               theTools->Svisc[iq] /= dt;
+               theTools->Ssink[iq] /= dt;
+               theTools->Scool[iq] /= dt;
+               theTools->Sdamp[iq] /= dt;
+           }
+       }
+   }
        
    theTools->t_avg = 0.0; 
 
@@ -125,6 +161,26 @@ void adjust_RK_diag(struct domain *theDomain, double RK)
             }
         }
     }
+    for(k=0; k<Nz; k++) {
+        for(j=0; j<Nr; j++) {
+            int jk = k*Nr + j;
+            for( q=0 ; q<NUM_Q ; ++q ){
+                int iq = NUM_Q*jk + q; 
+                theTools->S[iq] = (1-RK) * theTools->S[iq]
+                                    + RK * theTools->RK_S[iq];
+                theTools->Sgrav[iq] = (1-RK) * theTools->Sgrav[iq]
+                                        + RK * theTools->RK_Sgrav[iq];
+                theTools->Svisc[iq] = (1-RK) * theTools->Svisc[iq]
+                                        + RK * theTools->RK_Svisc[iq];
+                theTools->Ssink[iq] = (1-RK) * theTools->Ssink[iq]
+                                        + RK * theTools->RK_Ssink[iq];
+                theTools->Scool[iq] = (1-RK) * theTools->Scool[iq]
+                                        + RK * theTools->RK_Scool[iq];
+                theTools->Sdamp[iq] = (1-RK) * theTools->Sdamp[iq]
+                                        + RK * theTools->RK_Sdamp[iq];
+            }
+        }
+    }
 }
 
 void copy_RK_diag(struct domain *theDomain)
@@ -148,6 +204,13 @@ void copy_RK_diag(struct domain *theDomain)
         memcpy(theTools->RK_Fvisc_z, theTools->Fvisc_z,
                (Nz-1)*Nr*NUM_Q*sizeof(double));
     }
+
+    memcpy(theTools->RK_S, theTools->S, Nr*Nz*NUM_Q*sizeof(double));
+    memcpy(theTools->RK_Sgrav, theTools->Sgrav, Nr*Nz*NUM_Q*sizeof(double));
+    memcpy(theTools->RK_Svisc, theTools->Svisc, Nr*Nz*NUM_Q*sizeof(double));
+    memcpy(theTools->RK_Ssink, theTools->Ssink, Nr*Nz*NUM_Q*sizeof(double));
+    memcpy(theTools->RK_Scool, theTools->Scool, Nr*Nz*NUM_Q*sizeof(double));
+    memcpy(theTools->RK_Sdamp, theTools->Sdamp, Nr*Nz*NUM_Q*sizeof(double));
 }
 
 

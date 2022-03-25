@@ -614,19 +614,40 @@ void add_source( struct domain * theDomain , double dt ){
             double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
             double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
             double dV = get_dV(xp,xm);
+
+            double sdVdt_hydro[NUM_Q] = {0};
+            double sdVdt_grav[NUM_Q] = {0};
+            double sdVdt_visc[NUM_Q] = {0};
+            double sdVdt_sink[NUM_Q] = {0};
+            double sdVdt_cool[NUM_Q] = {0};
+            double sdVdt_damp[NUM_Q] = {0};
             
-            source( c->prim , c->cons , xp , xm , dV*dt  );
+            source( c->prim , sdVdt_hydro, xp , xm , dV*dt  );
             
             for( p=0 ; p<Npl ; ++p ){
-               planet_src( thePlanets+p , c->prim , c->cons , xp , xm , dV*dt );
+               planet_src( thePlanets+p , c->prim , sdVdt_grav , xp , xm , dV*dt );
             }
             if(visc_flag)
-                visc_source( c->prim, c->gradr, c->gradp, c->gradz, c->cons,
+                visc_source( c->prim, c->gradr, c->gradp, c->gradz, sdVdt_visc,
                             xp, xm, dV*dt);
-            omega_src( c->prim , c->cons , xp , xm , dV*dt );
-            sink_src( c->prim , c->cons , xp , xm , dV, dt );
-            cooling( c->prim , c->cons , xp , xm , dV, dt );
-            damping( c->prim , c->cons , xp , xm , dV, dt );
+            omega_src( c->prim , sdVdt_hydro , xp , xm , dV*dt );
+            sink_src( c->prim , sdVdt_sink , xp , xm , dV, dt );
+            cooling( c->prim , sdVdt_cool , xp , xm , dV, dt );
+            damping( c->prim , sdVdt_damp , xp , xm , dV, dt );
+
+            int q;
+            for(q=0; q<NUM_Q; q++)
+            {
+                c->cons[q] += sdVdt_hydro[q] + sdVdt_grav[q] + sdVdt_visc[q]
+                              + sdVdt_sink[q] + sdVdt_cool[q] + sdVdt_damp[q];
+                int iq = NUM_Q*jk + q;
+                theDomain->theTools.S[iq] += sdVdt_hydro[q];
+                theDomain->theTools.Sgrav[iq] += sdVdt_grav[q];
+                theDomain->theTools.Svisc[iq] += sdVdt_visc[q];
+                theDomain->theTools.Ssink[iq] += sdVdt_sink[q];
+                theDomain->theTools.Scool[iq] += sdVdt_cool[q];
+                theDomain->theTools.Sdamp[iq] += sdVdt_damp[q];
+            }
          }    
       }    
    }   
