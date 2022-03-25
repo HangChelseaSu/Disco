@@ -1,7 +1,7 @@
 
 #include "../paul.h"
 #include <hdf5.h>
-#include "analysis.h"
+#include "../analysis.h"
 
 void createFile( char * fname ){
    hid_t h5file = H5Fcreate( fname , H5F_ACC_TRUNC , H5P_DEFAULT , H5P_DEFAULT );
