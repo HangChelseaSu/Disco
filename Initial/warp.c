@@ -9,14 +9,14 @@ static double gam  = 0.0;
 static double nu   = 0.0;
 static double Mach = 0.0;
 static double eps = 0.0;
-static int alpha_flag = 0;
+
+double get_nu( const double *, const double *);
 
 void setICparams( struct domain * theDomain ){
    gam  = theDomain->theParList.Adiabatic_Index;
    nu   = theDomain->theParList.viscosity;
    Mach = theDomain->theParList.Disk_Mach;
    eps = theDomain->theParList.grav_eps;
-   alpha_flag = theDomain->theParList.alpha_flag;
    r0 =0.5*(r1+r2);
 }
 
@@ -48,8 +48,7 @@ void initial( double * prim , double * x ){
   double xi = sqrt(ds*ds+dz*dz);
 
   double cs2 = get_cs2(x);
-  double visc = nu;
-  if (alpha_flag == 1) visc = nu*cs2/omega;
+  double visc = get_nu(x, prim);
   double sigma = 1.0/visc;
   double h = sqrt(2.0*cs2)/omega
 

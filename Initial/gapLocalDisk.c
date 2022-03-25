@@ -1,8 +1,8 @@
 #include "../paul.h"
+#include "../omega.h"
 
 static double gam = 0.0;
 static double visc = 0.0;
-static int alpha_flag = 0;
 static struct planet *thePlanets = NULL;
 static double Mach = 0.0;
 static int Npl = 0;
@@ -18,6 +18,7 @@ static double a = 1.0;
 static double om_bary = 0.0;
 
 double get_cs2(double *);
+double get_nu(double *, double *);
 double phigrav( double , double , double , int); //int here is type
 double fgrav( double , double , double , int);
 
@@ -25,19 +26,14 @@ void setICparams( struct domain * theDomain )
 {
     gam = theDomain->theParList.Adiabatic_Index;
     visc = theDomain->theParList.viscosity;
-    alpha_flag = theDomain->theParList.alpha_flag;
     Mach = theDomain->theParList.Disk_Mach;
     massq = theDomain->theParList.Mass_Ratio;
     thePlanets = theDomain->thePlanets;
     Npl = theDomain->Npl;
     epsfl = theDomain->theParList.Density_Floor;
 
-    //a = theDomain->theParList.RotD; //only true for  q->0
     om_bary = theDomain->theParList.RotOmega;
 
-
-    //xi = theDomain->theParList.initPar1;
-    //rin = theDomain->theParList.initPar2;
     rin = 2.0*theDomain->theParList.initPar2;
     redge = theDomain->theParList.initPar3;
 
@@ -70,41 +66,22 @@ void initial(double *prim, double *x)
    homtot +=  fgrav( thePlanets[0].M, R , thePlanets[0].eps, thePlanets[0].type)/R;
    double cs2 = get_cs2(x);
 
-   double alpha = visc;
-   if (alpha_flag == 0) alpha = alpha*sqrt(homtot)/cs2;
+   double alpha = get_nu(x,prim);
+   alpha = alpha*sqrt(homtot)/cs2;
 
    double dphi = 0.0;
    if (cs2choice == 5){
      //should probably double check this before using...
      dphi -= phigrav( thePlanets[0].M , R , thePlanets[0].eps , thePlanets[0].type )/R;
    }
-   double nu = visc;
-   if (alpha_flag == 0) nu = alpha*cs2/homtot;
+   double nu = get_nu(x, prim);
    double epsfact = exp(-pow(r/rin, xi));
 
    double Sigma = epsfact+epsfl;
    double dSigma = -xi*exp(-pow(r/rin,xi))*pow(r/rin, xi-1.0)/rin;
 
-   //double omega_glob = sqrt(fabs(1.0/(R*R*R) + (cs2*dSigma/gam + Sigma*dphi/gam)/(R*Sigma)));
-
-   //double vr_glob = -1.5*nu/R;
-   //double vphi_glob = R*omega_glob;
-
-   //Sigma = 1.0; //testing
-   //vphi_glob = 0.0; //testing
-   //vr_glob = 0.0; //testing
-   //double efact = exp(-pow((r/redge),-xi));
-   double rho = Sigma; //*efact; // + epsfl;
-   //if (r < rin) rho*=0.01;
+   double rho = Sigma;
    double P = rho*cs2/gam;
-
-   //double dr_dPhi	= -a*sin(phi);
-   //double dphi_dPhi	= 1.0 - (a/r)*cos(phi);
-   //double dr_dR = R/r - (R*R+a*a-r*r)/(2*R*r);
-   //double dphi_dR = (r*sin(phi)/R - dr_dR*sin(phi))/(r*cos(phi));
-
-   //double vr	= dr_dPhi*(omega_glob - sqrt(1./(a*a*a))) + dr_dR*vr_glob;
-   //double vp	= dphi_dPhi*(omega_glob - sqrt(1./(a*a*a))) + om_bary + dphi_dR*vr_glob;
 
    double vr	= -1.5*nu/r;
    double vp = sqrt(fabs((massq/(1.0+massq))/(r*r*r) + (cs2*dSigma/gam + Sigma*dphi/gam)/(r*Sigma)))+om_bary;

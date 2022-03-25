@@ -1,17 +1,18 @@
 #include "../paul.h"
+#include "../omega.h"
 
 static double gam  = 0.0;
 static double nu   = 0.0;
 static double Mach = 0.0;
 static double eps = 0.0;
-static int alpha_flag = 0;
+
+double get_nu(double *, double *);
 
 void setICparams( struct domain * theDomain ){
    gam  = theDomain->theParList.Adiabatic_Index;
    nu   = theDomain->theParList.viscosity;
    Mach = theDomain->theParList.Disk_Mach;
    eps = theDomain->theParList.grav_eps;
-   alpha_flag = theDomain->theParList.alpha_flag;
 }
 
 void initial( double * prim , double * x ){
@@ -30,10 +31,9 @@ void initial( double * prim , double * x ){
    double omega = sqrt(omega2);
 
    double cs2 = 1.0/(R*Mach*Mach);
-   double visc = nu;
-   if (alpha_flag == 1) visc = nu*cs2/omega;
+   double visc = get_nu(x, prim);
    double rho = 1.0;
-   //if (nu > 0.0) rho = rho/nu;
+   if (nu > 0.0) rho = rho/nu;
 
    rho = rho * exp( - pow(r/0.15, -30.0));
 

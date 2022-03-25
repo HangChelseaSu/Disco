@@ -2,10 +2,8 @@
 #include "../omega.h"
 
 static double gam  = 0.0;
-static double nu   = 0.0;
 static double Mach = 0.0;
 static double eps = 0.0;
-static int alpha_flag = 0;
 static double Npl = 1;
 static struct planet *thePlanets = NULL;
 
@@ -13,12 +11,12 @@ static struct planet *thePlanets = NULL;
 double phigrav( double , double , double , int); //int here is type
 double fgrav( double , double , double , int);
 
+double get_nu(double *, double*);
+
 void setICparams( struct domain * theDomain ){
    gam  = theDomain->theParList.Adiabatic_Index;
-   nu   = theDomain->theParList.viscosity;
    Mach = theDomain->theParList.Disk_Mach;
    eps = theDomain->theParList.grav_eps;
-   alpha_flag = theDomain->theParList.alpha_flag;
    thePlanets = theDomain->thePlanets;
 }
 
@@ -28,7 +26,7 @@ void initial( double * prim , double * x ){
    double epsfl  = 0.00001;
    double R = 1.0/phigrav( thePlanets[0].M, r , thePlanets[0].eps, thePlanets[0].type);
 
-   double visc = nu;
+   double visc = get_nu(x, prim);
    int np;
 
    double phitot = 0.0;
