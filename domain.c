@@ -5,10 +5,10 @@
 #include "hydro.h"
 #include "omega.h"
 #include "analysis.h"
+#include "planet.h"
 
 
 int num_diagnostics( void );
-void initializePlanets( struct planet * );
 
 void setICparams( struct domain * );
 void setRiemannParams( struct domain * );
@@ -42,7 +42,7 @@ void setupDomain( struct domain * theDomain ){
    setPlanetParams( theDomain );
    int Npl = theDomain->Npl;
    theDomain->thePlanets = (struct planet *) malloc( Npl*sizeof(struct planet) );
-   initializePlanets( theDomain->thePlanets );
+   setupPlanets(theDomain);
 
    int num_tools = num_diagnostics();
    theDomain->num_tools = num_tools;

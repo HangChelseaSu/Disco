@@ -2,6 +2,7 @@
 #include "geometry.h"
 #include "hydro.h"
 #include "omega.h"
+#include "planet.h"
 
 #include <string.h>
 
@@ -243,7 +244,6 @@ void adjust_RK_cons( struct domain * theDomain , double RK ){
    }
 }
 
-void planet_RK_adjust_kin( struct planet * , double );
 
 void adjust_RK_planets_kin( struct domain * theDomain , double RK ){
    int Npl = theDomain->Npl;
@@ -253,7 +253,6 @@ void adjust_RK_planets_kin( struct domain * theDomain , double RK ){
    }
 }
 
-void planet_RK_adjust_aux( struct planet * , double );
 
 void adjust_RK_planets_aux( struct domain * theDomain , double RK ){
    int Npl = theDomain->Npl;
@@ -579,7 +578,6 @@ void setup_faces( struct domain * theDomain , int dim ){
 
 }
 
-void planet_src( struct planet * , double * , double * , double * , double * , double );
 void omega_src( double * , double * , double * , double * , double );
 void sink_src( double * , double * , double * , double * , double, double );
 void cooling( double * , double * , double * , double * , double, double);

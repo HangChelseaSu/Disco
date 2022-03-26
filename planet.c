@@ -1,5 +1,6 @@
 #include "paul.h"
 #include "geometry.h"
+#include "planet.h"
 
 double PHI_ORDER = 2.0;
 static int grav2D = 0;
@@ -281,4 +282,33 @@ void planet_RK_adjust_aux( struct planet * pl , double RK ){
    pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
    pl-> accE = (1.-RK)*pl->accE  + RK*pl->RK_accE;
    pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
+}
+
+void planet_zero_aux(struct planet *pl)
+{
+    pl->dM = 0.0;
+    pl->Ls = 0.0;
+    pl->accL = 0.0;
+    pl->gravL = 0.0;
+    pl->therm = 0.0;
+    pl->accE = 0.0;
+    pl->gravE = 0.0;
+    
+    pl->RK_dM = 0.0;
+    pl->RK_Ls = 0.0;
+    pl->RK_accL = 0.0;
+    pl->RK_gravL = 0.0;
+    pl->RK_therm = 0.0;
+    pl->RK_accE = 0.0;
+    pl->RK_gravE = 0.0;
+}
+
+void setupPlanets(struct domain *theDomain)
+{
+   initializePlanets( theDomain->thePlanets );
+  
+   int Npl = theDomain->Npl;
+   int p;
+   for(p=0; p<Npl; p++)
+       planet_zero_aux(theDomain->thePlanets + p);
 }
