@@ -1,8 +1,8 @@
 #include "../paul.h"
+#include "../omega.h"
 
 static double gam = 0.0;
 static double visc = 0.0;
-static int alpha_flag = 0;
 static struct planet *thePlanets = NULL;
 static double Mach = 0.0;
 static int Npl = 0;
@@ -18,6 +18,7 @@ static double a = 1.0;
 static double om_bary = 0.0;
 
 double get_cs2(double *);
+double get_nu(double *, double *);
 double phigrav( double , double , double , int); //int here is type
 double fgrav( double , double , double , int);
 
@@ -25,18 +26,12 @@ void setICparams( struct domain * theDomain )
 {
     gam = theDomain->theParList.Adiabatic_Index;
     visc = theDomain->theParList.viscosity;
-    alpha_flag = theDomain->theParList.alpha_flag;
     Mach = theDomain->theParList.Disk_Mach;
     massq = theDomain->theParList.Mass_Ratio;
     thePlanets = theDomain->thePlanets;
     Npl = theDomain->Npl;
     epsfl = theDomain->theParList.Density_Floor;
-
     om_bary = theDomain->theParList.RotOmega;
-
-
-    //xi = theDomain->theParList.initPar1;
-    //rin = theDomain->theParList.initPar2;
     rin = 2.0*theDomain->theParList.initPar2;
     redge = theDomain->theParList.initPar3;
 
@@ -72,9 +67,9 @@ void initial(double *prim, double *x)
 
    double cs2 = get_cs2(x);
 
-   double alpha = visc;
-   if (alpha_flag == 0) alpha = alpha*sqrt(homtot)/cs2;
-   //printf("%.4e \n", alpha);
+   double alpha = get_nu(x, prim);
+   alpha = alpha*sqrt(homtot)/cs2;
+
    double D = 7.0*pow(Mach, 1.5)*pow(alpha, -.25);
    double qs = massq*pow(1+D*D*D*pow(pow(R/a, 1./6.) - 1.0, 6.0), -1./3.);
    double dqs = -(1./3.)*massq*pow(1+D*D*D*pow(pow(R/a, 1./6.) - 1.0, 6.0), -4./3.)*D*D*D*pow(pow(R/a, 1./6.)-1.0,5.0)*pow(R,-5./6.)*pow(a, -1./6.);
@@ -91,8 +86,7 @@ void initial(double *prim, double *x)
      dphi -= ((a-rx)/R)*(rx-p1rx)*phigrav( thePlanets[1].M , d1p , thePlanets[1].eps , thePlanets[1].type )/fmax(d1p, thePlanets[1].eps*0.01);
      dphi -= ((ry)/R)*(ry-p2ry)*phigrav( thePlanets[2].M , d2p , thePlanets[2].eps , thePlanets[2].type )/fmax(d2p, thePlanets[2].eps*0.01);
    }
-   double nu = visc;
-   if (alpha_flag == 0) nu = alpha*cs2/homtot;
+   double nu = get_nu(x, prim);
 
    double omega_glob = sqrt(1.0/(R*R*R) + (cs2*dSigma/gam + Sigma*dphi/gam)/(R*Sigma));
    //double omega_glob = sqrt(1.0/(R*R*R));
