@@ -33,7 +33,7 @@ void timestep( struct domain * theDomain , double dt ){
       onestep( theDomain , 0.0 ,     dt , 1 , 1 , dt );
       theDomain->t += dt;
    }
-   if(stepper == 3)
+   else if(stepper == 3)
    {
       onestep( theDomain ,   0.0,       dt, 1 , 0 , dt );
       theDomain->t += dt;
