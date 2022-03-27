@@ -198,6 +198,10 @@ void setupCells( struct domain * theDomain ){
             struct cell * c = &(theCells[jk][i]);
             c->wiph = 0.0; 
             c->real = 0;
+
+            memset(c->gradr, 0, NUM_Q*sizeof(double));
+            memset(c->gradp, 0, NUM_Q*sizeof(double));
+            memset(c->gradz, 0, NUM_Q*sizeof(double));
          }
       }
    }
