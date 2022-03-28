@@ -274,13 +274,14 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           accEpart += vxg*vxp + vyg*vyp;
           thePlanets[pi].accE += accEpart*acc_factor;
 
-
-
           //not actually a sink, just torque accounting
+          /*
           double fr,fp,fz;
-          planetaryForce( thePlanets + pi, r, phi,  0.0, &fr, &fp, &fz, 1);
+          planetaryForce( thePlanets + pi, r, phi,  0.0, &fr, &fp, &fz, 0);
           thePlanets[pi].gravL -= rho*dV*dt*(px*(fr*sing + fp*cosg) - py*(fr*cosg - fp*sing));
-          thePlanets[pi].gravE -= rho*dV*dt*(vxp*(fr*cosg - fp*sing) + vyp*(fr*sing + fp*cosg));
+          //thePlanets[pi].gravE -= rho*dV*dt*(vxp*(fr*cosg - fp*sing) + vyp*(fr*sing + fp*cosg));
+          thePlanets[pi].gravE += rho*dV*dt * thePlanets[pi].r * fp;
+          */
       }
     }
 }

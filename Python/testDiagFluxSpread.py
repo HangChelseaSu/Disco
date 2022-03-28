@@ -173,8 +173,8 @@ if __name__ == "__main__":
 
     Nr = R.shape[0]
 
-    j1 = Nr//4
-    j2 = 3*Nr//4
+    j1 = 0
+    j2 = Nr//2
 
     Ut = U[:, j1:j2, :].sum(axis=1)
     Ft = f[:, j1-1, :] - f[:, j2-1, :]
@@ -194,9 +194,9 @@ if __name__ == "__main__":
     print(Ut.shape, Ft.shape, FVt.shape)
     print(Fdt.shape, dU.shape)
 
-    ax[0, 0].plot(t[1:], dU[:, 0], '.', color='C0')
-    ax[0, 0].plot(t[1:], Fdt[:, 0], 'x', color='C0')
-    ax[0, 0].plot(t[1:], Sdt[:, 0], '+', color='C0')
+    ax[0, 0].plot(t[1:], dU[:, 0], '.', color='C0', label='Change in Mass')
+    ax[0, 0].plot(t[1:], Fdt[:, 0], 'x', color='C0', label='Total Flux')
+    ax[0, 0].plot(t[1:], Sdt[:, 0], '+', color='C0', label='Total Source')
     ax[0, 1].plot(t[1:], dU[:, 1], '.', color='C0')
     ax[0, 1].plot(t[1:], Fdt[:, 1], 'x', color='C0')
     ax[0, 1].plot(t[1:], Sdt[:, 1], '+', color='C0')
@@ -223,6 +223,21 @@ if __name__ == "__main__":
     ax[3, 0].plot(t[1:], dU[:, 2] - Fdt[:, 2] - Sdt[:, 2], '.', color='C0')
     ax[3, 1].plot(t[1:], dU[:, 3] - Fdt[:, 3] - Sdt[:, 3], '.', color='C0')
     ax[3, 2].plot(t[1:], dU[:, 4] - Fdt[:, 4] - Sdt[:, 4], '.', color='C0')
+
+    ax[0, 0].legend()
+
+    ax[0, 0].set(xlabel=r'$t$', ylabel=r'Mass')
+    ax[1, 0].set(xlabel=r'$t$', ylabel=r'Mass Discrepancy')
+    ax[0, 1].set(xlabel=r'$t$', ylabel=r'Energy')
+    ax[1, 1].set(xlabel=r'$t$', ylabel=r'Energy Discrepancy')
+    ax[2, 0].set(xlabel=r'$t$', ylabel=r'Radial Momentum')
+    ax[3, 0].set(xlabel=r'$t$', ylabel=r'Radial Momentum Discrepancy')
+    ax[2, 1].set(xlabel=r'$t$', ylabel=r'Angular Momentum')
+    ax[3, 1].set(xlabel=r'$t$', ylabel=r'Angular Momentum Discrepancy')
+    ax[2, 2].set(xlabel=r'$t$', ylabel=r'Vertical Momentum')
+    ax[3, 2].set(xlabel=r'$t$', ylabel=r'Vertical Momentum Discrepancy')
+
+    fig.tight_layout()
 
     figname = "flux_comp_dU.png"
     print("Saving", figname)

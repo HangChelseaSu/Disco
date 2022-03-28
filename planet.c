@@ -248,6 +248,16 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
    cons[SZZ] += rho*hz*F[2]*dVdt;
    cons[TAU] += rho*( hr*F[0]*vr + hz*F[2]*vz + hp*F[1]*omega )*dVdt;
 
+   //TODO: WAY TOO MANY sincos calls!
+   double Fp_xyz[3];
+   get_vec_xyz(x, F, Fp_xyz);
+   double cosp = cos(pl->phi);
+   double sinp = sin(pl->phi);
+   double Fp[3] = {cosp*Fp_xyz[0] + sinp*Fp_xyz[1],
+                   -sinp*Fp_xyz[0] + cosp*Fp_xyz[1], Fp_xyz[2]};
+
+   pl->gravL -= rho*(pl->r)*Fp[1]*dVdt;
+   pl->gravE -= rho*(pl->vr*Fp[0] + pl->omega*pl->r*Fp[1])*dVdt;
 }
 
 void planet_RK_copy( struct planet * pl ){
