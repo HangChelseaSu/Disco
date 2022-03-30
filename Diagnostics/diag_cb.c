@@ -8,7 +8,7 @@ void setDiagParams( struct domain * theDomain ){
 }
 
 int num_diagnostics(void){
-   return(7);
+   return(11);
 }
 
 void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
@@ -33,16 +33,15 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    Qrz[1] = rho*vr; //Mdot
    Qrz[6] = rho*fabs(vr); //Mdot
 
-   double gx = r*cos(phi);
-   double gy = r*sin(phi);
-   double vx = vr*cos(phi) - vp*sin(phi);
-   double vy = vr*sin(phi) + vp*cos(phi);
-   double vm2 =  vx*vx + vy*vy;
-   double rdv = vx*gx + vy*gy;
-   Qrz[2] = (vm2 - 1./r)*gx - rdv*vx;	//e_x
-   Qrz[2] *= rho;
-   Qrz[3] = (vm2 - 1./r)*gy - rdv*vy;	//e_y
-   Qrz[3] *= rho;
+   double cosp = cos(phi);
+   double sinp = sin(phi);
+
+   double vx = vr*cosp - vp*sinp;
+   double vy = vr*sinp + vp*cosp;
+   double v2 =  vr*vr + vp*vp;
+   double rdv = r * vr;
+   Qrz[2] = rho * ((r*v2 - 1)*cosp - rdv*vx);	//e_x
+   Qrz[3] = rho * ((r*v2 - 1)*sinp - rdv*vy);	//e_y
 
    Qrz[4] = 0.0;
    Qrz[5] = rho*vp;
@@ -58,6 +57,11 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
      Qrz[4] += rho*rp*Fp;				//Torque density
    }
 
-
+   double cos2p = (cosp - sinp) * (cosp + sinp);
+   double sin2p = 2*sinp*cosp;
+   Qrz[7]  = rho * cosp;
+   Qrz[8]  = rho * sinp;
+   Qrz[9]  = rho * cos2p;
+   Qrz[10] = rho * sin2p;
 }
 

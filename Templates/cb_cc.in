@@ -11,7 +11,7 @@ OUTPUT   = h5out
 RESTART  = h5in
 PLANETS  = cmA
 HLLD     = hlld
-ANALYSIS = diag_euler
+ANALYSIS = diag_cb
 
 METRIC   = flat_rpz
 FRAME    = normal
