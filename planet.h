@@ -19,6 +19,8 @@ void planet_RK_adjust_aux( struct planet * pl , double RK );
 void planet_zero_aux(struct planet *pl);
 
 void setupPlanets(struct domain *theDomain);
+void initializePlanetTracking(struct domain *theDomain);
+void updatePlanetTracking(struct domain *theDomain);
 
 // Functions in Planet/ setup
 void setPlanetParams( struct domain * theDomain );

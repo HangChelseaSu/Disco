@@ -258,6 +258,13 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
 
    pl->gravL -= rho*(pl->r)*Fp[1]*dVdt;
    pl->gravE -= rho*(pl->vr*Fp[0] + pl->omega*pl->r*Fp[1])*dVdt;
+
+   pl->gas_track[PL_GRV_PX] -= rho*Fp_xyz[0]*dVdt;
+   pl->gas_track[PL_GRV_PY] -= rho*Fp_xyz[1]*dVdt;
+   pl->gas_track[PL_GRV_PZ] -= rho*Fp_xyz[2]*dVdt;
+   pl->gas_track[PL_GRV_JZ] -= rho*(pl->r)*Fp[1]*dVdt;
+   pl->gas_track[PL_GRV_EGAS] -= rho*(hr*F[0]*vr + hz*F[2]*vz
+                                      + hp*F[1]*omega )*dVdt;
 }
 
 void planet_RK_copy( struct planet * pl ){
@@ -273,7 +280,10 @@ void planet_RK_copy( struct planet * pl ){
    pl->RK_gravL = pl->gravL;
    pl->RK_accE = pl->accE;
    pl->RK_gravE = pl->gravE;
-
+    
+    int q;
+    for(q=0; q<NUM_PL_AUX; q++)
+        pl->RK_aux[q] = pl->aux[q];
 }
 
 void planet_RK_adjust_kin( struct planet * pl , double RK ){
@@ -292,6 +302,10 @@ void planet_RK_adjust_aux( struct planet * pl , double RK ){
    pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
    pl-> accE = (1.-RK)*pl->accE  + RK*pl->RK_accE;
    pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
+
+    int q;
+    for(q=0; q<NUM_PL_AUX; q++)
+        pl->aux[q] = (1-RK)*pl->aux[q] + RK*pl->RK_aux[q];
 }
 
 void planet_zero_aux(struct planet *pl)
@@ -311,6 +325,13 @@ void planet_zero_aux(struct planet *pl)
     pl->RK_therm = 0.0;
     pl->RK_accE = 0.0;
     pl->RK_gravE = 0.0;
+
+    int q;
+    for(q=0; q<NUM_PL_AUX; q++)
+    {
+        pl->aux[q] = 0.0;
+        pl->RK_aux[q] = 0.0;
+    }
 }
 
 void setupPlanets(struct domain *theDomain)
@@ -321,4 +342,106 @@ void setupPlanets(struct domain *theDomain)
    int p;
    for(p=0; p<Npl; p++)
        planet_zero_aux(theDomain->thePlanets + p);
+
+   initializePlanetTracking(theDomain);
+}
+
+void initializePlanetTracking(struct domain *theDomain)
+{
+    int Npl = theDomain->Npl;
+    int p, q;
+    for(p=0; p<Npl; p++)
+    {
+        struct planet *pl = theDomain->thePlanets + p;
+
+        for(q=0; q<NUM_PL_INTEGRALS; q++)
+            pl->gas_track[q] = 0.0;
+    }
+}
+
+void updatePlanetTracking(struct domain *theDomain)
+{
+    int p;
+    int Npl = theDomain->Npl;
+    for(p=0; p<Npl; p++)
+    {
+        struct planet *pl = theDomain->thePlanets + p;
+
+        //Direct values, easy!
+        pl->aux[PL_SNK_M] += pl->gas_track[PL_SNK_M];
+        pl->aux[PL_GRV_PX] += pl->gas_track[PL_GRV_PX];
+        pl->aux[PL_GRV_PY] += pl->gas_track[PL_GRV_PY];
+        pl->aux[PL_GRV_PZ] += pl->gas_track[PL_GRV_PZ];
+        pl->aux[PL_GRV_JZ] += pl->gas_track[PL_GRV_JZ];
+        pl->aux[PL_SNK_PX] += pl->gas_track[PL_SNK_PX];
+        pl->aux[PL_SNK_PY] += pl->gas_track[PL_SNK_PY];
+        pl->aux[PL_SNK_PZ] += pl->gas_track[PL_SNK_PZ];
+        pl->aux[PL_SNK_JZ] += pl->gas_track[PL_SNK_JZ];
+        pl->aux[PL_SNK_SZ] += pl->gas_track[PL_SNK_SZ];
+        pl->aux[PL_SNK_X] += pl->gas_track[PL_SNK_X] / pl->M;
+        pl->aux[PL_SNK_Y] += pl->gas_track[PL_SNK_Y] / pl->M;
+        pl->aux[PL_SNK_Z] += pl->gas_track[PL_SNK_Z] / pl->M;
+        pl->aux[PL_GRV_EGAS] += pl->gas_track[PL_GRV_EGAS];
+        pl->aux[PL_SNK_EGAS] += pl->gas_track[PL_SNK_EGAS];
+
+        // Some more complicated things.
+
+        double r = pl->r;
+        double cosp = cos(pl->phi);
+        double sinp = sin(pl->phi);
+        double x = r * cosp;
+        double y = r * sinp;
+        double vx = pl->vr * cosp - r * pl->omega * sinp;
+        double vy = pl->vr * sinp + r * pl->omega * cosp;
+        pl->aux[PL_SNK_LZ] += x * pl->gas_track[PL_SNK_PY]
+                            - y * pl->gas_track[PL_SNK_PX]
+                            + pl->gas_track[PL_SNK_X] * vy
+                            - pl->gas_track[PL_SNK_Y] * vx;
+
+        pl->aux[PL_GRV_K] += vx * pl->gas_track[PL_GRV_PX]
+                            + vy * pl->gas_track[PL_GRV_PY];
+        pl->aux[PL_SNK_K] += vx * pl->gas_track[PL_SNK_PX]
+                            + vy * pl->gas_track[PL_SNK_PY]
+                            - 0.5*(vx*vx + vy*vy)*pl->gas_track[PL_SNK_M];
+        
+        pl->aux[PL_GRV_U] += pl->gas_track[PL_GRV_EGAS]
+                            - vx * pl->gas_track[PL_GRV_PX]
+                            - vy * pl->gas_track[PL_GRV_PY];
+
+        double xyz[3] = {x, y, 0};
+        double X[3];
+        get_coords_from_xyz(X, xyz);
+
+        double Phi_ext = 0.0;
+        double gx_ext = 0;
+        double gy_ext = 0;
+        double gz_ext = 0;
+        int p2;
+        for(p2=0; p2<Npl; p2++)
+        {
+            if(p == p2)
+                continue;
+        
+            struct planet *pl2 = theDomain->thePlanets + p2;
+            double r2 = pl2->r;
+            double cosp2 = cos(pl2->phi);
+            double sinp2 = sin(pl2->phi);
+            double x2 = r2*cosp2;
+            double y2 = r2*sinp2;
+
+            double rsep = sqrt((x-x2)*(x-x2) + (y-y2)*(y-y2));
+
+            Phi_ext += -phigrav(pl2->M, rsep, pl2->eps, pl2->type);
+            double g = fgrav(pl2->M, rsep, pl2->eps, pl2->type);
+
+            gx_ext += g * (x2-x) / rsep;
+            gy_ext += g * (y2-y) / rsep;
+            gz_ext += 0;
+        }
+        
+        pl->aux[PL_SNK_U] += Phi_ext * pl->gas_track[PL_SNK_M]
+                            - gx_ext * pl->gas_track[PL_SNK_X]
+                            - gy_ext * pl->gas_track[PL_SNK_Y]
+                            - gz_ext * pl->gas_track[PL_SNK_Z];
+    }
 }

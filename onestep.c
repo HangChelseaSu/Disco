@@ -3,6 +3,7 @@
 #include "hydro.h"
 #include "profiler.h"
 #include "analysis.h"
+#include "planet.h"
 
 void AMR( struct domain * ); 
 void move_BCs( struct domain * , double );
@@ -33,9 +34,6 @@ void update_B_fluxes( struct domain * , double );
 void subtract_advective_B_fluxes( struct domain * );
 void check_flipped( struct domain * , int );
 void flip_fluxes( struct domain * , int );
-
-void movePlanets( struct planet * , double , double );
-int planet_motion_analytic(void);
 
 void boundary_trans( struct domain * , int );
 void exchangeData( struct domain * , int );
@@ -98,6 +96,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    adjust_RK_cons( theDomain , RK );
    adjust_RK_diag( theDomain , RK );
    adjust_RK_planets_aux( theDomain , RK );
+   initializePlanetTracking(theDomain);
 
    //Reconstruction
    prof_tick(theDomain->prof, PROF_RECON);
@@ -170,7 +169,9 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
          }
       }
    }
-   
+
+   // Before we move the planets, update their internal diagnostics.
+   updatePlanetTracking(theDomain);
 
    if( !planet_motion_analytic() || first_step ){
       adjust_RK_planets_kin( theDomain , RK );

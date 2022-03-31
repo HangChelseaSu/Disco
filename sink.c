@@ -145,6 +145,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       get_centroid_arr(xp, xm, x);
       double r = x[0];
       double phi = x[1];
+      double z = x[2];
 
       double rho = prim[RHO];
       double vr  = prim[URR];
@@ -282,6 +283,20 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           //thePlanets[pi].gravE -= rho*dV*dt*(vxp*(fr*cosg - fp*sing) + vyp*(fr*sing + fp*cosg));
           thePlanets[pi].gravE += rho*dV*dt * thePlanets[pi].r * fp;
           */
+
+          thePlanets[pi].gas_track[PL_SNK_M] += acc_factor;
+          thePlanets[pi].gas_track[PL_SNK_PX] += acc_factor * vxg;
+          thePlanets[pi].gas_track[PL_SNK_PY] += acc_factor * vyg;
+          thePlanets[pi].gas_track[PL_SNK_PZ] += acc_factor * vz;
+          thePlanets[pi].gas_track[PL_SNK_JZ] += acc_factor * r*vg_p;
+          thePlanets[pi].gas_track[PL_SNK_SZ] += acc_factor * (
+                  dx * vyn - dy * vxn);
+          thePlanets[pi].gas_track[PL_SNK_X] += acc_factor * dx;
+          thePlanets[pi].gas_track[PL_SNK_Y] += acc_factor * dy;
+          thePlanets[pi].gas_track[PL_SNK_Z] += acc_factor * z;
+          thePlanets[pi].gas_track[PL_SNK_EGAS] += acc_factor * (
+                  specenth + 0.5*v2
+                  - 0.5*((vxg-vxg1)*(vxg-vxg1) + (vyg-vyg1)*(vyg-vyg1)));
       }
     }
 }

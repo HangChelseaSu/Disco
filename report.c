@@ -1,8 +1,8 @@
 #include "paul.h"
 #include "hydro.h"
 #include "geometry.h"
+#include "planet.h"
 
-void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
 
 void report( struct domain * theDomain )
 {
@@ -83,23 +83,16 @@ void report( struct domain * theDomain )
       Lg_pls[j] = thePlanets[j].gravL;
       Eg_pls[j] = thePlanets[j].gravE;
       Eacc_pls[j] = thePlanets[j].accE;
-
-      thePlanets[j].dM = 0.0;
-      thePlanets[j].RK_dM = 0.0;
-      thePlanets[j].accL = 0.0;
-      thePlanets[j].RK_accL = 0.0;
-      thePlanets[j].Ls = 0.0;
-      thePlanets[j].RK_Ls = 0.0;
-      thePlanets[j].therm = 0.0;
-      thePlanets[j].RK_therm = 0.0;
-      thePlanets[j].gravL = 0.0;
-      thePlanets[j].RK_gravL = 0.0;
-      thePlanets[j].accE = 0.0;
-      thePlanets[j].RK_accE = 0.0;
-      thePlanets[j].gravE = 0.0;
-      thePlanets[j].RK_gravE = 0.0;
-
   }
+
+   double planet_aux[Npl * NUM_PL_AUX];
+   int iq;
+   for(j=0; j<Npl; j++)
+       for(iq=0; iq<NUM_PL_AUX; iq++)
+           planet_aux[j*NUM_PL_AUX+iq] = thePlanets[j].aux[iq];
+   
+   for(j=0; j<Npl; ++j)
+       planet_zero_aux(thePlanets + j);
 
 #if USE_MPI
    MPI_Allreduce( MPI_IN_PLACE , cons_tot    , NUM_Q , MPI_DOUBLE , MPI_SUM , grid_comm );
@@ -111,6 +104,9 @@ void report( struct domain * theDomain )
    MPI_Allreduce( MPI_IN_PLACE , therm_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eacc_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
+   
+   MPI_Allreduce( MPI_IN_PLACE , planet_aux  , Npl*NUM_PL_AUX , MPI_DOUBLE ,
+                MPI_SUM , grid_comm );
 #endif
 
    if( rank==0 ){
@@ -142,6 +138,11 @@ void report( struct domain * theDomain )
       }
       for( j=0; j<Npl; ++j){
          fprintf(rFile," %.15le", Eacc_pls[j]);
+      }
+      for( j=0; j<Npl; ++j){
+        for( iq=0; iq<NUM_PL_AUX; iq++){
+         fprintf(rFile," %.15le", planet_aux[j*NUM_PL_AUX+iq]);
+        }
       }
       fprintf(rFile,"\n");
 
