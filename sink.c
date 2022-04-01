@@ -2,7 +2,8 @@
 #include "omega.h"
 #include "geometry.h"
 
-static int sinkType = 0;
+static int sinkRateType = 0;
+static int sinkShapeType = 0;
 static int sinkNumber = 0;
 static double sinkPar1 = 0.0;
 static double sinkPar2 = 0.0;
@@ -54,7 +55,8 @@ void prim2cons( double * , double * , double * , double );
 
 void setSinkParams(struct domain *theDomain)
 {
-    sinkType = theDomain->theParList.sinkType;
+    sinkShapeType = theDomain->theParList.sinkShapeType;
+    sinkRateType = theDomain->theParList.sinkRateType;
     sinkNumber = theDomain->theParList.sinkNumber;
     sinkPar1 = theDomain->theParList.sinkPar1;
     sinkPar2 = theDomain->theParList.sinkPar2;
@@ -158,7 +160,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
       double gx = r*cosg;
       double gy = r*sing;
 
-      double px, py, dx, dy, mag, eps, epsfactor;
+      double px, py, dx, dy, mag, mag2, eps, epsfactor;
       double rate, surfdiff;
       int pi;
       int numSinks = Npl;
@@ -193,15 +195,19 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
 
           dx = gx-px;
           dy = gy-py;
-          mag = dx*dx + dy*dy;
-          mag = sqrt(mag);
+          mag2 = dx*dx + dy*dy;
+          mag = sqrt(mag2);
 
-          //the part that depends on sinkType
+
+          //the part that depends on sink profile/shape
           double arg = 0.0;
-          if(sinkType == 3){	//constant
+          if(sinkShapeType == 4){   //constant globally - use with care
+            arg = 1.0;
+          }
+          if(sinkShapeType == 3){   //constant if within sink radius
             if (mag <= sinkPar3) arg = 1.0;
           }
-          else if(sinkType == 2){	//exponential
+          else if(sinkShapeType == 2){  //exponential
             eps = sinkPar3;
             eps = pow(eps, sinkPar4);
             epsfactor = sinkPar5;
@@ -209,7 +215,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
             double magPow = pow(mag, sinkPar4);
             arg = exp(-magPow/(eps*epsfactor));
           }
-          else if(sinkType == 1){	//polynomial, compact support
+          else if(sinkShapeType == 1){  //polynomial, compact support
             eps = sinkPar3;
             double pwrM = sinkPar4;
             double pwrN = sinkPar5;
@@ -219,8 +225,25 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
               arg = 0.0;
             }
           }
+          //the part that depends on sink *rate* profile
+          double rate = 0.0;
+          rate = sinkPar1*thePlanets[pi].omega; //constant
+          if(sinkRateType == 2){  // sink rate depends on viscous time at sink radius
+            double xnu[3];
+            double rnu = thePlanets[pi].r + sinkPar3;
+            xnu[0] = rnu;
+            xnu[1] = thePlanets[pi].phi;
+            xnu[2] = 0.0;
+            double nu = get_nu(xnu, prim);
+            double tvisc = 2*(mag2 + thePlanets[pi].eps*thePlanets[pi].eps)/(nu*3.0);
+            rate = rate/tvisc;
+          }
+          else if(sinkRateType == 1){  // sink rate depends on viscous time locally
+            double nu = get_nu(x, prim);
+            double tvisc = 2*(mag2 + thePlanets[pi].eps*thePlanets[pi].eps)/(nu*3.0);
+            rate = rate/tvisc;
+          }
 
-          rate = sinkPar1*thePlanets[pi].omega;
           surfdiff = rho*rate*arg;
 
           double delta = fmin(sinkPar2, 1.0);
