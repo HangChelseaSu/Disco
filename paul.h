@@ -14,6 +14,7 @@ enum{PROF_TOT, PROF_DT, PROF_TIMESTEP, PROF_OUTPUT, PROF_RECON, PROF_FLUX,
      NUM_PROF}; // NUM_PROF must be at end
 enum{PLPOINTMASS, PLPW, PLSURFACEGRAV, PLSPLINE, PLWEGGC, PLQUAD};
 enum{COOL_NONE, COOL_BETA, COOL_BETA_RELAX};
+enum{PL_M, PL_R, PL_PHI, PL_Z, PL_PR, PL_JJ, PL_PZ};
 enum{PL_SNK_M, PL_GRV_PX, PL_GRV_PY, PL_GRV_PZ, PL_GRV_JZ,
      PL_SNK_PX, PL_SNK_PY, PL_SNK_PZ, PL_SNK_JZ, PL_SNK_SZ,
      PL_SNK_X, PL_SNK_Y, PL_SNK_Z, PL_GRV_EGAS, PL_SNK_EGAS,
@@ -36,6 +37,7 @@ enum{PL_SNK_M, PL_GRV_PX, PL_GRV_PY, PL_GRV_PZ, PL_GRV_JZ,
 #define NUM_Q (NUM_C+NUM_N)
 #define NUM_G 2
 
+#define NUM_PL_KIN  7
 #define NUM_PL_INTEGRALS 15
 #define NUM_PL_AUX (NUM_PL_INTEGRALS + 6)
 
@@ -329,6 +331,8 @@ struct planet{
    double Fp;
 
    double gas_track[NUM_PL_INTEGRALS];
+   double kin[NUM_PL_KIN];
+   double RK_kin[NUM_PL_KIN];
    double aux[NUM_PL_AUX];
    double RK_aux[NUM_PL_AUX];
 

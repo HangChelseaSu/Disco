@@ -267,45 +267,74 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
                                       + hp*F[1]*omega )*dVdt;
 }
 
-void planet_RK_copy( struct planet * pl ){
-   pl->RK_r     = pl->r;
-   pl->RK_phi   = pl->phi;
-   pl->RK_M     = pl->M;
-   pl->RK_omega = pl->omega;
-   pl->RK_vr    = pl->vr;
-   pl->RK_dM    = pl->dM;
-   pl->RK_accL  = pl->accL;
-   pl->RK_Ls    = pl->Ls;
-   pl->RK_therm = pl->therm;
-   pl->RK_gravL = pl->gravL;
-   pl->RK_accE = pl->accE;
-   pl->RK_gravE = pl->gravE;
+void copyPlanetsRK( struct domain * theDomain ){
+    int p, q;
+    for(p=0; p<theDomain->Npl; p++)
+    {
+        struct planet *pl = theDomain->thePlanets + p;
+        pl->RK_r     = pl->r;
+        pl->RK_phi   = pl->phi;
+        pl->RK_M     = pl->M;
+        pl->RK_omega = pl->omega;
+        pl->RK_vr    = pl->vr;
+        pl->RK_dM    = pl->dM;
+        pl->RK_accL  = pl->accL;
+        pl->RK_Ls    = pl->Ls;
+        pl->RK_therm = pl->therm;
+        pl->RK_gravL = pl->gravL;
+        pl->RK_accE = pl->accE;
+        pl->RK_gravE = pl->gravE;
     
-    int q;
-    for(q=0; q<NUM_PL_AUX; q++)
-        pl->RK_aux[q] = pl->aux[q];
+        for(q=0; q<NUM_PL_KIN; q++)
+            pl->RK_kin[q] = pl->kin[q];
+        for(q=0; q<NUM_PL_AUX; q++)
+            pl->RK_aux[q] = pl->aux[q];
+    }
 }
 
-void planet_RK_adjust_kin( struct planet * pl , double RK ){
-   pl->r     = (1.-RK)*pl->r     + RK*pl->RK_r;
-   pl->phi   = (1.-RK)*pl->phi   + RK*pl->RK_phi;
-   pl->M     = (1.-RK)*pl->M     + RK*pl->RK_M;
-   pl->omega = (1.-RK)*pl->omega + RK*pl->RK_omega;
-   pl->vr    = (1.-RK)*pl->vr    + RK*pl->RK_vr;
+void adjustPlanetsRKkin( struct domain * theDomain , double RK ){
+    int p, q;
+    for(p=0; p<theDomain->Npl; p++)
+    {
+        struct planet *pl = theDomain->thePlanets + p;
+        for(q=0; q<NUM_PL_KIN; q++)
+            pl->kin[q] = (1-RK)*pl->kin[q] + RK*pl->RK_kin[q];
+    }
 }
 
-void planet_RK_adjust_aux( struct planet * pl , double RK ){
-   pl->dM    = (1.-RK)*pl->dM    + RK*pl->RK_dM;
-   pl->accL  = (1.-RK)*pl->accL  + RK*pl->RK_accL;
-   pl->Ls    = (1.-RK)*pl->Ls    + RK*pl->RK_Ls;
-   pl->therm = (1.-RK)*pl->therm + RK*pl->RK_therm;
-   pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
-   pl-> accE = (1.-RK)*pl->accE  + RK*pl->RK_accE;
-   pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
+void adjustPlanetsRKaux( struct domain * theDomain , double RK ){
+    int p, q;
+    for(p=0; p<theDomain->Npl; p++)
+    {
+        struct planet *pl = theDomain->thePlanets + p;
 
-    int q;
-    for(q=0; q<NUM_PL_AUX; q++)
-        pl->aux[q] = (1-RK)*pl->aux[q] + RK*pl->RK_aux[q];
+        pl->dM    = (1.-RK)*pl->dM    + RK*pl->RK_dM;
+        pl->accL  = (1.-RK)*pl->accL  + RK*pl->RK_accL;
+        pl->Ls    = (1.-RK)*pl->Ls    + RK*pl->RK_Ls;
+        pl->therm = (1.-RK)*pl->therm + RK*pl->RK_therm;
+        pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
+        pl-> accE = (1.-RK)*pl->accE  + RK*pl->RK_accE;
+        pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
+
+        for(q=0; q<NUM_PL_AUX; q++)
+            pl->aux[q] = (1-RK)*pl->aux[q] + RK*pl->RK_aux[q];
+    }
+}
+
+void planet_init_kin(struct planet *pl)
+{
+    /* Set the planet kin[] parameters consistent with the
+     * planet's M, r, phi, etc.
+     * Analagous to prim2cons() in Hydro.
+     */
+
+    pl->kin[PL_M] = pl->M;
+    pl->kin[PL_R] = pl->r;
+    pl->kin[PL_PHI] = pl->phi;
+    pl->kin[PL_Z] = 0.0;
+    pl->kin[PL_PR] = pl->M * pl->vr;
+    pl->kin[PL_JJ] = pl->M * pl->r * pl->r * pl->omega;
+    pl->kin[PL_PZ] = 0.0;
 }
 
 void planet_zero_aux(struct planet *pl)
@@ -341,9 +370,33 @@ void setupPlanets(struct domain *theDomain)
    int Npl = theDomain->Npl;
    int p;
    for(p=0; p<Npl; p++)
+   {
+       planet_init_kin(theDomain->thePlanets + p);
        planet_zero_aux(theDomain->thePlanets + p);
+   }
 
    initializePlanetTracking(theDomain);
+}
+
+void movePlanetsLive(struct domain *theDomain)
+{
+    int p;
+    int Npl = theDomain->Npl;
+    struct planet *thePlanets = theDomain->thePlanets;
+
+    for(p=0; p<Npl; p++)
+    {
+        struct planet *pl = thePlanets + p;
+
+        double r = pl->kin[PL_R];
+        double M = pl->kin[PL_M];
+
+        pl->M = M;
+        pl->r = r;
+        pl->phi = pl->kin[PL_PHI];
+        pl->vr = pl->kin[PL_PR] / M;
+        pl->omega = pl->kin[PL_JJ] / (M * r * r);
+    }
 }
 
 void initializePlanetTracking(struct domain *theDomain)
@@ -359,7 +412,48 @@ void initializePlanetTracking(struct domain *theDomain)
     }
 }
 
-void updatePlanetTracking(struct domain *theDomain)
+void updatePlanetsKin(struct domain *theDomain, double dt)
+{
+    int p;
+    int Npl = theDomain->Npl;
+    struct planet *thePlanets = theDomain->thePlanets;
+
+    for(p=0; p<Npl; p++)
+    {
+        struct planet *pl = thePlanets + p;
+
+        double Gr = 0;
+        double Gp = 0;
+        double Gz = 0;
+
+        int p2;
+        for(p2=0; p2<Npl; p2++)
+        {
+            if(p == p2)
+                continue;
+
+            struct planet *pl2 = thePlanets + p2;
+            double gr, gp, gz;
+            planetaryForce(pl2, pl->r, pl->phi, 0.0, &gr, &gp, &gz, 0);
+            Gr += gr;
+            Gp += gp;
+            Gz += gz;
+        }
+
+        double M = pl->M;
+        double r = pl->r;
+        double omega = pl->omega;
+
+        pl->kin[PL_R] += pl->vr * dt;
+        pl->kin[PL_PHI] += omega * dt;
+        pl->kin[PL_Z] += 0.0 * dt;
+        pl->kin[PL_PR] += M * (Gr + r*omega*omega) * dt;
+        pl->kin[PL_JJ] += M * r*Gp * dt;
+        pl->kin[PL_PZ] += M * Gz * dt;
+    }
+}
+
+void updatePlanetsAux(struct domain *theDomain)
 {
     int p;
     int Npl = theDomain->Npl;

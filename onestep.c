@@ -13,9 +13,6 @@ void set_wcell( struct domain * );
 
 void adjust_RK_cons( struct domain * , double );
 
-void adjust_RK_planets_aux( struct domain * , double );
-void adjust_RK_planets_kin( struct domain * , double );
-
 void move_cells( struct domain * , double );
 void calc_dp( struct domain * );
 void calc_prim( struct domain * );
@@ -95,7 +92,8 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
 
    adjust_RK_cons( theDomain , RK );
    adjust_RK_diag( theDomain , RK );
-   adjust_RK_planets_aux( theDomain , RK );
+   adjustPlanetsRKkin( theDomain , RK );
+   adjustPlanetsRKaux( theDomain , RK );
    initializePlanetTracking(theDomain);
 
    //Reconstruction
@@ -171,10 +169,13 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    }
 
    // Before we move the planets, update their internal diagnostics.
-   updatePlanetTracking(theDomain);
+   updatePlanetsKin(theDomain, dt);
+   updatePlanetsAux(theDomain);
 
-   if( !planet_motion_analytic() || first_step ){
-      adjust_RK_planets_kin( theDomain , RK );
+   if( !planet_motion_analytic()){
+      movePlanetsLive(theDomain);
+   }
+   else if(first_step ){
       movePlanets( theDomain->thePlanets , theDomain->t , dt );
    }
 

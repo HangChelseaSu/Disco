@@ -1,7 +1,7 @@
 #include "paul.h"
 #include "analysis.h"
+#include "planet.h"
 
-void planet_RK_copy( struct planet * );
 void onestep( struct domain * , double , double , int , int , double );
 
 void timestep( struct domain * theDomain , double dt ){
@@ -23,9 +23,8 @@ void timestep( struct domain * theDomain , double dt ){
       }
    }
 
-   copy_RK_diag(theDomain);
    for( p=0 ; p<Npl ; ++p ){
-      planet_RK_copy( theDomain->thePlanets + p );
+      copyPlanetsRK(theDomain);
    }
 
    if(stepper == 1)

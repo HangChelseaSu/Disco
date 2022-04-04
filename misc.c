@@ -32,6 +32,11 @@ void clean_pi( struct domain * theDomain ){
       while( phi > phi_max ){ phi -= phi_max; pl->RK_phi -= phi_max; }
       while( phi < 0.0     ){ phi += phi_max; pl->RK_phi += phi_max; }
       pl->phi = phi; 
+
+      phi = pl->kin[PL_PHI];
+      while( phi > phi_max ){ phi -= phi_max; pl->RK_kin[PL_PHI] -= phi_max; }
+      while( phi < 0.0     ){ phi += phi_max; pl->RK_kin[PL_PHI] += phi_max; }
+      pl->kin[PL_PHI] = phi; 
    }
 
 }
@@ -241,24 +246,6 @@ void adjust_RK_cons( struct domain * theDomain , double RK ){
             c->Phi[q] = (1.-RK)*c->Phi[q] + RK*c->RK_Phi[q];
          }
       }
-   }
-}
-
-
-void adjust_RK_planets_kin( struct domain * theDomain , double RK ){
-   int Npl = theDomain->Npl;
-   int p;
-   for( p=0 ; p<Npl ; ++p ){
-      planet_RK_adjust_kin( theDomain->thePlanets+p , RK );
-   }
-}
-
-
-void adjust_RK_planets_aux( struct domain * theDomain , double RK ){
-   int Npl = theDomain->Npl;
-   int p;
-   for( p=0 ; p<Npl ; ++p ){
-      planet_RK_adjust_aux( theDomain->thePlanets+p , RK );
    }
 }
 

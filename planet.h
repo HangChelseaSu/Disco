@@ -13,14 +13,17 @@ void planetaryForce( struct planet * pl , double r , double phi , double z ,
 void planet_src( struct planet * pl , double * prim , double * cons ,
                 double * xp , double * xm , double dVdt );
 
-void planet_RK_copy( struct planet * pl );
-void planet_RK_adjust_kin( struct planet * pl , double RK );
-void planet_RK_adjust_aux( struct planet * pl , double RK );
+void planet_init_kin(struct planet *pl);
 void planet_zero_aux(struct planet *pl);
 
 void setupPlanets(struct domain *theDomain);
 void initializePlanetTracking(struct domain *theDomain);
-void updatePlanetTracking(struct domain *theDomain);
+void updatePlanetsKin(struct domain *theDomain, double dt);
+void updatePlanetsAux(struct domain *theDomain);
+void movePlanetsLive(struct domain *theDomain);
+void copyPlanetsRK( struct domain *theDomain);
+void adjustPlanetsRKkin( struct domain *theDomain, double RK);
+void adjustPlanetsRKaux( struct domain *theDomain, double RK);
 
 // Functions in Planet/ setup
 void setPlanetParams( struct domain * theDomain );
