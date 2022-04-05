@@ -60,7 +60,7 @@ void initializePlanets( struct planet * thePlanets ){
 
 void movePlanets( struct planet * thePlanets , double t , double dt ){
 
-   double TOL = 1e-8;
+   double TOL = 1e-14;
 
    double r0   = thePlanets[0].r + thePlanets[1].r; 
    double phi0 = thePlanets[1].phi;
@@ -83,8 +83,8 @@ void movePlanets( struct planet * thePlanets , double t , double dt ){
    double M0 = E0 - e*sin(E0);
    double M = M0 + l*dt/a/b;
 
-//Newton-Rapheson to solve M = E - e*sin(E)
-      double E = M;  //Guess value for E is M.
+   //Newton-Rapheson to solve M = E - e*sin(E)
+      double E = M + e*sin(M)/(1 - sin(M+e) + sin(M));  //Smith, 1979, https://doi.org/10.1007/BF01796088
       double ff = root0( E , e ) - M; 
       while( fabs(ff) > TOL ){
          double dfdE = root1( E , e ); 
