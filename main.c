@@ -20,6 +20,8 @@ void freeDomain( struct domain * );
 void check_dt( struct domain * , double * );
 void possiblyOutput( struct domain * , int );
 
+void initializeReport(struct domain *);
+
 
 void print_welcome();
 
@@ -61,10 +63,7 @@ int main( int argc , char * argv[] ){
          boundary_trans( &theDomain , 2);
    }
 
-   if( theDomain.rank==0 && !(theDomain.theParList.restart_flag) ){
-      FILE * rFile = fopen("report.dat","w");
-      fclose(rFile);
-   }
+   initializeReport(&theDomain);
 
    while( !(theDomain.final_step) ){
       

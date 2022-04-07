@@ -3,6 +3,37 @@
 #include "geometry.h"
 #include "planet.h"
 
+void initializeReport(struct domain *theDomain)
+{
+    if( theDomain->rank != 0 || theDomain->theParList.restart_flag )
+        return;
+    FILE * rFile = fopen("report.dat","w");
+
+    //Stamp file with compiler options
+    fprintf(rFile, "# GIT_VERSION %s\n", GIT_VERSION);
+    fprintf(rFile, "# INITIAL %s\n", INITIAL);
+    fprintf(rFile, "# HYDRO %s\n", HYDRO);
+    fprintf(rFile, "# GEOMETRY %s\n", GEOMETRY);
+    fprintf(rFile, "# BOUNDARY %s\n", BOUNDARY);
+    fprintf(rFile, "# OUTPUT %s\n", OUTPUT);
+    fprintf(rFile, "# RESTART %s\n", RESTART);
+    fprintf(rFile, "# PLANETS %s\n", PLANETS);
+    fprintf(rFile, "# HLLD %s\n", HLLD);
+    fprintf(rFile, "# ANALYSIS %s\n", ANALYSIS);
+    fprintf(rFile, "# METRIC %s\n", METRIC);
+    fprintf(rFile, "# FRAME %s\n", FRAME);
+    fprintf(rFile, "# CT_MODE %d\n", CT_MODE);
+
+    //Print numerical parameters helpful for parsing
+    fprintf(rFile, "# NUM_C %d\n", NUM_C);
+    fprintf(rFile, "# NUM_N %d\n", NUM_N);
+    fprintf(rFile, "# Npl %d\n", theDomain->Npl);
+    fprintf(rFile, "# NUM_PL_KIN %d\n", NUM_PL_KIN);
+    fprintf(rFile, "# NUM_PL_AUX %d\n", NUM_PL_AUX);
+
+    fclose(rFile);
+}
+
 
 void report( struct domain * theDomain )
 {
@@ -105,8 +136,9 @@ void report( struct domain * theDomain )
    MPI_Allreduce( MPI_IN_PLACE , Eg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eacc_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    
-   MPI_Allreduce( MPI_IN_PLACE , planet_aux  , Npl*NUM_PL_AUX , MPI_DOUBLE ,
-                MPI_SUM , grid_comm );
+   if(!theDomain->planet_gas_track_synced)
+      MPI_Allreduce( MPI_IN_PLACE , planet_aux  , Npl*NUM_PL_AUX , MPI_DOUBLE ,
+                    MPI_SUM , grid_comm );
 #endif
 
    if( rank==0 ){
@@ -140,6 +172,10 @@ void report( struct domain * theDomain )
          fprintf(rFile," %.15le", Eacc_pls[j]);
       }
       for( j=0; j<Npl; ++j){
+        for( iq=0; iq<NUM_PL_KIN; iq++){
+         fprintf(rFile," %.15le", theDomain->thePlanets[j].kin[iq]);
+        }
+
         for( iq=0; iq<NUM_PL_AUX; iq++){
          fprintf(rFile," %.15le", planet_aux[j*NUM_PL_AUX+iq]);
         }

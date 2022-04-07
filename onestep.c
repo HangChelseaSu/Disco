@@ -34,6 +34,7 @@ void flip_fluxes( struct domain * , int );
 
 void boundary_trans( struct domain * , int );
 void exchangeData( struct domain * , int );
+void exchangePlanets(struct domain *theDomain);
 
 void dump_grid(struct domain *, char filename[]);
 
@@ -169,6 +170,11 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    }
 
    // Before we move the planets, update their internal diagnostics.
+   // The gas_track integrals *must* be reduced (summed) over MPI ranks
+   // now for LIVE planet motion.
+   if(!planet_motion_analytic())
+      exchangePlanets(theDomain);
+
    updatePlanetsKin(theDomain, dt);
    updatePlanetsAux(theDomain);
 

@@ -20,7 +20,7 @@ enum{PL_SNK_M, PL_GRV_PX, PL_GRV_PY, PL_GRV_PZ, PL_GRV_JZ,
      PL_SNK_X, PL_SNK_Y, PL_SNK_Z, PL_GRV_EGAS, PL_SNK_EGAS,
      //Up to here are all integrals
      // Everything past here are computed from the integrals above
-     PL_SNK_LZ, PL_GRV_K, PL_SNK_K, PL_GRV_U, PL_SNK_U, PL_SNK_EINT};
+     PL_GRV_LZ, PL_SNK_LZ, PL_GRV_K, PL_SNK_K, PL_GRV_U, PL_SNK_U, PL_SNK_EINT};
 
 #if USE_MPI
 #include <mpi.h>
@@ -39,7 +39,7 @@ enum{PL_SNK_M, PL_GRV_PX, PL_GRV_PY, PL_GRV_PZ, PL_GRV_JZ,
 
 #define NUM_PL_KIN  7
 #define NUM_PL_INTEGRALS 15
-#define NUM_PL_AUX (NUM_PL_INTEGRALS + 6)
+#define NUM_PL_AUX (NUM_PL_INTEGRALS + 7)
 
 //Magnetic field tracking things.  Can be set to zero if there is no MHD.
 #if CT_MODE == 0        //No CT
@@ -226,6 +226,7 @@ struct domain{
    MPI_Comm theComm;
 #endif
 
+   int planet_gas_track_synced;
    struct param_list theParList;
    int num_tools;
    struct diagnostic_avg theTools;

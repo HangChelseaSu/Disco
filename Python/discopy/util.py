@@ -127,6 +127,7 @@ def loadFluxR(filename):
     zkph = f['Grid']['z_kph'][...]
     fluxHydro = f['Data']['FluxHydroAvgR'][...]
     fluxVisc = f['Data']['FluxViscAvgR'][...]
+    dt = f['Data']['Diagnostics_DT'][0]
 
     f.close()
 
@@ -138,7 +139,6 @@ def loadFluxR(filename):
         return None
 
     opts = loadOpts(filename)
-    dt = 1.0
 
     Z = dg.getCentroid(zkph[:-1], zkph[1:], 2, opts)
 
@@ -312,3 +312,138 @@ def getVarNames(filename):
             texnames.append(r'$q_{0:d}$'.format(q))
 
     return names, texnames, num_c, num_n
+
+
+class DiscoReport:
+
+    def __init__(self, filename):
+        hdr = self._readHeader(filename)
+
+        self.NUM_C = hdr['NUM_C']
+        self.NUM_N = hdr['NUM_N']
+        self.NUM_Q = self.NUM_C + self.NUM_N
+        self.Npl = hdr['Npl']
+        self.NUM_PL_KIN = hdr['NUM_PL_KIN']
+        self.NUM_PL_AUX = hdr['NUM_PL_AUX']
+
+        self.t = np.loadtxt(filename, unpack=True, usecols=0, comments='#')
+        self.N = self.t.shape[0]
+
+        self.cons = np.loadtxt(filename, comments='#',
+                               usecols=range(1, 1+self.NUM_Q)).T
+
+        start = 2+self.NUM_Q + 7*self.Npl
+        step = self.NUM_PL_KIN + self.NUM_PL_AUX
+
+        self.kin = np.empty((self.NUM_PL_KIN, self.Npl, self.N))
+        self.aux = np.empty((self.NUM_PL_AUX, self.Npl, self.N))
+
+        for i in range(self.Npl):
+            idx_a = start + i*step
+            idx_b = start + i*step + self.NUM_PL_KIN
+            self.kin[:, i, :] = np.loadtxt(filename, comments='#',
+                                    usecols=range(idx_a, idx_b)).T
+            self.aux[:, i, :] = np.loadtxt(filename, comments='#',
+                                    usecols=range(idx_b, idx_a+step)).T
+
+    @property
+    def dt(self):
+        tdiff = np.zeros(self.t.shape)
+        tdiff[1:] = self.t[1:] - self.t[:-1]
+        return tdiff
+
+    @property
+    def KIN_M(self):
+        return self.kin[0]
+    @property
+    def KIN_R(self):
+        return self.kin[1]
+    @property
+    def KIN_PHI(self):
+        return self.kin[2]
+    @property
+    def KIN_Z(self):
+        return self.kin[3]
+    @property
+    def KIN_PR(self):
+        return self.kin[4]
+    @property
+    def KIN_LL(self):
+        return self.kin[5]
+    @property
+    def KIN_PZ(self):
+        return self.kin[6]
+
+    @property
+    def SNK_M(self):
+        return self.aux[0]
+    @property
+    def GRV_PX(self):
+        return self.aux[1]
+    @property
+    def GRV_PY(self):
+        return self.aux[2]
+    @property
+    def GRV_PZ(self):
+        return self.aux[3]
+    @property
+    def GRV_JZ(self):
+        return self.aux[4]
+    @property
+    def SNK_PX(self):
+        return self.aux[5]
+    @property
+    def SNK_PY(self):
+        return self.aux[6]
+    @property
+    def SNK_PZ(self):
+        return self.aux[7]
+    @property
+    def SNK_JZ(self):
+        return self.aux[8]
+    @property
+    def SNK_SZ(self):
+        return self.aux[9]
+    @property
+    def SNK_X(self):
+        return self.aux[10]
+    @property
+    def SNK_Y(self):
+        return self.aux[11]
+    @property
+    def SNK_Z(self):
+        return self.aux[12]
+    @property
+    def GRV_EGAS(self):
+        return self.aux[13]
+    @property
+    def SNK_EGAS(self):
+        return self.aux[14]
+    @property
+    def GRV_LZ(self):
+        return self.aux[15]
+    @property
+    def SNK_LZ(self):
+        return self.aux[16]
+
+    def _readHeader(self, filename):
+
+        hdr = {}
+
+        with open(filename, 'r') as f:
+            for line in f:
+                if line[0] != '#':
+                    break
+                words = line.split()
+                key = words[1]
+                try:
+                    val = int(words[2])
+                except ValueError:
+                    try:
+                        val = float(words[2])
+                    except ValueError:
+                        val = words[2]
+                hdr[key] = val
+
+        return hdr
+

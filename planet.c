@@ -409,47 +409,101 @@ void initializePlanetTracking(struct domain *theDomain)
 
         for(q=0; q<NUM_PL_INTEGRALS; q++)
             pl->gas_track[q] = 0.0;
+
+        theDomain->planet_gas_track_synced = 0;
     }
 }
 
 void updatePlanetsKin(struct domain *theDomain, double dt)
 {
+    /*
+     * If the planets are LIVE, then the gas_track integrals *must*
+     * have been reduced (summed) over MPI ranks already for this to work.
+     */
     int p;
     int Npl = theDomain->Npl;
     struct planet *thePlanets = theDomain->thePlanets;
+
+    int live_planet = !planet_motion_analytic();
 
     for(p=0; p<Npl; p++)
     {
         struct planet *pl = thePlanets + p;
 
-        double Gr = 0;
-        double Gp = 0;
-        double Gz = 0;
-
-        int p2;
-        for(p2=0; p2<Npl; p2++)
-        {
-            if(p == p2)
-                continue;
-
-            struct planet *pl2 = thePlanets + p2;
-            double gr, gp, gz;
-            planetaryForce(pl2, pl->r, pl->phi, 0.0, &gr, &gp, &gz, 0);
-            Gr += gr;
-            Gp += gp;
-            Gz += gz;
-        }
+        double cosp = cos(pl->phi);
+        double sinp = sin(pl->phi);
 
         double M = pl->M;
         double r = pl->r;
         double omega = pl->omega;
 
-        pl->kin[PL_R] += pl->vr * dt;
-        pl->kin[PL_PHI] += omega * dt;
-        pl->kin[PL_Z] += 0.0 * dt;
-        pl->kin[PL_PR] += M * (Gr + r*omega*omega) * dt;
-        pl->kin[PL_JJ] += M * r*Gp * dt;
-        pl->kin[PL_PZ] += M * Gz * dt;
+        double vr_pl = 0;
+        double om_pl = 0;
+        double vz_pl = 0;
+        double Fr_pl = 0;
+        double rFp_pl = 0;
+        double Fz_pl = 0;
+
+        if(live_planet)
+        {
+            double Gr = 0;
+            double Gp = 0;
+            double Gz = 0;
+
+            int p2;
+            for(p2=0; p2<Npl; p2++)
+            {
+                if(p == p2)
+                    continue;
+
+                struct planet *pl2 = thePlanets + p2;
+                double gr, gp, gz;
+                planetaryForce(pl2, pl->r, pl->phi, 0.0, &gr, &gp, &gz, 0);
+                Gr += gr;
+                Gp += gp;
+                Gz += gz;
+            }
+
+            vr_pl = pl->vr;
+            om_pl = omega;
+
+            Fr_pl = M * (Gr + r*omega*omega);
+            rFp_pl = M * r * Gp;
+            Fz_pl = M * Gz;
+        }
+        
+        double dPx_grv = pl->gas_track[PL_GRV_PX];
+        double dPy_grv = pl->gas_track[PL_GRV_PY];
+        double dPz_grv = pl->gas_track[PL_GRV_PZ];
+        
+        double dPx_snk = pl->gas_track[PL_SNK_PX];
+        double dPy_snk = pl->gas_track[PL_SNK_PY];
+        double dPz_snk = pl->gas_track[PL_SNK_PZ];
+
+        double dPr_grv = cosp * dPx_grv + sinp * dPy_grv;
+        double dJ_grv1 = pl->gas_track[PL_GRV_JZ];
+        double dJ_grv2 = r * (-sinp * dPx_grv + cosp * dPy_grv);
+
+        double dJ_grv = 0.5*(dJ_grv1 + dJ_grv2);
+
+
+        double dPr_snk = cosp * dPx_snk + sinp * dPy_snk;
+        double dJ_snk = r * (-sinp * dPx_snk + cosp * dPy_snk);
+
+        double dx_snk = pl->gas_track[PL_SNK_X] / M;
+        double dy_snk = pl->gas_track[PL_SNK_Y] / M;
+        double dz_snk = pl->gas_track[PL_SNK_Z] / M;
+        double dr_snk = cosp * dx_snk + sinp * dy_snk;
+        double dphi_snk = (-sinp * dx_snk + cosp * dy_snk) / r;
+
+        pl->kin[PL_M] += pl->gas_track[PL_SNK_M];
+
+        pl->kin[PL_R] += vr_pl * dt + dr_snk;
+        pl->kin[PL_PHI] += om_pl * dt + dphi_snk;
+        pl->kin[PL_Z] += vz_pl * dt + dz_snk;
+        pl->kin[PL_PR] += Fr_pl * dt + dPr_grv + dPr_snk;
+        pl->kin[PL_JJ] += rFp_pl * dt + dJ_grv + dJ_snk;
+        pl->kin[PL_PZ] += Fz_pl * dt + dPz_grv + dPz_snk;
     }
 }
 
@@ -487,6 +541,10 @@ void updatePlanetsAux(struct domain *theDomain)
         double y = r * sinp;
         double vx = pl->vr * cosp - r * pl->omega * sinp;
         double vy = pl->vr * sinp + r * pl->omega * cosp;
+
+        pl->aux[PL_GRV_LZ] += x * pl->gas_track[PL_GRV_PY]
+                            - y * pl->gas_track[PL_GRV_PX];
+
         pl->aux[PL_SNK_LZ] += x * pl->gas_track[PL_SNK_PY]
                             - y * pl->gas_track[PL_SNK_PX]
                             + pl->gas_track[PL_SNK_X] * vy

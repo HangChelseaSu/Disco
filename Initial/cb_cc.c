@@ -19,14 +19,14 @@ void initial(double *prim, double *x)
 
     double cs2 = get_cs2(x);
 
-    double rho0 = 1.0;
-    double Rcav = 2.5;
+    double rho0 = 1.0e-2;//1.0;
+    double Rcav = 0.5;//2.5;
     double d0 = 1.0e-5;
-    //double Rout = 10;
-    double v0 = 1.0e-3;
+    double Rout = 5;
+    double v0 = 1.0e-2;//1.0e-3;
 
-    //double f = 1 - 1/(1 + exp(-2*(r-Rout)));
-    double f = 1.0;
+    double f = 1 - 1/(1 + exp(-2*(r-Rout)));
+    //double f = 1.0;
 
     double rho = rho0 * ((1-d0)*exp(-pow(Rcav/r, 12)) + d0) * f;
 

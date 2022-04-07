@@ -305,3 +305,32 @@ void exchangeData( struct domain * theDomain , int dim ){
 #endif
 }
 
+void exchangePlanets(struct domain *theDomain)
+{
+    /*
+     * This reduces (sums) the gas_track integrals to allow live planet motion
+     * to work.
+     */
+#if USE_MPI
+
+    int buf_size = theDomain->Npl * NUM_PL_INTEGRALS;
+    double gas_track_buf[buf_size];
+    int p;
+
+    for(p=0; p<theDomain->Npl; p++)
+        memcpy(gas_track_buf + p * NUM_PL_INTEGRALS,
+               theDomain->thePlanets[p].gas_track,
+               NUM_PL_INTEGRALS * sizeof(double));
+
+    MPI_Allreduce(MPI_IN_PLACE, gas_track_buf, buf_size, MPI_DOUBLE, MPI_SUM,
+                  theDomain->theComm);
+
+    for(p=0; p<theDomain->Npl; p++)
+        memcpy(theDomain->thePlanets[p].gas_track,
+               gas_track_buf + p * NUM_PL_INTEGRALS,
+               NUM_PL_INTEGRALS * sizeof(double));
+
+#endif
+    theDomain->planet_gas_track_synced = 1;
+}
+

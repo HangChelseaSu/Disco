@@ -390,6 +390,8 @@ void output( struct domain * theDomain , char * filestart ){
 
    int NpDat = 7;
    int Ntools = theDomain->num_tools;
+
+   double diag_dt = theDomain->theTools.t_avg;
    avg_diagnostics( theDomain );
 
    char filename[256];
@@ -452,6 +454,11 @@ void output( struct domain * theDomain , char * filestart ){
       fdims2[0] = Npl;
       fdims2[1] = NpDat;
       createDataset(filename,"Data","Planets",2,fdims2,H5T_NATIVE_DOUBLE);
+      
+      fdims1[0] = 1;
+      createDataset(filename,"Data","Diagnostics_DT", 1, fdims1,
+                    H5T_NATIVE_DOUBLE);
+      
       hsize_t fdims3[3] = {Nz_Tot, Nr_Tot, Ntools};
       createDataset(filename,"Data","Diagnostics",3,fdims3,H5T_NATIVE_DOUBLE);
       
@@ -485,6 +492,8 @@ void output( struct domain * theDomain , char * filestart ){
 #endif
    if( rank==0 ){
       writeSimple(filename,"Grid","T",&(theDomain->t),H5T_NATIVE_DOUBLE);
+      writeSimple(filename, "Data", "Diagnostics_DT", &diag_dt,
+                  H5T_NATIVE_DOUBLE);
       writePars(theDomain, filename);
       writeOpts(theDomain, filename);
       double PlanetData[Npl*NpDat];
