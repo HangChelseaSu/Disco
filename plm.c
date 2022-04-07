@@ -222,7 +222,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         double phiL = cL->piph - .5*cL->dphi;
         double phiR = cR->piph - .5*cR->dphi;
         double dpL = get_signed_dp(phi,phiL);
-        double dpR = get_signed_dp(phiR,phi);
+        double dpR = get_signed_dp(phi,phiR);
       
         double *gradL = dim==1 ? cL->gradr : cL->gradz;
         double *gradR = dim==1 ? cR->gradr : cR->gradz;
@@ -237,6 +237,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
                                         cL->gradp, cR->gradp,
                                         dpL, dpR, f->cm, -dxL, dxR,
                                         gradCIL, gradCIR, dim);
+
             for(q=0; q<NUM_Q; q++)
             {
                 double WL = cL->prim[q] + dpL*cL->gradp[q];
@@ -246,17 +247,38 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
                 double SR = gradR[q];
                 double SfL = (1-w) * S + w * gradCIL[q];
                 double SfR = (1-w) * S + w * gradCIR[q];
-                
-                if( SfL*SL < 0.0 )
-                    gradL[q] = 0.0; 
-                else if( fabs(PLM*SfL) < fabs(SL) )
-                    gradL[q] = PLM*SfL;
-                
 
-                if( SfR*SR < 0.0 )
-                    gradR[q] = 0.0; 
-                else if( fabs(PLM*SfR) < fabs(SR) )
-                    gradR[q] = PLM*SfR;
+                if(dim == 1 && q == UPP)
+                {
+                    double SL0 = -w*cL->prim[UPP] / (f->cm[0] - dxL);
+                    double SR0 = -w*cR->prim[UPP] / (f->cm[0] + dxL);
+
+                    SL -= SL0;
+                    SR -= SR0;
+                    
+                    if( SfL*SL < 0.0 )
+                        gradL[q] = SL0; 
+                    else if( fabs(PLM*SfL) < fabs(SL) )
+                        gradL[q] = PLM*SfL + SL0;
+
+                    if( SfR*SR < 0.0 )
+                        gradR[q] = SR0; 
+                    else if( fabs(PLM*SfR) < fabs(SR) )
+                        gradR[q] = PLM*SfR + SR0;
+                }
+                else
+                {
+                    if( SfL*SL < 0.0 )
+                        gradL[q] = 0.0; 
+                    else if( fabs(PLM*SfL) < fabs(SL) )
+                        gradL[q] = PLM*SfL;
+                    
+
+                    if( SfR*SR < 0.0 )
+                        gradR[q] = 0.0; 
+                    else if( fabs(PLM*SfR) < fabs(SR) )
+                        gradR[q] = PLM*SfR;
+                }
             }
         }
         else
@@ -264,7 +286,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
             for( q=0 ; q<NUM_Q ; ++q )
             {
                 double WL = cL->prim[q] + dpL*cL->gradp[q];
-                double WR = cR->prim[q] - dpR*cR->gradp[q];
+                double WR = cR->prim[q] + dpR*cR->gradp[q];
 
                 double S = (WR-WL)/(dxR+dxL);
                 double SL = gradL[q];
@@ -281,10 +303,11 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
             }
         }
     }
-    
+   
    // Geometric boundaries don't have ghost zones, so the gradients there need
    // to be fixed.  
-   
+ 
+
    if(dim == 1 && theDomain->NgRa == 0)
       plm_geom_boundary(theDomain, 0, 0, 0, Nz-1, dim, 0);
 
