@@ -9,16 +9,18 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <fstream>
+//#include <fstream>
 
 #include <hdf5.h>
+
+#include "gifer.h"
 
 #ifdef OSX
 #include <GLUT/glut.h>    // Header File For The GLUT Library 
 #include <OpenGL/gl.h>	// Header File For The OpenGL32 Library
 #include <OpenGL/glu.h>	// Header File For The GLu32 Library
 #else
-#include <glut.h>    // Header File For The GLUT Library 
+#include <GL/glut.h>    // Header File For The GLUT Library 
 #include <GL/gl.h>	// Header File For The OpenGL32 Library
 #include <GL/glu.h>	// Header File For The GLu32 Library
 #endif
@@ -27,10 +29,10 @@
 /* ASCII code for the escape key. */
 #define ESCAPE 27
 
-#define VAL_FLOOR -1   //0.95//0 //-8e-3//-3e-2 //(-HUGE_VAL)  //.96
-#define VAL_CEIL  1 //4.5e-3 //1.05//5.25e-21 //5.25e-9 //8e-3//3e-2 //5.24e-5 //(HUGE_VAL)  //1.04
+#define VAL_FLOOR 0.9 // 1.0 - 1.0e-10 //1 //0.95//0 //-8e-3//-3e-2 //(-HUGE_VAL) //.96
+#define VAL_CEIL  2.0 //+ 1.0e-10 //-1 //4.5e-3 //1.05//5.25e-21 //5.25e-9 //8e-3//3e-2 //5.24e-5 //(HUGE_VAL)  //1.04
 #define FIXMAXMIN 1
-#define COLORMAX 7
+#define COLORMAX 13
 #define CAM_BACKUP  1.5
 #define ZRORDER 1 // 1: checkpoints organized with faster index r (default,new)
                   // 0: checkpoints organized with slower index r (old)
@@ -46,7 +48,8 @@ int FullScreenMode=0;
 int dim3d = 0;
 int t_off = 0;
 int p_off = 0;
-int cmap = 4;
+int flipCM = 0;
+int cmap = 6;
 int draw_1d = 0;
 int draw_bar = 0;
 int draw_t   = 0;
@@ -62,6 +65,8 @@ int help_screen=0;
 int print_vals=0;
 int fix_zero=0;
 int geometry = 0;
+
+int first_frame = 1;
 
 double val_floor = VAL_FLOOR;
 double val_ceil = VAL_CEIL;
@@ -94,11 +99,12 @@ char **filenameList = NULL;
 int nfiles = 0;
 int currentFile = 0;
 
-void get_rgb( double , float * , float * , float * , int );
+void get_rgb( double , float * , float * , float * , int, int );
 void loadSliceZ(char *filename, int k);
 void loadSlicePhi(char *filename);
 void loadDiagnostics(char *filename, int k);
 void loadFile(int fileIndex, int zslice);
+void DrawGLScene();
 
 double getval( double * thisZone , int q ){
    if( q!=-1 ) return( thisZone[q] );
@@ -271,7 +277,11 @@ void readPatch( char * file , char * group , char * dset , void * data , hid_t t
 int window; 
 
 // Here are the fonts: 
-void ** glutFonts[7] = { 
+#ifdef OSX
+void * glutFonts[7] = { 
+#else
+void * glutFonts[7] = { 
+#endif
     GLUT_BITMAP_9_BY_15, 
     GLUT_BITMAP_8_BY_13, 
     GLUT_BITMAP_TIMES_ROMAN_10, 
@@ -282,7 +292,12 @@ void ** glutFonts[7] = {
 }; 
 
 // This function prints some text wherever you want it. 
+#ifdef OSX
 void glutPrint(float x, float y, float z , void ** font, char* text, float r, float g, float b, float a) 
+#else
+void glutPrint(float x, float y, float z , void * font, char* text, float r, float g, float b, float a) 
+#endif
+
 { 
     if(!text || !strlen(text)) return; 
     int blending = 0; 
@@ -317,6 +332,10 @@ void ReSizeGLScene(int Width, int Height)
   if (Height==0)				// Prevent A Divide By Zero If The Window Is Too Small
     Height=1;
 
+#ifdef OSX
+  //glutReshapeWindow(Width, Height);
+#endif
+
   glViewport(0, 0, Width, Height);		// Reset The Current Viewport And Perspective Transformation
 
   glMatrixMode(GL_PROJECTION);
@@ -324,8 +343,12 @@ void ReSizeGLScene(int Width, int Height)
 
   gluPerspective(45.0f,(GLfloat)Width/(GLfloat)Height,0.1f,100.0f);
   glMatrixMode(GL_MODELVIEW);
+
+  WindowHeight = Height;
+  WindowWidth = Width;
 }
 
+/*
 void TakeScreenshot(const char *useless){
    int dimx = WindowWidth;
    int dimy = WindowHeight;
@@ -350,6 +373,135 @@ void TakeScreenshot(const char *useless){
    }    
    fp.close();
    printf("done!\n");
+}
+*/
+
+void makePalette(int pal[])
+{
+    pal[0] = 0;
+    pal[1] = 0;
+    pal[2] = 0;
+    pal[3] = 220;
+    pal[4] = 220;
+    pal[5] = 220;
+
+    int i;
+    for(i=2; i<256; i++)
+    {
+        float val = (i-2)/253.0;
+        float rrr, ggg, bbb;
+        get_rgb(val, &rrr, &ggg, &bbb, cmap, flipCM);
+        pal[3*i+0] = 255*rrr;
+        pal[3*i+1] = 255*ggg;
+        pal[3*i+2] = 255*bbb;
+    }
+}
+
+void calcGIFpixels(int dimx, int dimy, int *gifstream)
+{
+    float *pixels = (float *)malloc(3*dimx*dimy * sizeof(float));
+    float *pixels_bw = (float *)malloc(dimx*dimy * sizeof(float));
+
+    glReadBuffer(GL_BACK);
+    glPixelStorei(GL_PACK_ALIGNMENT,1);
+    glReadPixels(0, 0, dimx, dimy, GL_RGB, GL_FLOAT, pixels);
+
+    float bgcolor[4];
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, bgcolor);
+
+    int old_cmap = cmap;
+    cmap = 5;  // black-to-white, rrr = ggg = bbb = val
+    DrawGLScene();
+    DrawGLScene();
+
+    glReadBuffer(GL_BACK);
+    glPixelStorei(GL_PACK_ALIGNMENT,1);
+    glReadPixels(0, 0, dimx, dimy, GL_RED, GL_FLOAT, pixels_bw);
+   
+    cmap = old_cmap;
+    DrawGLScene();
+
+    int i, j;
+
+    for(j=0; j<dimy; j++)
+        for(i=0; i<dimx; i++)
+        {
+            int pixIdx = dimx*j + i;
+            int gifIdx = dimx*(dimy-j-1) + i;
+            float rrr = pixels[3*pixIdx];
+            float ggg = pixels[3*pixIdx+1];
+            float bbb = pixels[3*pixIdx+2];
+
+            if(rrr == 0.0f && ggg == 0.0f && bbb == 0.0f)
+                gifstream[gifIdx] = 0;
+            else if(fabs(rrr - bgcolor[0]) < 1.0e-7
+                    && fabs(ggg - bgcolor[1]) < 1.0e-7
+                    && fabs(bbb - bgcolor[2]) < 1.0e-7)
+                gifstream[gifIdx] = 1;
+            else
+                gifstream[gifIdx] = (int)(253 * pixels_bw[pixIdx]) + 2;
+        }
+
+    free(pixels);
+    free(pixels_bw);
+}
+
+void gifify()
+{
+    int palette[3*256];
+    makePalette(palette);
+
+    int dimx = glutGet(GLUT_WINDOW_WIDTH); //WindowWidth;
+    int dimy = glutGet(GLUT_WINDOW_HEIGHT); //WindowHeight;
+
+    char gifname[1024 + 5];
+    strcpy(gifname, filename);
+
+    char *dot_ptr = strrchr(gifname, '.');
+    if(dot_ptr != NULL)
+        *dot_ptr = '\0';
+    strcat(gifname, ".gif" );
+
+    int *gifstream = (int *)malloc(dimx*dimy * sizeof(int));;
+
+    calcGIFpixels(dimx, dimy, gifstream);
+   
+    printf("Saving %s\n", gifname);
+    makeGIF(dimx, dimy, 1, palette, 256, 1, -1, 1.0, gifstream, gifname);
+
+    free(gifstream);
+
+}
+
+void gifify_all()
+{
+    int palette[3*256];
+    makePalette(palette);
+
+    int dimx = glutGet(GLUT_WINDOW_WIDTH); //WindowWidth;
+    int dimy = glutGet(GLUT_WINDOW_HEIGHT); //WindowHeight;
+
+    char gifname[] = "disco_run.gif";
+
+    int *gifstream = (int *)malloc(nfiles * dimx*dimy * sizeof(int));
+    int i;
+
+    int old_file = currentFile;
+    for(i=0; i<nfiles; i++)
+    {
+        currentFile = i;
+        loadFile(currentFile, KK);
+        DrawGLScene();
+        calcGIFpixels(dimx, dimy, gifstream + dimx*dimy*i);
+    }
+    currentFile = old_file;
+    loadFile(currentFile, KK);
+   
+    printf("Saving %s\n", gifname);
+    makeGIF(dimx, dimy, nfiles, palette, 256, 1, -1, 10.0, gifstream, gifname);
+
+    free(gifstream);
+
 }
 
 void draw1dBackground(double RotationAngleX, double RotationAngleY,
@@ -389,7 +541,6 @@ void draw1dRadialData(double RotationAngleX, double RotationAngleY,
     /*
     glColor3f(0.5,0.5,0.5);
     glBegin( GL_LINE_STRIP );
-
     for( j=0 ; j<Nr ; ++j )
     {
         //if(logscale) val = log(getval(theZones[i],q))/log(10.);
@@ -681,7 +832,7 @@ void drawZSlice(double camdist, double xoff, double yoff, double zoff, int q,
             //if( uMax < u ) uMax = u;
 
             float rrr,ggg,bbb;
-            get_rgb( val , &rrr , &ggg , &bbb , cmap );
+            get_rgb( val , &rrr , &ggg , &bbb , cmap, flipCM );
 
             if( (!dim3d || (sin(phi)>0 || cos(phi+.25)<0.0)) && dim3d !=2 )
             {
@@ -745,7 +896,7 @@ void drawPhiSlice(double camdist, double xoff, double yoff, double zoff, int q,
             if( val < 0.0 ) 
                 val = 0.0;
             float rrr,ggg,bbb;
-            get_rgb( val , &rrr , &ggg , &bbb , cmap );
+            get_rgb( val , &rrr , &ggg , &bbb , cmap, flipCM );
             if( !draw_border_now )
             { 
                 glColor3f( rrr , ggg , bbb );
@@ -821,7 +972,7 @@ void drawColorBar(double RotationAngleX, double RotationAngleY,
         double y = (double)k*dy - .5*hb;
         double val = (double)k/(double)Nb;
         float rrr,ggg,bbb;
-        get_rgb( val , &rrr , &ggg , &bbb , cmap );
+        get_rgb( val , &rrr , &ggg , &bbb , cmap, flipCM );
         glLineWidth(0.0f);
         glColor3f( rrr , ggg , bbb );
         glBegin(GL_POLYGON);
@@ -839,7 +990,9 @@ void drawColorBar(double RotationAngleX, double RotationAngleY,
         double y = (double)k*hb/(double)(Nv-1) - .5*hb;
         double val = ((double)k/(double)(Nv-1))*(maxval-minval) + minval;
         char valname[256];
-        sprintf(valname,"%+.6e",val);
+
+        sprintf(valname,"%+.16e",val);
+
         glLineWidth(1.0f);
         glColor3f(0.0,0.0,0.0);
         glBegin(GL_LINE_LOOP);
@@ -944,14 +1097,12 @@ void drawSpiral(double RotationAngleX, double RotationAngleY,
     double phi0 = ((double)k-.5)/(double)Nr*2.*M_PI;//(3.-2.*sqrt(1./r)-r)*20.;
     double x0 = 1.+e*cos(phi0);
     double y0 = e*sin(phi0);
-
     double phi = atan2(y0,x0);
     double r   = sqrt(x0*x0+y0*y0);
     //         double phi = (double)k/(double)Nr*2.*M_PI;//(3.-2.*sqrt(1./r)-r)*20.;
     //         double r   = 2./(1.+sin(phi));//1.0;//((double)k+0.5)/(double)Nr*(Rmax-Rmin) + Rmin;
     //         if( r<1. ) phi = -phi;
     r /= rescale;
-
     glVertex3f( r*cos(phi)-xoff , r*sin(phi)-yoff , camdist + .0011 );
     if( k%2==1 ){
     glEnd();
@@ -977,18 +1128,19 @@ void drawHelp(double RotationAngleX, double RotationAngleY,
                     double RotationAngleZ, double camdist, double xoff,
                     double yoff, double zoff)
 {
-    int NLines = 9;
+    int NLines = 10;
     double dy = -.04;
     char help[NLines][256];
     sprintf(help[0],"Help Display:");
     sprintf(help[1],"b - Toggle Colorbar");
-    sprintf(help[2],"c - Change Colormap");
-    sprintf(help[3],"f - Toggle Max/Min Floors");
-    sprintf(help[4],"p - Toggle Planet Data");
-    sprintf(help[5],"1-9 - Choose Primitive Variable to Display");
-    sprintf(help[6],"wasd - Move Camera");
-    sprintf(help[7],"z/x - Zoom in/out");
-    sprintf(help[8],"h - Toggle Help Screen");
+    sprintf(help[2],"B - Flip Colormap");
+    sprintf(help[3],"[ / ] - Change Colormap");
+    sprintf(help[4],"f - Toggle Max/Min Floors");
+    sprintf(help[5],"p - Toggle Planet Data");
+    sprintf(help[6],"1-9 - Choose Primitive Variable to Display");
+    sprintf(help[7],"arrow keys - Move Camera");
+    sprintf(help[8],"z/x - Zoom in/out");
+    sprintf(help[9],"h - Toggle Help Screen");
     int i;
     for( i=0 ; i<NLines ; ++i )
     {
@@ -1004,6 +1156,13 @@ void DrawGLScene(){
 
    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
    glLoadIdentity();
+
+   if(first_frame)
+   {
+       ReSizeGLScene(WindowWidth, WindowHeight);
+       first_frame = 0;
+   }
+
 
    double RotationAngleX = 0.0;
    double RotationAngleY = 0.0;
@@ -1070,8 +1229,9 @@ void DrawGLScene(){
 
    if( CommandMode )
    {
-      TakeScreenshot("out.ppm");
-      exit(1);
+      //TakeScreenshot("out.ppm");
+      gifify();
+      exit(0);
    }
 
    glutSwapBuffers();
@@ -1096,6 +1256,7 @@ void keyPressed(unsigned char key, int x, int y)
    }
    if( key >= (int)'0' && key < (int)'1'+Nq ) valq = (int)key-(int)'1';
    if( key == 'b' ) draw_bar = !draw_bar;
+   if( key == 'B' ) flipCM = !flipCM;
    if( key == 'd' ) {++dim3d; if(dim3d==3) dim3d=0;}
    if( key == 'f' ){
        floors = (floors+1)%3;
@@ -1200,6 +1361,14 @@ void keyPressed(unsigned char key, int x, int y)
    {
        val_ceil = maxval;
        val_floor = minval;
+   }
+   if(key == 'o')
+   {
+       gifify();
+   }
+   if(key == 'O')
+   {
+       gifify_all();
    }
 
    glutPostRedisplay();
