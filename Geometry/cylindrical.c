@@ -187,6 +187,7 @@ void geom_polar_vec_adjust(const double *xp, const double *xm, double *fac)
     fac[2] = 1.0;
 }
 
+#if ENABLE_CART_INTERP
 void geom_interpolate(const double *prim, const double *gradr,
                       const double *gradp, const double *gradz,
                       const double *x, double dr, double dphi, double dz,
@@ -379,3 +380,4 @@ void geom_cart_interp_grad_trans(const double *primL, const double *primR,
     }
     */
 }
+#endif

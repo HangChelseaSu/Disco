@@ -20,19 +20,23 @@ void plm_phi( struct domain * theDomain ){
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
    double PLM = theDomain->theParList.PLM;
+#if ENABLE_CART_INTERP
    int Cartesian_Interp = theDomain->theParList.Cartesian_Interp;
+#endif
    int i,j,k,q;
 
 
    for( k=0 ; k<Nz ; ++k ){
       for( j=0 ; j<Nr ; ++j ){
          int jk = j+Nr*k;
+#if ENABLE_CART_INTERP
          double z = get_centroid(theDomain->z_kph[k],theDomain->z_kph[k-1],2);
          double r = get_centroid(theDomain->r_jph[j],theDomain->r_jph[j-1],1);
          double x[3] = {r, 0.0, z};
          double w = 0.0;
          if(Cartesian_Interp)
             w = getCartInterpWeight(x);
+#endif
          for( i=0 ; i<Np[jk] ; ++i ){
             int im = (i == 0) ? Np[jk]-1 : i-1;
             int ip = (i == Np[jk]-1) ? 0 : i+1;
@@ -54,6 +58,7 @@ void plm_phi( struct domain * theDomain ){
                sC /= .5*( dpL + dpR ) + dpC;
                c->gradp[q] = minmod( PLM*sL , sC , PLM*sR );
             }
+#if ENABLE_CART_INTERP
             if(w > 0.0)
             {
                double xL[3] = {r, -0.5*(dpL+dpC), z}; 
@@ -92,6 +97,7 @@ void plm_phi( struct domain * theDomain ){
                for( q=0 ; q<NUM_Q ; ++q )
                   c->gradp[q] = (1-w) * c->gradp[q] + w * grad[q];
             }
+#endif
          }
       }
    }
@@ -106,10 +112,12 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
+   double PLM = theDomain->theParList.PLM;
+#if ENABLE_CART_INTERP
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
-   double PLM = theDomain->theParList.PLM;
    int Cartesian_Interp = theDomain->theParList.Cartesian_Interp;
+#endif
    
    int i,j,k,q;
 
@@ -125,6 +133,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
          }
       }
    }
+#if ENABLE_CART_INTERP
    if(Cartesian_Interp && dim == 1)
    {
       for( k=0 ; k<Nz ; ++k ){
@@ -140,6 +149,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
           }
        }
    }
+#endif
 
    if(PLM == 0.0)
        return;
@@ -183,6 +193,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         double *gradL = dim==1 ? cL->gradr : cL->gradz;
         double *gradR = dim==1 ? cR->gradr : cR->gradz;
 
+#if ENABLE_CART_INTERP
         double w = 0.0;
         if(theDomain->theParList.Cartesian_Interp)
             w = getCartInterpWeight(f->cm);
@@ -206,6 +217,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         }
         else
         {
+#endif
             for( q=0 ; q<NUM_Q ; ++q )
             {
                 double WL = cL->prim[q] + dpL*cL->gradp[q];
@@ -215,7 +227,9 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
                 gradL[q] += S*dA_fL;
                 gradR[q] += S*dA_fR;
             }
+#if ENABLE_CART_INTERP
         }
+#endif
     }
 
     //Slope Limiting
@@ -236,6 +250,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         double *gradL = dim==1 ? cL->gradr : cL->gradz;
         double *gradR = dim==1 ? cR->gradr : cR->gradz;
       
+#if ENABLE_CART_INTERP
         double w = 0.0;
         if(Cartesian_Interp)
             w = getCartInterpWeight(f->cm);
@@ -292,6 +307,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         }
         else
         {
+#endif
             for( q=0 ; q<NUM_Q ; ++q )
             {
                 double WL = cL->prim[q] + dpL*cL->gradp[q];
@@ -310,7 +326,9 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
                 else if( fabs(PLM*S) < fabs(SR) )
                     gradR[q] = PLM*S;
             }
+#if ENABLE_CART_INTERP
         }
+#endif
     }
    
    // Geometric boundaries don't have ghost zones, so the gradients there need

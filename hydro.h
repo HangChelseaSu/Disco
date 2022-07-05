@@ -35,6 +35,8 @@ double mindt(const double * prim , double w ,
              const double * xp , const double * xm );
 void reflect_prims(double * prim, const double * x, int dim);
 double bfield_scale_factor(double x, int dim);
+#if ENABLE_CART_INTERP
 double getCartInterpWeight(const double *x);
+#endif
 
 #endif

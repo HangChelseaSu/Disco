@@ -9,6 +9,11 @@ TEMPLATES = bexp bx3d earth fieldloop flock flock_grmhd isentropic jupiter keple
 
 GIT_VERSION = $(shell git describe --dirty --always --tags)
 
+# Disable cartesian interpolation by default.
+ifndef ENABLE_CART_INTERP
+ENABLE_CART_INTERP = 0
+endif
+
 OPT_DEFS = -DGIT_VERSION=\"$(GIT_VERSION)\"
 OPT_DEFS += -DINITIAL=\"$(INITIAL)\"
 OPT_DEFS += -DHYDRO=\"$(HYDRO)\"
@@ -21,6 +26,7 @@ OPT_DEFS += -DHLLD=\"$(HLLD)\"
 OPT_DEFS += -DANALYSIS=\"$(ANALYSIS)\"
 OPT_DEFS += -DMETRIC=\"$(METRIC)\"
 OPT_DEFS += -DFRAME=\"$(FRAME)\"
+OPT_DEFS += -DENABLE_CART_INTERP=$(ENABLE_CART_INTERP)
 OPT_DEFS += -DNUM_C=$(NUM_C)
 OPT_DEFS += -DNUM_N=$(NUM_N)
 OPT_DEFS += -DCT_MODE=$(CT_MODE)

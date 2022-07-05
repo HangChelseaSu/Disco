@@ -10,8 +10,10 @@ static double PRE_FLOOR = 0.0;
 static int include_viscosity = 0;
 static int isothermal = 0;
 static int polar_sources = 0;
+#if ENABLE_CART_INTERP
 static int Cartesian_Interp = 0;
 static double Cartesian_Interp_R0 = 0;
+#endif
 
 void setHydroParams( struct domain * theDomain ){
    gamma_law = theDomain->theParList.Adiabatic_Index;
@@ -20,8 +22,10 @@ void setHydroParams( struct domain * theDomain ){
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
    mach = theDomain->theParList.Disk_Mach;
    include_viscosity = theDomain->theParList.visc_flag;
+#if ENABLE_CART_INTERP
    Cartesian_Interp = theDomain->theParList.Cartesian_Interp;
    Cartesian_Interp_R0 = theDomain->theParList.Cartesian_Interp_R0;
+#endif
    if(theDomain->theParList.NoBC_Rmin == 1)
        polar_sources = 1;
 }
@@ -53,11 +57,14 @@ void prim2cons(const double * prim, double * cons, const double * x,
    double rhoe = Pp/(gamma_law - 1.);
 
    double cart_adjust = 1.0;
+
+#if ENABLE_CART_INTERP
    if(xp != NULL && xm != NULL && Cartesian_Interp)
    {
       double dphi = xp[1] - xm[1];
       cart_adjust = 2*sin(0.5*dphi) / dphi;
    }
+#endif
 
    cons[DDD] = rho*dV;
    cons[TAU] = (.5*rho*v2 + rhoe )*dV;
@@ -121,11 +128,13 @@ void cons2prim( const double * cons , double * prim , const double * x ,
    
    double r = x[0];
    double cart_adjust = 1.0;
+#if ENABLE_CART_INTERP
    if(xp != NULL && xm != NULL && Cartesian_Interp)
    {
       double dphi = xp[1] - xm[1];
       cart_adjust = 2*sin(0.5*dphi) / dphi;
    }
+#endif
 
    double rho = cons[DDD]/dV;
    if( rho < RHO_FLOOR )   rho = RHO_FLOOR;
@@ -199,6 +208,8 @@ void flux(const double * prim, double * flux, const double * x,
     double v2 = vr*vr + vp_off*vp_off + vz*vz;
 
     int q;
+
+#if ENABLE_CART_INTERP
     if(xp != NULL && xm != NULL && Cartesian_Interp)
     {
         double r1 = 0.5*(xp[0] + xm[0]);
@@ -223,13 +234,16 @@ void flux(const double * prim, double * flux, const double * x,
     }
     else
     {
+#endif
         flux[DDD] = rho*vn;
         flux[SRR] = rho*vr*vn + Pp*n[0];
         flux[LLL] = r*(rho*vp*vn + Pp*n[1]);
         flux[SZZ] = rho*vz*vn + Pp*n[2];
         flux[TAU] = ( .5*rho*v2 + rhoe + Pp )*vn - Pp*wn;
 
+#if ENABLE_CART_INTERP
     }
+#endif
     for( q=NUM_C ; q<NUM_Q ; ++q )
         flux[q] = prim[q]*flux[DDD];
 }
@@ -265,6 +279,7 @@ void source( const double * prim , double * cons , const double * xp , const dou
       geom_polar_vec_adjust(xp, xm, adjust);
       centrifugal *= adjust[0];
    }
+#if ENABLE_CART_INTERP
    if(Cartesian_Interp)
    {
         double dphi = xp[1] - xm[1];
@@ -275,6 +290,7 @@ void source( const double * prim , double * cons , const double * xp , const dou
         double vp = r * omega;
         centrifugal = (rho*vr*vr * rad_fac_0 + rho*vp*vp * rad_fac_1) / r_1;
    }
+#endif
 
    double press_bal   = Pp/r_1;
 
@@ -494,6 +510,7 @@ double bfield_scale_factor(double x, int dim)
     return 1.0;
 }
 
+#if ENABLE_CART_INTERP
 double getCartInterpWeight(const double *x)
 {
     if(x[0] >= Cartesian_Interp_R0)
@@ -503,3 +520,4 @@ double getCartInterpWeight(const double *x)
     else
         return 1.0;
 }
+#endif

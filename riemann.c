@@ -8,7 +8,9 @@ static int mesh_motion = 0;
 static int riemann_solver = 0;
 static int visc_flag = 0;
 static int use_B_fields = 0;
+#if ENABLE_CART_INTERP
 static int Cartesian_Interp = 0;
+#endif
 
 
 void setRiemannParams( struct domain * theDomain ){
@@ -16,7 +18,9 @@ void setRiemannParams( struct domain * theDomain ){
    riemann_solver = theDomain->theParList.Riemann_Solver;
    visc_flag = theDomain->theParList.visc_flag;
    use_B_fields = set_B_flag();
+#if ENABLE_CART_INTERP
    Cartesian_Interp = theDomain->theParList.Cartesian_Interp;
+#endif
 
    if( !use_B_fields && riemann_solver == _HLLD_ && theDomain->rank==0 ){
       printf("Ya dun goofed.\nRiemann Solver = HLLD,\nHydro does not include magnetic fields.\n");
@@ -56,6 +60,7 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
 
    double xc[3] = {x[0], x[1], x[2]};
 
+#if ENABLE_CART_INTERP
    if(Cartesian_Interp)
    {
        double weight = getCartInterpWeight(x);
@@ -72,6 +77,7 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
                             xR,  dr, -0.5*cR->dphi, 0.0, primR, weight);
        }
    }
+#endif
 
 
    double n[3] = {0.0,1.0,0.0};
@@ -174,6 +180,7 @@ void riemann_trans( struct face * F , double dt , int dim , double rp,
     
    double x[3] = {F->cm[0], F->cm[1], F->cm[2]};
 
+#if ENABLE_CART_INTERP
    if(Cartesian_Interp)
    {
        double weight = getCartInterpWeight(F->cm);
@@ -209,7 +216,8 @@ void riemann_trans( struct face * F , double dt , int dim , double rp,
                             xR, drR, dpR, dzR, primR, weight);
        }
    }
-   
+#endif
+
    double n[3] = {0.0,0.0,0.0};
    if( dim==1 ) n[0] = 1.0; else n[2] = 1.0;
 
@@ -419,7 +427,4 @@ void solve_riemann(const double *primL, const double *primR,
 
    flux_to_E( Flux , Ustr , x , E1_riemann , B1_riemann , E2_riemann , B2_riemann , dim );
 }
-
-
-
 

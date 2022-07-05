@@ -27,10 +27,13 @@ void get_vec_from_xyz(const double *x, const double *vxyz, double *v);
 
 void geom_grad(const double *prim, double *grad,
                const double *xp,const double *xm, double PLM, int dim, int LR);
+
+#if ENABLE_CART_INTERP
 void geom_interpolate(const double *prim, const double *gradr,
                       const double *gradp, const double *gradz,
                       const double *x, double dr, double dphi, double dz,
                       double * primI, double weight);
+
 void geom_rebase_to_cart(const double *prim, const double *x,
                          double *cartPrim);
 void geom_rebase_from_cart(const double *cartPrim, const double *x,
@@ -43,6 +46,7 @@ void geom_cart_interp_grad_trans(const double *primL, const double *primR,
                                  double dxL, double dxR, 
                                  double *gradCIL, double *gradCIR,
                                  int dim);
+#endif
 
 void get_centroid_arr(const double *xp, const double *xm, double *x);
 void get_vec_contravariant(const double *x, double *v, double *vc);
