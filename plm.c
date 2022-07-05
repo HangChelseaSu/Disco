@@ -72,11 +72,20 @@ void plm_phi( struct domain * theDomain ){
                   double pC = cartPrimC[q];
                   double pR = cartPrimR[q];
                   double sL = pC - pL;
-                  sL /= .5*( dpC + dpL );
                   double sR = pR - pC;
-                  sR /= .5*( dpR + dpC );
                   double sC = pR - pL;
-                  sC /= .5*( dpL + dpR ) + dpC;
+                  if(q == URR || q == UPP)
+                  {
+                      sL /= sin(.5*( dpC + dpL ));
+                      sR /= sin(.5*( dpR + dpC ));
+                      sC /= 2*sin(0.5*(.5*( dpL + dpR ) + dpC));
+                  }
+                  else
+                  {
+                      sL /= .5*( dpC + dpL );
+                      sR /= .5*( dpR + dpC );
+                      sC /= .5*( dpL + dpR ) + dpC;
+                  }
                   cartGrad[q] = minmod( PLM*sL , sC , PLM*sR );
                }
                geom_gradCart_to_grad(cartGrad, c->prim, xC, grad, 0);

@@ -29,7 +29,7 @@
 /* ASCII code for the escape key. */
 #define ESCAPE 27
 
-#define VAL_FLOOR 0.9 // 1.0 - 1.0e-10 //1 //0.95//0 //-8e-3//-3e-2 //(-HUGE_VAL) //.96
+#define VAL_FLOOR 0.0 // 1.0 - 1.0e-10 //1 //0.95//0 //-8e-3//-3e-2 //(-HUGE_VAL) //.96
 #define VAL_CEIL  2.0 //+ 1.0e-10 //-1 //4.5e-3 //1.05//5.25e-21 //5.25e-9 //8e-3//3e-2 //5.24e-5 //(HUGE_VAL)  //1.04
 #define FIXMAXMIN 1
 #define COLORMAX 13
@@ -103,6 +103,7 @@ void get_rgb( double , float * , float * , float * , int, int );
 void loadSliceZ(char *filename, int k);
 void loadSlicePhi(char *filename);
 void loadDiagnostics(char *filename, int k);
+void loadTime(char *filename);
 void loadFile(int fileIndex, int zslice);
 void DrawGLScene();
 
@@ -1427,6 +1428,13 @@ void freeData()
    free(Id_phi0);
 }
 
+void loadTime(char *filename)
+{
+   char group1[256];
+   strcpy( group1 , "Grid" );
+   readSimple( filename , group1 , (char *)"T" , &t , H5T_NATIVE_DOUBLE );
+}
+
 void loadGrid(char *filename)
 {
    char group1[256];
@@ -1440,7 +1448,6 @@ void loadGrid(char *filename)
 
    hsize_t dims[3];
    
-   readSimple( filename , group1 , (char *)"T" , &t , H5T_NATIVE_DOUBLE );
    getH5dims( filename , group1 , (char *)"r_jph" , dims );
    Nr = dims[0]-1;
    getH5dims( filename , group1 , (char *)"z_kph" , dims );
@@ -1542,6 +1549,7 @@ void loadFile(int fileIndex, int zslice)
 {
     printf("File %d of %d\n", fileIndex+1, nfiles);
     strcpy(filename, filenameList[fileIndex]);
+    loadTime(filenameList[fileIndex]);
     loadPlanets(filenameList[fileIndex]);
     loadSliceZ(filenameList[fileIndex], zslice);
     loadSlicePhi(filenameList[fileIndex]);
@@ -1752,6 +1760,7 @@ int main(int argc, char *argv[])
    CommandMode=0;
    //if( argc>2 ){ CommandMode=1; FullScreenMode=1; }
 
+   loadTime(filename);
    loadGrid(filename);
    loadPlanets(filename);
 

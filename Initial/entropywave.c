@@ -59,8 +59,8 @@ void initial(double *prim, double *x)
 
     double Vxyz[3] = {v*kx, v*ky, v*kz};
 
-    Vxyz[0] = sin(4*xyz[0]) * cos(7*xyz[1]);
-    Vxyz[1] = cos(5*xyz[0] - 3*xyz[1]) - 1.0;
+    //Vxyz[0] = sin(4*xyz[0]) * cos(7*xyz[1]);
+    //Vxyz[1] = cos(5*xyz[0] - 3*xyz[1]) - 1.0;
 
     double V[3];
     get_vec_from_xyz(x, Vxyz, V);

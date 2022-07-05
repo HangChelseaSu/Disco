@@ -187,46 +187,37 @@ void geom_polar_vec_adjust(const double *xp, const double *xm, double *fac)
     fac[2] = 1.0;
 }
 
-void geom_interpolate(const double *prim, const double *gradp,
-                      const double *gradT, const double *x,
-                      double dphi, double dxT, double * primI,
-                      double w, int dim)
+void geom_interpolate(const double *prim, const double *gradr,
+                      const double *gradp, const double *gradz,
+                      const double *x, double dr, double dphi, double dz,
+                      double * primI, double w)
 {
 
     int q;
     for(q=0; q<NUM_Q; q++)
-        primI[q] = prim[q] + dphi * gradp[q];
-
-    if(dim == 1 || dim == 2)
-        for(q=0; q<NUM_Q; q++)
-            primI[q] += dxT * gradT[q];
+        primI[q] = prim[q] + dphi * gradp[q] + dr*gradr[q] + dz*gradz[q];
 
     double r = x[0];
     double sdp = sin(dphi);
     double cdp = cos(dphi);
 
-    /*
-    ur_pt = cdp*prim[URR] + sdp*r*prim[UPP];
-    up_pt = -sdp*prim[URR]/r + cdp*prim[UPP];
-
-    if(dim == 1)
-        up_pt *= r/(r+dxT);
-    */
-
     // Amend velocity interpolation to include Christoffel terms
     // so interpolation uses covariant derivative instead of coordinate
-    
-    //double ur_pt = prim[URR];
-    //double up_pt = prim[UPP];
-    
-    double ur_pt = primI[URR] - dphi * r * prim[UPP];
-    double up_pt = primI[UPP] + dphi * prim[URR] / r;
-    double dr = 0.0;
-    if(dim == 1)
-    {
-        up_pt += dxT * prim[UPP] / r;
-        dr = dxT;
-    }
+
+    // the dr and dphi computed from the cartesian dx and dy
+    double dr_cart = dr * cdp - r * (1.0 - cdp);
+    double dphi_cart = (r + dr) * sdp / r;
+
+    //Covariant derivatives
+    double DurDr = gradr[URR];
+    double DurDp = gradp[URR] - r*prim[UPP];
+    double DupDr = gradr[UPP] + prim[UPP] / r;
+    double DupDp = gradp[UPP] + prim[URR] / r;
+
+    //Extrapolate with covariant derivatives
+    double ur_pt = prim[URR] + dr_cart*DurDr + dphi_cart*DurDp + dz*gradz[URR];
+    double up_pt = prim[UPP] + dr_cart*DupDr + dphi_cart*DupDp + dz*gradz[UPP];
+
 
     primI[URR] = (1.0-w) * primI[URR]
                     + w * ( cdp * ur_pt + r*sdp * up_pt);
@@ -321,12 +312,15 @@ void geom_cart_interp_grad_trans(const double *primL, const double *primR,
         xR[2] += dxR;
     }
 
+    // Defining a local cartesian frame centered on the face
+    // In this frame the face is on the x-axis
+
     double rL = xL[0];
     double rR = xR[0];
-    double sL = sin(xL[1]);
-    double cL = cos(xL[1]);
-    double sR = sin(xR[1]);
-    double cR = cos(xR[1]);
+    double sL = sin(-dpL);  //sin(xL[1]);
+    double cL = cos(-dpL);  //cos(xL[1]);
+    double sR = sin(-dpR);  //sin(xR[1]);
+    double cR = cos(-dpR);  //cos(xR[1]);
 
     double uxL = cL * primL[URR] - rL * sL * primL[UPP];
     double uyL = sL * primL[URR] + rL * cL * primL[UPP];
@@ -343,13 +337,31 @@ void geom_cart_interp_grad_trans(const double *primL, const double *primR,
     double duxdpR = cR * DurDpR - rR * sR * DupDpR;
     double duydpR = sR * DurDpR + rR * cR * DupDpR;
 
-    double gradUX = idx * (uxR + dpR * duxdpR - (uxL + dpL * duxdpL));
-    double gradUY = idx * (uyR + dpR * duydpR - (uyL + dpL * duydpL));
+    double dpR_cart = sin(dpR);
+    double dpL_cart = sin(dpL);
+    double drR_cart = rR * (cos(dpR) - 1);
+    double drL_cart = rL * (cos(dpL) - 1);
 
-    gradCIL[URR] =  cL * gradUX + sL * gradUY;
-    gradCIL[UPP] = (-sL * gradUX + cL * gradUY) / rL;
-    gradCIR[URR] =  cR * gradUX + sR * gradUY;
-    gradCIR[UPP] = (-sR * gradUX + cR * gradUY) / rR;
+    dpR_cart += drR_cart * sR / (rR * cR);
+    dpL_cart += drL_cart * sL / (rL * cL);
+
+    double gradUX = idx * (uxR + dpR_cart * duxdpR
+                            - (uxL + dpL_cart * duxdpL));
+    double gradUY = idx * (uyR + dpR_cart * duydpR
+                            - (uyL + dpL_cart * duydpL));
+
+    gradUX /= (1 - idx*(drR_cart/cR-drL_cart/cL));
+    gradUY /= (1 - idx*(drR_cart/cR-drL_cart/cL));
+
+    double gradUXL = (gradUX + duxdpL * sL / rL) / cL;
+    double gradUYL = (gradUY + duydpL * sL / rL) / cL;
+    double gradUXR = (gradUX + duxdpR * sR / rR) / cR;
+    double gradUYR = (gradUY + duydpR * sR / rR) / cR;
+
+    gradCIL[URR] =  cL * gradUXL + sL * gradUYL;
+    gradCIL[UPP] = (-sL * gradUXL + cL * gradUYL) / rL;
+    gradCIR[URR] =  cR * gradUXR + sR * gradUYR;
+    gradCIR[UPP] = (-sR * gradUXR + cR * gradUYR) / rR;
 
     //
     // gradCI are now the *covariant* derivatives at L and R.

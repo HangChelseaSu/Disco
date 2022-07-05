@@ -54,6 +54,8 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
       gradp[q] = (cR->prim[q] - cL->prim[q]) / (0.5*(cR->dphi + cL->dphi));
    }
 
+   double xc[3] = {x[0], x[1], x[2]};
+
    if(Cartesian_Interp)
    {
        double weight = getCartInterpWeight(x);
@@ -62,16 +64,18 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
        {
            double xL[3] = {x[0], cL->piph - 0.5*cL->dphi, x[2]};
            double xR[3] = {x[0], cR->piph - 0.5*cR->dphi, x[2]};
-           geom_interpolate(cL->prim, cL->gradp, NULL, xL,  0.5*cL->dphi, 0.0,
-                            primL, weight, 0);
-           geom_interpolate(cR->prim, cR->gradp, NULL, xR, -0.5*cR->dphi, 0.0,
-                            primR, weight, 0);
+           xc[0] = 0.5*(xp[0] + xm[0]);
+           double dr = xc[0] - x[0];
+           geom_interpolate(cL->prim, cL->gradr, cL->gradp, cL->gradz,
+                            xL,  dr, 0.5*cL->dphi, 0.0, primL, weight);
+           geom_interpolate(cR->prim, cR->gradr, cR->gradp, cR->gradz,
+                            xR,  dr, -0.5*cR->dphi, 0.0, primR, weight);
        }
    }
 
 
    double n[3] = {0.0,1.0,0.0};
-   double hn = get_scale_factor(x, 0);
+   double hn = get_scale_factor(xc, 0);
 
    if( use_B_fields && NUM_Q > BPP ){
       double Bp = .5*(primL[BPP]+primR[BPP]);
@@ -83,7 +87,7 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
    solve_riemann(primL , primR , cL->cons , cR->cons ,
                  cL->gradr, gradp, cL->gradz,
                  cR->gradr, gradp, cR->gradz,
-                 x , n , xp, xm, hn*cL->wiph , dAdt , 0 ,
+                 xc , n , xp, xm, hn*cL->wiph , dAdt , 0 ,
                  &Ez , &Br , &Er , &Bz , NULL, NULL);
    /*
    solve_riemann(primL , primR , cL->cons , cR->cons ,
@@ -167,6 +171,8 @@ void riemann_trans( struct face * F , double dt , int dim , double rp,
       grad[q] = ((cR->prim[q] + cR->gradp[q]*dpR)
                   - (cL->prim[q] + cL->gradp[q]*dpL)) / (dxL+dxR);
    }
+    
+   double x[3] = {F->cm[0], F->cm[1], F->cm[2]};
 
    if(Cartesian_Interp)
    {
@@ -176,20 +182,31 @@ void riemann_trans( struct face * F , double dt , int dim , double rp,
        {
            double xL[3] = {F->cm[0], phiL, F->cm[2]};
            double xR[3] = {F->cm[0], phiR, F->cm[2]};
+           double drL = 0.0;
+           double drR = 0.0;
+           double dzL = 0.0;
+           double dzR = 0.0;
            if(dim == 1)
            {
                xL[0] -= dxL;
                xR[0] += dxR;
+               drL = dxL;
+               drR = -dxR;
+               x[0] *= cos(0.5*F->dphi);
+               drL = x[0] - xL[0];
+               drR = x[0] - xR[0];
            }
            else
            {
                xL[2] -= dxL;
                xR[2] += dxR;
+               dzL = dxL;
+               dzR = -dxR;
            }
-           geom_interpolate(cL->prim, cL->gradp, gradL, xL, dpL,  dxL,
-                            primL, weight, dim);
-           geom_interpolate(cR->prim, cR->gradp, gradR, xR, dpR, -dxR,
-                            primR, weight, dim);
+           geom_interpolate(cL->prim, cL->gradr, cL->gradp, cL->gradz,
+                            xL, drL, dpL, dzL, primL, weight);
+           geom_interpolate(cR->prim, cR->gradr, cR->gradp, cR->gradz,
+                            xR, drR, dpR, dzR, primR, weight);
        }
    }
    
@@ -215,14 +232,14 @@ void riemann_trans( struct face * F , double dt , int dim , double rp,
       solve_riemann(primL , primR , cL->cons , cR->cons ,
                     grad, cL->gradp, cL->gradz,
                     grad, cR->gradp, cR->gradz,
-                    F->cm , n , xp, xm, 0.0 , dAdt , dim ,
+                    x , n , xp, xm, 0.0 , dAdt , dim ,
                     &Erz , &Brz , &Ephi, NULL ,
                     fdAdt_hydro, fdAdt_visc);
    else
       solve_riemann(primL , primR , cL->cons , cR->cons ,
                     cL->gradr, cL->gradp, grad,
                     cR->gradr, cR->gradp, grad,
-                    F->cm , n , xp, xm, 0.0 , dAdt , dim ,
+                    x , n , xp, xm, 0.0 , dAdt , dim ,
                     &Erz , &Brz , &Ephi, NULL,
                     fdAdt_hydro, fdAdt_visc);
  
@@ -369,6 +386,19 @@ void solve_riemann(const double *primL, const double *primR,
       }
       visc_flux(prim, gradr, gradp, gradz, vFlux, x, n);
    }
+
+   /*
+   FILE *f = fopen("flux.dat", "a");
+    fprintf(f, "%d %.15e %.15e %.15e", dim, x[0], x[1], x[2]);
+   fprintf(f, " %.15e %.15e %.15e", xp[0], xp[1], xp[2]);
+   fprintf(f, " %.15e %.15e %.15e", xm[0], xm[1], xm[2]);
+   fprintf(f, " %.15e", dAdt);
+   for(q=0; q<NUM_Q; q++) fprintf(f, " %.15e", primL[q]);
+   for(q=0; q<NUM_Q; q++) fprintf(f, " %.15e", primR[q]);
+   for(q=0; q<NUM_Q; q++) fprintf(f, " %.15e", Flux[q]);
+   fprintf(f, "\n");
+   fclose(f);
+   */
 
    for( q=0 ; q<NUM_Q ; ++q ){
       consL[q] -= (Flux[q] + vFlux[q] - w*Ustr[q])*dAdt;

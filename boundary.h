@@ -25,6 +25,11 @@ void boundary_reflect_rout( struct domain *theDomain);
 void boundary_reflect_zbot( struct domain *theDomain);
 void boundary_reflect_ztop( struct domain *theDomain);
 
+void boundary_fixed_q_rinn( struct domain *theDomain, int *q, int nq);
+void boundary_fixed_q_rout( struct domain *theDomain, int *q, int nq);
+void boundary_fixed_q_zbot( struct domain *theDomain, int *q, int nq);
+void boundary_fixed_q_ztop( struct domain *theDomain, int *q, int nq);
+
 void boundary_fixed_horizon( struct domain *theDomain);
 
 void boundary_fixed_phi_rinn( struct domain *theDomain, double phia,

@@ -23,19 +23,19 @@ void initial( double * prim , double * x ){
    double r = x[0];
    double R = sqrt(r*r + eps*eps);
 
-   double omega02 = 1.0/pow(r, 3)  //1.0/pow(R,3.);
-   double omegaP2 = 0.0 // (1./(Mach*Mach*R*R*R));
+   double omega02 = 1.0/pow(r, 3);  //1.0/pow(R,3.);
+   double omegaP2 = 0.0; // (1./(Mach*Mach*R*R*R));
 
    double omega2 = fmax( (omega02 - omegaP2), 0.0 );
    double omega = sqrt(omega2);
 
 
    double rho = 1.0;
-   double Pp = rho/Mach/Mach;
+   double Pp = rho/(gam * Mach * Mach);
    if(isothermal_flag)
        Pp = rho * get_cs2(x);
 
-   double visc = 0.0 //get_nu(x, prim);
+   double visc = 0.0; //get_nu(x, prim);
    //if (nu > 0.0) rho = rho/nu;
    //rho /= visc;
 

@@ -27,7 +27,9 @@ OPT_DEFS += -DCT_MODE=$(CT_MODE)
 
 DIR_DEFS = -DUSE_MPI=$(USE_MPI)
 
-FLAGS = -O3 -Wall $(OPT_DEFS) $(DIR_DEFS)
+DEBUG_FLAGS = -g -fno-omit-frame-pointer -rdynamic
+
+FLAGS = -Wall -O3 $(OPT_DEFS) $(DIR_DEFS) $(DEBUG_FLAGS)
 
 INC = -I$(H55)/include
 LIB = -L$(H55)/lib -lhdf5 -lm
