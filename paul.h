@@ -342,7 +342,9 @@ struct planet{
 
 struct profiler{
     clock_t ticks[NUM_PROF];
+    struct timespec time[NUM_PROF];
     clock_t elapsed_ticks[NUM_PROF];
+    struct timespec elapsed_time[NUM_PROF];
 };
 
 #endif
