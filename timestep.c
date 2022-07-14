@@ -23,6 +23,8 @@ void timestep( struct domain * theDomain , double dt ){
       }
    }
 
+   copy_RK_diag(theDomain);
+
    for( p=0 ; p<Npl ; ++p ){
       copyPlanetsRK(theDomain);
    }

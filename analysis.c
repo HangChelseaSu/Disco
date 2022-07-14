@@ -205,7 +205,7 @@ void copy_RK_diag(struct domain *theDomain)
                (Nz-1)*Nr*NUM_Q*sizeof(double));
     }
 
-    memcpy(theTools->RK_S, theTools->S, Nr*Nz*NUM_Q*sizeof(double));
+    memcpy(theTools->RK_S,     theTools->S,     Nr*Nz*NUM_Q*sizeof(double));
     memcpy(theTools->RK_Sgrav, theTools->Sgrav, Nr*Nz*NUM_Q*sizeof(double));
     memcpy(theTools->RK_Svisc, theTools->Svisc, Nr*Nz*NUM_Q*sizeof(double));
     memcpy(theTools->RK_Ssink, theTools->Ssink, Nr*Nz*NUM_Q*sizeof(double));
