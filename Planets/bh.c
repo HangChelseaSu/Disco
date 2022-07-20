@@ -19,15 +19,9 @@ void initializePlanets( struct planet * thePlanets ){
    thePlanets[0].phi   = 0.0; 
    thePlanets[0].eps   = 0.0;
    thePlanets[0].type  = PLPW;
-   thePlanets[0].RK_dM = 0.0;
-   thePlanets[0].dM = 0.0;
 }
 
 void movePlanets( struct planet * thePlanets , double dt ){
-   //Silence is golden.
-}
-
-void forcePlanets( struct planet * thePlanets , double dt ){
    //Silence is golden.
 }
 

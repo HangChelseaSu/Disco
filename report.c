@@ -113,30 +113,12 @@ void report( struct domain * theDomain )
 
    int rank = theDomain->rank;
 
-   double q = 0.0;
-   if (Npl > 1) q = ( thePlanets[1].M / thePlanets[0].M );
-
-   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls,
-          *Eacc_pls, *Uf;
-   M_acc = calloc(Npl, sizeof(double) );
-   La_pls = calloc(Npl, sizeof(double) );
-   Ls_pls = calloc(Npl, sizeof(double) );
-   Lg_pls = calloc(Npl, sizeof(double) );
-   therm_pls = calloc(Npl, sizeof(double) );
-   Eacc_pls = calloc(Npl, sizeof(double) );
-   Eg_pls = calloc(Npl, sizeof(double) );
-   Uf = calloc(Npl, sizeof(double) );
+   double *Uf;
+   Uf = malloc(Npl * sizeof(double) );
    
    for(p=0; p<Npl; ++p){
-      M_acc[p] = thePlanets[p].dM;
-      La_pls[p] = thePlanets[p].accL;
-      Ls_pls[p] = thePlanets[p].Ls;
-      therm_pls[p] = thePlanets[p].therm;
-      Lg_pls[p] = thePlanets[p].gravL;
-      Eg_pls[p] = thePlanets[p].gravE;
-      Eacc_pls[p] = thePlanets[p].accE;
       Uf[p] = thePlanets[p].Uf;
-  }
+   }
 
    double planet_aux[Npl * NUM_PL_AUX];
    int iq;
@@ -150,13 +132,6 @@ void report( struct domain * theDomain )
 #if USE_MPI
    MPI_Allreduce( MPI_IN_PLACE , cons_tot    , NUM_Q , MPI_DOUBLE , MPI_SUM , grid_comm );
 
-   MPI_Allreduce( MPI_IN_PLACE , M_acc  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , La_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , Ls_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , Lg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , therm_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , Eg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , Eacc_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Uf  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    
    if(!theDomain->planet_gas_track_synced)
@@ -171,29 +146,6 @@ void report( struct domain * theDomain )
       for(j=0; j<NUM_Q; j++)
           fprintf(rFile, " %.15le", cons_tot[j]);
 
-      fprintf(rFile," %.15le", q);
-
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", Lg_pls[j]);
-      }
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", M_acc[j]);
-      }
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", La_pls[j]);
-      }
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", Ls_pls[j]);
-      }
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", therm_pls[j]);
-      }
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", Eg_pls[j]);
-      }
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", Eacc_pls[j]);
-      }
       for( j=0; j<Npl; ++j){
          fprintf(rFile," %.15le", Uf[j]);
       }
@@ -210,11 +162,5 @@ void report( struct domain * theDomain )
 
       fclose(rFile);
    }
-   free(M_acc);
-   free(La_pls);
-   free(Ls_pls);
-   free(therm_pls);
-   free(Lg_pls);
-   free(Eacc_pls);
-   free(Eg_pls);
+   free(Uf);
 }

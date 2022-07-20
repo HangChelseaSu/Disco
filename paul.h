@@ -303,34 +303,8 @@ struct planet{
    double M;
    double omega;
    double vr;
-   double RK_r;
-   double RK_phi;
-   double RK_M;
-   double RK_omega;
-   double RK_vr;
-
-   double dM;
-   double RK_dM;
-
-   double Ls;
-   double RK_Ls;
-   double accL;
-   double RK_accL;
-
-   double gravL;
-   double RK_gravL;
-
-   double therm;
-   double RK_therm;
-
-   double accE;
-   double RK_accE;
-   double gravE;
-   double RK_gravE;
 
    double eps;
-   double Fr;
-   double Fp;
 
    double Uf;
 

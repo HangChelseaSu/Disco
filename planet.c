@@ -285,9 +285,6 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
    double Fp[3] = {cosp*Fp_xyz[0] + sinp*Fp_xyz[1],
                    -sinp*Fp_xyz[0] + cosp*Fp_xyz[1], Fp_xyz[2]};
 
-   pl->gravL -= rho*(pl->r)*Fp[1]*dVdt;
-   pl->gravE -= rho*(pl->vr*Fp[0] + pl->omega*pl->r*Fp[1])*dVdt;
-
    double Phi = planetaryPotential(pl, xcyl[0], xcyl[1], xcyl[2]);
 
    pl->gas_track[PL_GRV_PX] -= rho*Fp_xyz[0]*dVdt;
@@ -304,18 +301,6 @@ void copyPlanetsRK( struct domain * theDomain ){
     for(p=0; p<theDomain->Npl; p++)
     {
         struct planet *pl = theDomain->thePlanets + p;
-        pl->RK_r     = pl->r;
-        pl->RK_phi   = pl->phi;
-        pl->RK_M     = pl->M;
-        pl->RK_omega = pl->omega;
-        pl->RK_vr    = pl->vr;
-        pl->RK_dM    = pl->dM;
-        pl->RK_accL  = pl->accL;
-        pl->RK_Ls    = pl->Ls;
-        pl->RK_therm = pl->therm;
-        pl->RK_gravL = pl->gravL;
-        pl->RK_accE = pl->accE;
-        pl->RK_gravE = pl->gravE;
     
         for(q=0; q<NUM_PL_KIN; q++)
             pl->RK_kin[q] = pl->kin[q];
@@ -339,14 +324,6 @@ void adjustPlanetsRKaux( struct domain * theDomain , double RK ){
     for(p=0; p<theDomain->Npl; p++)
     {
         struct planet *pl = theDomain->thePlanets + p;
-
-        pl->dM    = (1.-RK)*pl->dM    + RK*pl->RK_dM;
-        pl->accL  = (1.-RK)*pl->accL  + RK*pl->RK_accL;
-        pl->Ls    = (1.-RK)*pl->Ls    + RK*pl->RK_Ls;
-        pl->therm = (1.-RK)*pl->therm + RK*pl->RK_therm;
-        pl->gravL = (1.-RK)*pl->gravL + RK*pl->RK_gravL;
-        pl-> accE = (1.-RK)*pl->accE  + RK*pl->RK_accE;
-        pl->gravE = (1.-RK)*pl->gravE + RK*pl->RK_gravE;
 
         for(q=0; q<NUM_PL_AUX; q++)
             pl->aux[q] = (1-RK)*pl->aux[q] + RK*pl->RK_aux[q];
@@ -373,22 +350,6 @@ void planet_init_kin(struct planet *pl)
 
 void planet_zero_aux(struct planet *pl)
 {
-    pl->dM = 0.0;
-    pl->Ls = 0.0;
-    pl->accL = 0.0;
-    pl->gravL = 0.0;
-    pl->therm = 0.0;
-    pl->accE = 0.0;
-    pl->gravE = 0.0;
-    
-    pl->RK_dM = 0.0;
-    pl->RK_Ls = 0.0;
-    pl->RK_accL = 0.0;
-    pl->RK_gravL = 0.0;
-    pl->RK_therm = 0.0;
-    pl->RK_accE = 0.0;
-    pl->RK_gravE = 0.0;
-
     int q;
     for(q=0; q<NUM_PL_AUX; q++)
     {

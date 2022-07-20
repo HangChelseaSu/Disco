@@ -40,24 +40,6 @@ void initializePlanets( struct planet * thePlanets ){
    thePlanets[0].phi   = 0.0;
    thePlanets[0].eps   = 0.0;
    thePlanets[0].type  = PLPOINTMASS;
-   thePlanets[0].RK_dM = 0.0;
-   thePlanets[0].dM = 0.0;
-
-   thePlanets[0].accL = 0.0;
-   thePlanets[0].RK_accL = 0.0;
-   thePlanets[0].Ls = 0.0;
-   thePlanets[0].RK_Ls = 0.0;
-   thePlanets[0].gravL = 0.0;
-   thePlanets[0].RK_gravL = 0.0;
-   thePlanets[0].kin = 0.0;
-   thePlanets[0].RK_kin = 0.0;
-   thePlanets[0].therm = 0.0;
-   thePlanets[0].RK_therm = 0.0;
-
-   thePlanets[0].linXmom = 0.0;
-   thePlanets[0].RK_linXmom = 0.0;
-   thePlanets[0].linYmom = 0.0;
-   thePlanets[0].RK_linYmom = 0.0;
 
 
    thePlanets[1].M     = mu*(1.-mu2);
@@ -67,24 +49,7 @@ void initializePlanets( struct planet * thePlanets ){
    thePlanets[1].phi   = M_PI; 
    thePlanets[1].eps   = eps;
    thePlanets[1].type  = PLPOINTMASS;
-   thePlanets[1].RK_dM = 0.0;
-   thePlanets[1].dM = 0.0;
 
-   thePlanets[1].accL = 0.0;
-   thePlanets[1].RK_accL = 0.0;
-   thePlanets[1].Ls = 0.0;
-   thePlanets[1].RK_Ls = 0.0;
-   thePlanets[1].gravL = 0.0;
-   thePlanets[1].RK_gravL = 0.0;
-   thePlanets[1].kin = 0.0;
-   thePlanets[1].RK_kin = 0.0;
-   thePlanets[1].therm = 0.0;
-   thePlanets[1].RK_therm = 0.0;
-
-   thePlanets[1].linXmom = 0.0;
-   thePlanets[1].RK_linXmom = 0.0;
-   thePlanets[1].linYmom = 0.0;
-   thePlanets[1].RK_linYmom = 0.0;
 
    thePlanets[2].M     = mu*mu2;
    thePlanets[2].vr    = 0.0;
@@ -93,32 +58,11 @@ void initializePlanets( struct planet * thePlanets ){
    thePlanets[2].phi   = 0.0;
    thePlanets[2].eps   = eps;
    thePlanets[2].type  = PLPOINTMASS;
-   thePlanets[2].RK_dM = 0.0;
-   thePlanets[2].dM = 0.0;
 
-   thePlanets[2].accL = 0.0;
-   thePlanets[2].RK_accL = 0.0;
-   thePlanets[2].gravL = 0.0;
-   thePlanets[2].RK_gravL = 0.0;
-   thePlanets[2].Ls = 0.0;
-   thePlanets[2].RK_Ls = 0.0;
-   thePlanets[2].kin = 0.0;
-   thePlanets[2].RK_kin = 0.0;
-   thePlanets[2].therm = 0.0;
-   thePlanets[2].RK_therm = 0.0;
-
-   thePlanets[2].linXmom = 0.0;
-   thePlanets[2].RK_linXmom = 0.0;
-   thePlanets[2].linYmom = 0.0;
-   thePlanets[2].RK_linYmom = 0.0;
 }
 
 void movePlanets( struct planet * thePlanets , double t , double dt ){
    thePlanets[1].phi += thePlanets[1].omega*dt;
    thePlanets[2].phi += thePlanets[2].omega*dt;
-}
-
-void forcePlanets( struct planet * thePlanets , double dt ){
-   //Silence is golden.
 }
 

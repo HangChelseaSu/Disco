@@ -29,8 +29,8 @@ void clean_pi( struct domain * theDomain ){
    for( p=0 ; p<Npl ; ++p ){
       struct planet * pl = theDomain->thePlanets + p;
       double phi = pl->phi;
-      while( phi > phi_max ){ phi -= phi_max; pl->RK_phi -= phi_max; }
-      while( phi < 0.0     ){ phi += phi_max; pl->RK_phi += phi_max; }
+      while( phi > phi_max ){ phi -= phi_max;}
+      while( phi < 0.0     ){ phi += phi_max;}
       pl->phi = phi; 
 
       phi = pl->kin[PL_PHI];
