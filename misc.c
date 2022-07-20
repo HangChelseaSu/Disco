@@ -610,7 +610,7 @@ void add_source( struct domain * theDomain , double dt ){
             source( c->prim , sdVdt_hydro, xp , xm , dV*dt  );
             
             for( p=0 ; p<Npl ; ++p ){
-               planet_src( thePlanets+p , c->prim , sdVdt_grav , xp , xm , dV*dt );
+               planet_src( thePlanets+p, c->prim, sdVdt_grav, xp, xm, dV, dt);
             }
             if(visc_flag)
                 visc_source( c->prim, c->gradr, c->gradp, c->gradz, sdVdt_visc,

@@ -143,6 +143,33 @@ void adjust_gas( struct planet * pl , double * x , double * prim , double gam ){
 
 }
 
+double planetaryPotential(struct planet *pl, double r, double phi, double z)
+{
+    /*
+     * Returns the gravitational potential (with correct sign) at position
+     * (r, phi, z) from planet pl.
+     */
+
+    double rp = pl->r;
+    double pp = pl->phi;
+    if(grav2D == 1)
+        z = 0.0;
+    else if(grav2D == 2)
+    {
+        rp = r;
+        pp = phi;
+        z = 1.0;
+    }
+
+    double cosp = cos(phi);
+    double sinp = sin(phi);
+    double dx = r*cosp-rp*cos(pp);
+    double dy = r*sinp-rp*sin(pp);
+    double script_r = sqrt(dx*dx+dy*dy+z*z);
+
+    return -phigrav(pl->M, script_r, pl->eps, pl->type);
+}
+
 void planetaryForce( struct planet * pl , double r , double phi , double z , double * fr , double * fp , double * fz , int mode )
 {
     /*
@@ -204,7 +231,7 @@ void planetaryForce( struct planet * pl , double r , double phi , double z , dou
    *fz = f1*cost;
 }
 
-void planet_src( struct planet * pl , double * prim , double * cons , double * xp , double * xm , double dVdt ){
+void planet_src( struct planet * pl , double * prim , double * cons , double * xp , double * xm , double dV, double dt ){
 
    double rho = prim[RHO];
    double vr  = prim[URR];
@@ -243,6 +270,8 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
            F[2] *= adjust[2];
    }
 
+   double dVdt = dV*dt;
+
    cons[SRR] += rho*hr*F[0]*dVdt;
    cons[LLL] += rho*hp*F[1]*dVdt;
    cons[SZZ] += rho*hz*F[2]*dVdt;
@@ -259,12 +288,15 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
    pl->gravL -= rho*(pl->r)*Fp[1]*dVdt;
    pl->gravE -= rho*(pl->vr*Fp[0] + pl->omega*pl->r*Fp[1])*dVdt;
 
+   double Phi = planetaryPotential(pl, xcyl[0], xcyl[1], xcyl[2]);
+
    pl->gas_track[PL_GRV_PX] -= rho*Fp_xyz[0]*dVdt;
    pl->gas_track[PL_GRV_PY] -= rho*Fp_xyz[1]*dVdt;
    pl->gas_track[PL_GRV_PZ] -= rho*Fp_xyz[2]*dVdt;
    pl->gas_track[PL_GRV_JZ] -= rho*(pl->r)*Fp[1]*dVdt;
    pl->gas_track[PL_GRV_EGAS] -= rho*(hr*F[0]*vr + hz*F[2]*vz
                                       + hp*F[1]*omega )*dVdt;
+   pl->Uf += rho*Phi*dV;
 }
 
 void copyPlanetsRK( struct domain * theDomain ){
@@ -333,8 +365,10 @@ void planet_init_kin(struct planet *pl)
     pl->kin[PL_PHI] = pl->phi;
     pl->kin[PL_Z] = 0.0;
     pl->kin[PL_PR] = pl->M * pl->vr;
-    pl->kin[PL_JJ] = pl->M * pl->r * pl->r * pl->omega;
+    pl->kin[PL_LL] = pl->M * pl->r * pl->r * pl->omega;
     pl->kin[PL_PZ] = 0.0;
+    pl->kin[PL_SZ] = 0.0;
+    pl->kin[PL_EINT] = 0.0;
 }
 
 void planet_zero_aux(struct planet *pl)
@@ -380,6 +414,11 @@ void setupPlanets(struct domain *theDomain)
 
 void movePlanetsLive(struct domain *theDomain)
 {
+    /* 
+     * Adjusts planet mass, position, and velocity from kin[]
+     * values.  Like cons2prim.
+     */
+
     int p;
     int Npl = theDomain->Npl;
     struct planet *thePlanets = theDomain->thePlanets;
@@ -395,7 +434,7 @@ void movePlanetsLive(struct domain *theDomain)
         pl->r = r;
         pl->phi = pl->kin[PL_PHI];
         pl->vr = pl->kin[PL_PR] / M;
-        pl->omega = pl->kin[PL_JJ] / (M * r * r);
+        pl->omega = pl->kin[PL_LL] / (M * r * r);
     }
 }
 
@@ -409,16 +448,19 @@ void initializePlanetTracking(struct domain *theDomain)
 
         for(q=0; q<NUM_PL_INTEGRALS; q++)
             pl->gas_track[q] = 0.0;
+        pl->Uf = 0.0;
 
         theDomain->planet_gas_track_synced = 0;
     }
 }
 
-void updatePlanetsKin(struct domain *theDomain, double dt)
+void updatePlanetsKinAux(struct domain *theDomain, double dt)
 {
     /*
      * If the planets are LIVE, then the gas_track integrals *must*
      * have been reduced (summed) over MPI ranks already for this to work.
+     *
+     * This is like updating cons from the fluxes.
      */
     int p;
     int Npl = theDomain->Npl;
@@ -436,139 +478,26 @@ void updatePlanetsKin(struct domain *theDomain, double dt)
         double M = pl->M;
         double r = pl->r;
         double omega = pl->omega;
-
-        double vr_pl = 0;
-        double om_pl = 0;
-        double vz_pl = 0;
-        double Fr_pl = 0;
-        double rFp_pl = 0;
-        double Fz_pl = 0;
-
-        if(live_planet)
-        {
-            double Gr = 0;
-            double Gp = 0;
-            double Gz = 0;
-
-            int p2;
-            for(p2=0; p2<Npl; p2++)
-            {
-                if(p == p2)
-                    continue;
-
-                struct planet *pl2 = thePlanets + p2;
-                double gr, gp, gz;
-                planetaryForce(pl2, pl->r, pl->phi, 0.0, &gr, &gp, &gz, 0);
-                Gr += gr;
-                Gp += gp;
-                Gz += gz;
-            }
-
-            vr_pl = pl->vr;
-            om_pl = omega;
-
-            Fr_pl = M * (Gr + r*omega*omega);
-            rFp_pl = M * r * Gp;
-            Fz_pl = M * Gz;
-        }
         
-        double dPx_grv = pl->gas_track[PL_GRV_PX];
-        double dPy_grv = pl->gas_track[PL_GRV_PY];
-        double dPz_grv = pl->gas_track[PL_GRV_PZ];
-        
-        double dPx_snk = pl->gas_track[PL_SNK_PX];
-        double dPy_snk = pl->gas_track[PL_SNK_PY];
-        double dPz_snk = pl->gas_track[PL_SNK_PZ];
-
-        double dPr_grv = cosp * dPx_grv + sinp * dPy_grv;
-        double dJ_grv1 = pl->gas_track[PL_GRV_JZ];
-        double dJ_grv2 = r * (-sinp * dPx_grv + cosp * dPy_grv);
-
-        double dJ_grv = 0.5*(dJ_grv1 + dJ_grv2);
-
-
-        double dPr_snk = cosp * dPx_snk + sinp * dPy_snk;
-        double dJ_snk = r * (-sinp * dPx_snk + cosp * dPy_snk);
-
-        double dx_snk = pl->gas_track[PL_SNK_X] / M;
-        double dy_snk = pl->gas_track[PL_SNK_Y] / M;
-        double dz_snk = pl->gas_track[PL_SNK_Z] / M;
-        double dr_snk = cosp * dx_snk + sinp * dy_snk;
-        double dphi_snk = (-sinp * dx_snk + cosp * dy_snk) / r;
-
-        pl->kin[PL_M] += pl->gas_track[PL_SNK_M];
-
-        pl->kin[PL_R] += vr_pl * dt + dr_snk;
-        pl->kin[PL_PHI] += om_pl * dt + dphi_snk;
-        pl->kin[PL_Z] += vz_pl * dt + dz_snk;
-        pl->kin[PL_PR] += Fr_pl * dt + dPr_grv + dPr_snk;
-        pl->kin[PL_JJ] += rFp_pl * dt + dJ_grv + dJ_snk;
-        pl->kin[PL_PZ] += Fz_pl * dt + dPz_grv + dPz_snk;
-    }
-}
-
-void updatePlanetsAux(struct domain *theDomain)
-{
-    int p;
-    int Npl = theDomain->Npl;
-    for(p=0; p<Npl; p++)
-    {
-        struct planet *pl = theDomain->thePlanets + p;
-
-        //Direct values, easy!
-        pl->aux[PL_SNK_M] += pl->gas_track[PL_SNK_M];
-        pl->aux[PL_GRV_PX] += pl->gas_track[PL_GRV_PX];
-        pl->aux[PL_GRV_PY] += pl->gas_track[PL_GRV_PY];
-        pl->aux[PL_GRV_PZ] += pl->gas_track[PL_GRV_PZ];
-        pl->aux[PL_GRV_JZ] += pl->gas_track[PL_GRV_JZ];
-        pl->aux[PL_SNK_PX] += pl->gas_track[PL_SNK_PX];
-        pl->aux[PL_SNK_PY] += pl->gas_track[PL_SNK_PY];
-        pl->aux[PL_SNK_PZ] += pl->gas_track[PL_SNK_PZ];
-        pl->aux[PL_SNK_JZ] += pl->gas_track[PL_SNK_JZ];
-        pl->aux[PL_SNK_SZ] += pl->gas_track[PL_SNK_SZ];
-        pl->aux[PL_SNK_X] += pl->gas_track[PL_SNK_X] / pl->M;
-        pl->aux[PL_SNK_Y] += pl->gas_track[PL_SNK_Y] / pl->M;
-        pl->aux[PL_SNK_Z] += pl->gas_track[PL_SNK_Z] / pl->M;
-        pl->aux[PL_GRV_EGAS] += pl->gas_track[PL_GRV_EGAS];
-        pl->aux[PL_SNK_EGAS] += pl->gas_track[PL_SNK_EGAS];
-
-        // Some more complicated things.
-
-        double r = pl->r;
-        double cosp = cos(pl->phi);
-        double sinp = sin(pl->phi);
         double x = r * cosp;
         double y = r * sinp;
         double vx = pl->vr * cosp - r * pl->omega * sinp;
         double vy = pl->vr * sinp + r * pl->omega * cosp;
+        double vz = 0.0;
 
-        pl->aux[PL_GRV_LZ] += x * pl->gas_track[PL_GRV_PY]
-                            - y * pl->gas_track[PL_GRV_PX];
+        double v2 = vx*vx + vy*vy + vz*vz;
 
-        pl->aux[PL_SNK_LZ] += x * pl->gas_track[PL_SNK_PY]
-                            - y * pl->gas_track[PL_SNK_PX]
-                            + pl->gas_track[PL_SNK_X] * vy
-                            - pl->gas_track[PL_SNK_Y] * vx;
 
-        pl->aux[PL_GRV_K] += vx * pl->gas_track[PL_GRV_PX]
-                            + vy * pl->gas_track[PL_GRV_PY];
-        pl->aux[PL_SNK_K] += vx * pl->gas_track[PL_SNK_PX]
-                            + vy * pl->gas_track[PL_SNK_PY]
-                            - 0.5*(vx*vx + vy*vy)*pl->gas_track[PL_SNK_M];
-        
-        pl->aux[PL_GRV_U] += pl->gas_track[PL_GRV_EGAS]
-                            - vx * pl->gas_track[PL_GRV_PX]
-                            - vy * pl->gas_track[PL_GRV_PY];
-
-        double xyz[3] = {x, y, 0};
-        double X[3];
-        get_coords_from_xyz(X, xyz);
+        // Compute the gravitational potential and acceleration due to other
+        // planets.
 
         double Phi_ext = 0.0;
         double gx_ext = 0;
         double gy_ext = 0;
         double gz_ext = 0;
+
         int p2;
+
         for(p2=0; p2<Npl; p2++)
         {
             if(p == p2)
@@ -590,10 +519,169 @@ void updatePlanetsAux(struct domain *theDomain)
             gy_ext += g * (y2-y) / rsep;
             gz_ext += 0;
         }
+
+        // These "*_pl" values are only set if the planet is live.
+        // In this case, the "kin" values track the full evolution of the
+        // planet.  Otherwise, "kin" only stores the *additional* accumulated
+        // offset from accretion
+
+        double vr_pl = 0;
+        double om_pl = 0;
+        double vz_pl = 0;
+        double Fr_pl = 0;
+        double rFp_pl = 0;
+        double Fz_pl = 0;
+        double Fx_pl = 0;
+        double Fy_pl = 0;
+
+        if(live_planet)
+        {
+            vr_pl = pl->vr;
+            om_pl = omega;
+
+            double gr = cosp * gx_ext + sinp * gy_ext;
+            double gp = r * (-sinp * gx_ext + cosp * gy_ext);
+
+            Fr_pl = M * (gr + r*omega*omega);
+            rFp_pl = M * gp;
+            Fz_pl = M * gz_ext;
+
+            Fx_pl = M*gx_ext;
+            Fy_pl = M*gy_ext;
+        }
+
+        /*
+         * Just giving the integrals names for ease later.
+         */
+
+        //Mass & Momentum
+        double dM = pl->gas_track[PL_SNK_M];
+        double dPx_grv = pl->gas_track[PL_GRV_PX];
+        double dPy_grv = pl->gas_track[PL_GRV_PY];
+        double dPz_grv = pl->gas_track[PL_GRV_PZ];
         
-        pl->aux[PL_SNK_U] += Phi_ext * pl->gas_track[PL_SNK_M]
-                            - gx_ext * pl->gas_track[PL_SNK_X]
-                            - gy_ext * pl->gas_track[PL_SNK_Y]
-                            - gz_ext * pl->gas_track[PL_SNK_Z];
+        double dPx_snk = pl->gas_track[PL_SNK_PX];
+        double dPy_snk = pl->gas_track[PL_SNK_PY];
+        double dPz_snk = pl->gas_track[PL_SNK_PZ];
+
+        //Radial & Angular Momentum
+        double dJ_grv = pl->gas_track[PL_GRV_JZ];
+
+        double dJ_snk = pl->gas_track[PL_SNK_JZ];
+        double dS_snk = pl->gas_track[PL_SNK_SZ];
+
+        //Mass dipole movement
+        double dMx_snk = pl->gas_track[PL_SNK_MX];
+        double dMy_snk = pl->gas_track[PL_SNK_MY];
+        double dMz_snk = pl->gas_track[PL_SNK_MZ];
+       
+        //Fluid energy added to planet
+        double dEf_grv = pl->gas_track[PL_GRV_EGAS];
+        double dEf_snk = pl->gas_track[PL_SNK_EGAS];
+
+        //Potential energy btw gas & planet lost during accretion
+        double dUpot_snk = pl->gas_track[PL_SNK_UGAS];
+
+        double Uf = pl->Uf;
+
+        /*
+         * Calculating some things from the integrals
+         */
+
+        //Center of mass movement
+        double dx_snk = dMx_snk / M;
+        double dy_snk = dMy_snk / M;
+        double dz_snk = dMz_snk / M;
+        
+        double dr_snk = cosp * dx_snk + sinp * dy_snk;
+        double dphi_snk = (-sinp * dx_snk + cosp * dy_snk) / r;
+
+        // Radial Momentum
+        double dPr_grv = cosp * dPx_grv + sinp * dPy_grv;
+        double dPr_snk = cosp * dPx_snk + sinp * dPy_snk
+                        + M * r*omega * dphi_snk;
+
+        // Orbital Angular Momentum
+        double dL_grv = x * dPy_grv - y * dPx_grv;
+        double dL_snk = x * dPy_snk - y * dPx_snk 
+                        + dMx_snk * vy - dMy_snk * vx;
+        
+        // Kinetic energy added to the planet
+        double dK_grv = vx * dPx_grv + vy * dPy_grv + vz * dPz_grv;
+        double dK_snk = vx * dPx_snk + vy * dPy_snk + vz * dPz_snk 
+                            - 0.5*v2 * dM;
+
+        // Potential energy added to planet
+        double dU_grv = dEf_grv - dK_grv;
+
+        double dUf_snk = - dUpot_snk + (Uf/M) * dM
+                        - (dPx_grv/M) * dMx_snk
+                        - (dPy_grv/M) * dMy_snk
+                        - (dPz_grv/M) * dMz_snk;
+        double dUext_snk = Phi_ext * dM
+                        - gx_ext * dMx_snk
+                        - gy_ext * dMy_snk
+                        - gz_ext * dMz_snk;
+
+
+        double dU_snk = dUf_snk + dUext_snk;
+        
+        // Internal energy added to planet
+        double dEint_snk = dEf_snk - dK_snk - dU_snk;
+
+
+        pl->kin[PL_M] += dM;
+
+        pl->kin[PL_R] += vr_pl * dt + dr_snk;
+        pl->kin[PL_PHI] += om_pl * dt + dphi_snk;
+        pl->kin[PL_Z] += vz_pl * dt + dz_snk;
+
+        pl->kin[PL_PR] += Fr_pl * dt + dPr_grv + dPr_snk;
+        pl->kin[PL_LL] += rFp_pl * dt + dJ_grv + (dJ_snk - dS_snk);
+        pl->kin[PL_PZ] += Fz_pl * dt + dPz_grv + dPz_snk;
+
+        pl->kin[PL_SZ] += dS_snk;
+        pl->kin[PL_EINT] += dEint_snk;
+
+        //Direct values, easy!
+        pl->aux[PL_SNK_M] += dM;
+        pl->aux[PL_GRV_PX] += dPx_grv;
+        pl->aux[PL_GRV_PY] += dPy_grv;
+        pl->aux[PL_GRV_PZ] += dPz_grv;
+        pl->aux[PL_GRV_JZ] += dJ_grv;
+        pl->aux[PL_SNK_PX] += dPx_snk;
+        pl->aux[PL_SNK_PY] += dPy_snk;
+        pl->aux[PL_SNK_PZ] += dPz_snk;
+        pl->aux[PL_SNK_JZ] += dJ_snk;
+        pl->aux[PL_SNK_SZ] += dS_snk;
+        pl->aux[PL_SNK_MX] += dMx_snk;
+        pl->aux[PL_SNK_MY] += dMy_snk;
+        pl->aux[PL_SNK_MZ] += dMz_snk;
+        pl->aux[PL_GRV_EGAS] += dEf_grv;
+        pl->aux[PL_SNK_EGAS] += dEf_snk;
+        pl->aux[PL_SNK_UGAS] += dUf_snk;
+        
+
+        // Some more complicated things.
+        pl->aux[PL_GRV_LZ] += dL_grv;
+        pl->aux[PL_SNK_LZ] += dL_snk;
+
+        pl->aux[PL_GRV_K] += dK_grv;
+        pl->aux[PL_SNK_K] += dK_snk;
+        
+        pl->aux[PL_GRV_U] += dU_grv;
+        pl->aux[PL_SNK_U] += dU_snk;
+
+        pl->aux[PL_SNK_EINT] += dEint_snk;
+
+        // The external things
+        pl->aux[PL_EXT_PX] += Fx_pl*dt;
+        pl->aux[PL_EXT_PY] += Fy_pl*dt;
+        pl->aux[PL_EXT_PZ] += Fz_pl*dt;
+        pl->aux[PL_EXT_JZ] += rFp_pl*dt;
+        pl->aux[PL_EXT_K] += (vx*Fx_pl + vy*Fy_pl + vz*Fz_pl) * dt;
+        pl->aux[PL_EXT_U] -= (vx*Fx_pl + vy*Fy_pl + vz*Fz_pl) * dt;
+
     }
 }
+

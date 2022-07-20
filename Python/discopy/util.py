@@ -316,7 +316,11 @@ def getVarNames(filename):
 
 class DiscoReport:
 
-    def __init__(self, filename):
+    def __init__(self, filename=None):
+
+        if filename is None:
+            return
+
         hdr = self._readHeader(filename)
 
         self.NUM_C = hdr['NUM_C']
@@ -330,13 +334,17 @@ class DiscoReport:
         self.N = self.t.shape[0]
 
         self.cons = np.loadtxt(filename, comments='#',
-                               usecols=range(1, 1+self.NUM_Q)).T
+                               usecols=range(1, self.NUM_Q)).T
 
-        start = 2+self.NUM_Q + 7*self.Npl
+        start = 2+self.NUM_Q + 8*self.Npl
         step = self.NUM_PL_KIN + self.NUM_PL_AUX
 
         self.kin = np.empty((self.NUM_PL_KIN, self.Npl, self.N))
         self.aux = np.empty((self.NUM_PL_AUX, self.Npl, self.N))
+
+        self.Uf = np.atleast_2d(
+                np.loadtxt(filename, comments="#",
+                             usecols=range(start-self.Npl, start)).T)
 
         for i in range(self.Npl):
             idx_a = start + i*step
@@ -373,6 +381,12 @@ class DiscoReport:
     @property
     def KIN_PZ(self):
         return self.kin[6]
+    @property
+    def KIN_SZ(self):
+        return self.kin[7]
+    @property
+    def KIN_EINT(self):
+        return self.kin[8]
 
     @property
     def SNK_M(self):
@@ -405,13 +419,13 @@ class DiscoReport:
     def SNK_SZ(self):
         return self.aux[9]
     @property
-    def SNK_X(self):
+    def SNK_MX(self):
         return self.aux[10]
     @property
-    def SNK_Y(self):
+    def SNK_MY(self):
         return self.aux[11]
     @property
-    def SNK_Z(self):
+    def SNK_MZ(self):
         return self.aux[12]
     @property
     def GRV_EGAS(self):
@@ -420,11 +434,78 @@ class DiscoReport:
     def SNK_EGAS(self):
         return self.aux[14]
     @property
-    def GRV_LZ(self):
+    def SNK_UGAS(self):
         return self.aux[15]
     @property
-    def SNK_LZ(self):
+    def GRV_LZ(self):
         return self.aux[16]
+    @property
+    def SNK_LZ(self):
+        return self.aux[17]
+    @property
+    def GRV_K(self):
+        return self.aux[18]
+    @property
+    def SNK_K(self):
+        return self.aux[19]
+    @property
+    def GRV_U(self):
+        return self.aux[20]
+    @property
+    def SNK_U(self):
+        return self.aux[21]
+    @property
+    def SNK_EINT(self):
+        return self.aux[22]
+    @property
+    def EXT_PX(self):
+        return self.aux[23]
+    @property
+    def EXT_PY(self):
+        return self.aux[24]
+    @property
+    def EXT_PZ(self):
+        return self.aux[25]
+    @property
+    def EXT_JZ(self):
+        return self.aux[26]
+    @property
+    def EXT_K(self):
+        return self.aux[27]
+    @property
+    def EXT_U(self):
+        return self.aux[28]
+
+    def sample_at(t):
+
+        t2 = np.atleast_1d(t)
+        N2 = t2.shape[0]
+        if len(t2.shape) != 1:
+            raise ValueError("Time series must be 1D")
+
+        cons2 = interpolate_timeserise(self.t, self.cons.T, t2).T
+        kin2 = interpolate_timeserise(self.t, self.kin.T, t2).T
+
+        integrated_aux = np.cumsum(self.aux, axis=2)
+        integrated_aux2 = interpolate_timeseries(self.t, integrated_aux.T,
+                                                 t2).T
+
+        aux2 = np.diff(integrated_aux2, prepend=0.0)
+
+        new_report = DiscoReport()
+        new_report.NUM_C = self.NUM_C
+        new_report.NUM_N = self.NUM_N
+        new_report.NUM_Q = self.NUM_Q
+        new_report.Npl = self.Npl
+        new_report.NUM_PL_KIN = self.NUM_PL_KIN
+        new_report.NUM_PL_AUX = self.NUM_PL_AUX
+        new_report.t = t2
+        new_report.cons = cons2
+        new_report.kin = kin2
+        new_report.aux = aux2
+
+        return new_report
+
 
     def _readHeader(self, filename):
 
@@ -447,3 +528,32 @@ class DiscoReport:
 
         return hdr
 
+def interpolate_timeseries(t1, x1, t2):
+
+    sh1 = x1.shape
+
+    N1 = len(t1)
+    N2 = len(t2)
+
+    if len(sh1) == 1:
+        sh2 = (N2,) 
+    else:
+        sh2 = (N2, sh1[1:])
+
+    x2 = np.empty(sh2)
+
+    idx = np.searchsorted(t1, t2)
+
+    for i in range(N2):
+        if idx[i] == 0:
+            x2[i] = x1[0]
+        elif idx[i] >= N1:
+            x2[i] = x1[N1-1]
+        else:
+            idxa = idx[i] - 1
+            idxb = idx[i]
+            wa = (t1[idxb] - t2[i]) / (t1[idxb] - t1[idxa])
+            wb = (t2[i] - t1[idxa]) / (t1[idxb] - t1[idxa])
+            x2[i, ...] = wa * x1[idxa, ...] + wb * x1[idxb, ...]
+
+    return x2

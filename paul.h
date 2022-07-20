@@ -14,13 +14,14 @@ enum{PROF_TOT, PROF_DT, PROF_TIMESTEP, PROF_OUTPUT, PROF_RECON, PROF_FLUX,
      NUM_PROF}; // NUM_PROF must be at end
 enum{PLPOINTMASS, PLPW, PLSURFACEGRAV, PLSPLINE, PLWEGGC, PLQUAD};
 enum{COOL_NONE, COOL_BETA, COOL_BETA_RELAX};
-enum{PL_M, PL_R, PL_PHI, PL_Z, PL_PR, PL_JJ, PL_PZ};
+enum{PL_M, PL_R, PL_PHI, PL_Z, PL_PR, PL_LL, PL_PZ, PL_SZ, PL_EINT};
 enum{PL_SNK_M, PL_GRV_PX, PL_GRV_PY, PL_GRV_PZ, PL_GRV_JZ,
      PL_SNK_PX, PL_SNK_PY, PL_SNK_PZ, PL_SNK_JZ, PL_SNK_SZ,
-     PL_SNK_X, PL_SNK_Y, PL_SNK_Z, PL_GRV_EGAS, PL_SNK_EGAS,
+     PL_SNK_MX, PL_SNK_MY, PL_SNK_MZ, PL_GRV_EGAS, PL_SNK_EGAS, PL_SNK_UGAS,
      //Up to here are all integrals
      // Everything past here are computed from the integrals above
-     PL_GRV_LZ, PL_SNK_LZ, PL_GRV_K, PL_SNK_K, PL_GRV_U, PL_SNK_U, PL_SNK_EINT};
+     PL_GRV_LZ, PL_SNK_LZ, PL_GRV_K, PL_SNK_K, PL_GRV_U, PL_SNK_U, PL_SNK_EINT,
+     PL_EXT_PX, PL_EXT_PY, PL_EXT_PZ, PL_EXT_JZ, PL_EXT_K, PL_EXT_U};
 
 #if USE_MPI
 #include <mpi.h>
@@ -37,9 +38,9 @@ enum{PL_SNK_M, PL_GRV_PX, PL_GRV_PY, PL_GRV_PZ, PL_GRV_JZ,
 #define NUM_Q (NUM_C+NUM_N)
 #define NUM_G 2
 
-#define NUM_PL_KIN  7
-#define NUM_PL_INTEGRALS 15
-#define NUM_PL_AUX (NUM_PL_INTEGRALS + 7)
+#define NUM_PL_KIN  9
+#define NUM_PL_INTEGRALS 16
+#define NUM_PL_AUX (NUM_PL_INTEGRALS + 13)
 
 //Magnetic field tracking things.  Can be set to zero if there is no MHD.
 #if CT_MODE == 0        //No CT
@@ -330,6 +331,8 @@ struct planet{
    double eps;
    double Fr;
    double Fp;
+
+   double Uf;
 
    double gas_track[NUM_PL_INTEGRALS];
    double kin[NUM_PL_KIN];

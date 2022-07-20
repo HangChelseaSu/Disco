@@ -42,8 +42,8 @@ void report( struct domain * theDomain )
    MPI_Comm grid_comm = theDomain->theComm;
 #endif
 
-   //double * r_jph = theDomain->r_jph;
-   //double * z_kph = theDomain->z_kph;
+   double * r_jph = theDomain->r_jph;
+   double * z_kph = theDomain->z_kph;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int *Np = theDomain->Np;
@@ -64,6 +64,10 @@ void report( struct domain * theDomain )
    int j,k,i;
 
    double cons_tot[NUM_Q] = {0};
+
+   int p;
+   for(p=0; p<theDomain->Npl; p++)
+        theDomain->thePlanets[p].Uf = 0.0;
 
    for( j=jmin ; j<jmax ; ++j ){
       for( k=kmin ; k<kmax ; ++k ){
@@ -87,6 +91,22 @@ void report( struct domain * theDomain )
             int l;
             for(l=0; l<NUM_Q; l++)
                 cons_tot[l] += c->cons[l];
+            double phip = c->piph;
+            double phim = phip-c->dphi;
+            double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
+            double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
+
+            double x[3];
+            double rpz[3];
+            get_centroid_arr(xp, xm, x);
+            get_rpz(x, rpz);
+            
+            for(p=0; p<theDomain->Npl; p++)
+            {
+                double Phi = planetaryPotential(theDomain->thePlanets+p,
+                        rpz[0], rpz[1], rpz[2]);
+                theDomain->thePlanets[p].Uf += c->cons[DDD] * Phi;
+            }
          }
       }
    }
@@ -96,7 +116,8 @@ void report( struct domain * theDomain )
    double q = 0.0;
    if (Npl > 1) q = ( thePlanets[1].M / thePlanets[0].M );
 
-   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls, *Eacc_pls;
+   double * M_acc, * La_pls, * Ls_pls, *therm_pls, *Lg_pls, *Eg_pls,
+          *Eacc_pls, *Uf;
    M_acc = calloc(Npl, sizeof(double) );
    La_pls = calloc(Npl, sizeof(double) );
    Ls_pls = calloc(Npl, sizeof(double) );
@@ -104,16 +125,17 @@ void report( struct domain * theDomain )
    therm_pls = calloc(Npl, sizeof(double) );
    Eacc_pls = calloc(Npl, sizeof(double) );
    Eg_pls = calloc(Npl, sizeof(double) );
-
-
-   for(j=0; j<Npl; ++j){
-      M_acc[j] = thePlanets[j].dM;
-      La_pls[j] = thePlanets[j].accL;
-      Ls_pls[j] = thePlanets[j].Ls;
-      therm_pls[j] = thePlanets[j].therm;
-      Lg_pls[j] = thePlanets[j].gravL;
-      Eg_pls[j] = thePlanets[j].gravE;
-      Eacc_pls[j] = thePlanets[j].accE;
+   Uf = calloc(Npl, sizeof(double) );
+   
+   for(p=0; p<Npl; ++p){
+      M_acc[p] = thePlanets[p].dM;
+      La_pls[p] = thePlanets[p].accL;
+      Ls_pls[p] = thePlanets[p].Ls;
+      therm_pls[p] = thePlanets[p].therm;
+      Lg_pls[p] = thePlanets[p].gravL;
+      Eg_pls[p] = thePlanets[p].gravE;
+      Eacc_pls[p] = thePlanets[p].accE;
+      Uf[p] = thePlanets[p].Uf;
   }
 
    double planet_aux[Npl * NUM_PL_AUX];
@@ -135,6 +157,7 @@ void report( struct domain * theDomain )
    MPI_Allreduce( MPI_IN_PLACE , therm_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eg_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    MPI_Allreduce( MPI_IN_PLACE , Eacc_pls  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
+   MPI_Allreduce( MPI_IN_PLACE , Uf  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    
    if(!theDomain->planet_gas_track_synced)
       MPI_Allreduce( MPI_IN_PLACE , planet_aux  , Npl*NUM_PL_AUX , MPI_DOUBLE ,
@@ -170,6 +193,9 @@ void report( struct domain * theDomain )
       }
       for( j=0; j<Npl; ++j){
          fprintf(rFile," %.15le", Eacc_pls[j]);
+      }
+      for( j=0; j<Npl; ++j){
+         fprintf(rFile," %.15le", Uf[j]);
       }
       for( j=0; j<Npl; ++j){
         for( iq=0; iq<NUM_PL_KIN; iq++){

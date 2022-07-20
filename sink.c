@@ -1,6 +1,7 @@
 #include "paul.h"
 #include "omega.h"
 #include "geometry.h"
+#include "planet.h"
 
 static int sinkType = 0;
 static int sinkNumber = 0;
@@ -47,8 +48,6 @@ static double dampLenOuter = 0.0;
 static double dampLenUpper = 0.0;
 static double dampLenLower = 0.0;
 
-void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
-double phigrav( double , double , double , int);
 void initial( double * , double * );
 void prim2cons( double * , double * , double * , double );
 
@@ -198,9 +197,9 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           mag = sqrt(mag);
 
           //the part that depends on sinkType
-          double arg = 0.0;
+          double f_acc = 0.0;
           if(sinkType == 3){	//constant
-            if (mag <= sinkPar3) arg = 1.0;
+            if (mag <= sinkPar3) f_acc = 1.0;
           }
           else if(sinkType == 2){	//exponential
             eps = sinkPar3;
@@ -208,24 +207,27 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
             epsfactor = sinkPar5;
             if(epsfactor <= 0.0) epsfactor = 1.0;
             double magPow = pow(mag, sinkPar4);
-            arg = exp(-magPow/(eps*epsfactor));
+            f_acc = exp(-magPow/(eps*epsfactor));
           }
           else if(sinkType == 1){	//polynomial, compact support
             eps = sinkPar3;
             double pwrM = sinkPar4;
             double pwrN = sinkPar5;
-            arg = 1.0 - pow((mag/eps),pwrM);
-            arg = pow(arg, pwrN);
+            f_acc = 1.0 - pow((mag/eps),pwrM);
+            f_acc = pow(f_acc, pwrN);
             if (mag >= eps){
-              arg = 0.0;
+              f_acc = 0.0;
             }
           }
 
           rate = sinkPar1*thePlanets[pi].omega;
-          surfdiff = rho*rate*arg;
+          surfdiff = rho*rate*f_acc;
 
-          double delta = fmin(sinkPar2, 1.0);
-          delta = fmax(0.0, sinkPar2);
+          if(rate == 0.0 || f_acc == 0.0)
+              continue;
+
+          //delta clamped to [0, 1]
+          double delta = fmax(fmin(sinkPar2, 1.0), 0.0);
           double rp, omp, vxp, vyp, vxg, vyg, vxr, vyr, vp_p, vp_r, vxn, vyn, cphi, sphi, vg_r, vg_p;
           rp = thePlanets[pi].r;
           omp = thePlanets[pi].omega;
@@ -237,15 +239,23 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           double vxg1 = vr*cosg - vp*sing;
           double vyg1 = vr*sing + vp*cosg;
 
+          // cartesian components of relative velocity
           vxr = vxg1 - vxp;
           vyr = vyg1 - vyp;
+
+          // cos & sin of angular position of gas relative to planet
           cphi = dx/mag;
           sphi = dy/mag;
 
-          double acc_factor = dV*dt*surfdiff;
+          //Amount of mass to accrete
+          double dM = dV*dt*surfdiff;
 
+          // phi-velocity of gas in planet's frame
           double vpr = cphi*vyr - sphi*vxr;
-          thePlanets[pi].Ls += (1.0-delta)*mag*vpr*acc_factor;
+
+          //Spin-torque on planet
+          thePlanets[pi].Ls += (1.0-delta)*mag*vpr*dM;
+
           vxn = (cphi*cphi + (1.0-delta)*sphi*sphi)*vxr + delta*sphi*cphi*vyr;
           vyn = delta*cphi*sphi*vxr + (sphi*sphi + (1.0-delta)*cphi*cphi)*vyr;
 
@@ -254,26 +264,32 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           vg_r =  vxg*cosg + vyg*sing;
           vg_p = -vxg*sing + vyg*cosg;
 
-          thePlanets[pi].accL += acc_factor*(px*vyg - py*vxg + dx*vyp - dy*vxp);
+          thePlanets[pi].accL += dM*(px*vyg - py*vxg + dx*vyp - dy*vxp);
 
-          cons[DDD] -= acc_factor;
-          cons[SRR] -= vg_r*acc_factor;
-          cons[LLL] -= r*vg_p*acc_factor;
-          cons[SZZ] -= vz*acc_factor;
+          cons[DDD] -= dM;
+          cons[SRR] -= vg_r*dM;
+          cons[LLL] -= r*vg_p*dM;
+          cons[SZZ] -= vz*dM;
           double v2 = vxg*vxg + vyg*vyg;
-          cons[TAU] -= acc_factor*(specenth + 0.5*v2 - 0.5*(pow(vxg-vxg1, 2.0) + pow(vyg-vyg1, 2.0)) );
+          cons[TAU] -= dM*(specenth + 0.5*v2
+                    - 0.5*((vxg-vxg1)*(vxg-vxg1) + (vyg-vyg1)*(vyg-vyg1)));
 
-          thePlanets[pi].dM += acc_factor;
+          thePlanets[pi].dM += dM;
 
-          double dxp = thePlanets[1-pi].r*cos(thePlanets[1-pi].phi) - px;
-          double dyp = thePlanets[1-pi].r*sin(thePlanets[1-pi].phi) - py;
+          double accEpart = 0.0;
+          if(Npl == 2)
+          {
+              double dxp = thePlanets[1-pi].r*cos(thePlanets[1-pi].phi) - px;
+              double dyp = thePlanets[1-pi].r*sin(thePlanets[1-pi].phi) - py;
 
-          //grouping these together avoids some cancellations and preserves precision when time-averaging
-          double accEpart = -(dx*dxp + dy*dyp)*thePlanets[1-pi].M*pow(rbin, -3.0);
+              //grouping these together avoids some cancellations and preserves precision when time-averaging
+              accEpart = -(dx*dxp + dy*dyp)*thePlanets[1-pi].M*pow(rbin, -3.0);
+              accEpart -= thePlanets[1-pi].M/rbin;
+          }
+    
           accEpart -= 0.5*(vxp*vxp + vyp*vyp);
-          accEpart -= thePlanets[1-pi].M/rbin;
           accEpart += vxg*vxp + vyg*vyp;
-          thePlanets[pi].accE += accEpart*acc_factor;
+          thePlanets[pi].accE += accEpart*dM;
 
           //not actually a sink, just torque accounting
           /*
@@ -284,19 +300,26 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           thePlanets[pi].gravE += rho*dV*dt * thePlanets[pi].r * fp;
           */
 
-          thePlanets[pi].gas_track[PL_SNK_M] += acc_factor;
-          thePlanets[pi].gas_track[PL_SNK_PX] += acc_factor * vxg;
-          thePlanets[pi].gas_track[PL_SNK_PY] += acc_factor * vyg;
-          thePlanets[pi].gas_track[PL_SNK_PZ] += acc_factor * vz;
-          thePlanets[pi].gas_track[PL_SNK_JZ] += acc_factor * r*vg_p;
-          thePlanets[pi].gas_track[PL_SNK_SZ] += acc_factor * (
+          thePlanets[pi].gas_track[PL_SNK_M] += dM;
+          thePlanets[pi].gas_track[PL_SNK_PX] += dM * vxg;
+          thePlanets[pi].gas_track[PL_SNK_PY] += dM * vyg;
+          thePlanets[pi].gas_track[PL_SNK_PZ] += dM * vz;
+          thePlanets[pi].gas_track[PL_SNK_JZ] += dM * r*vg_p;
+          thePlanets[pi].gas_track[PL_SNK_SZ] += dM * (
                   dx * vyn - dy * vxn);
-          thePlanets[pi].gas_track[PL_SNK_X] += acc_factor * dx;
-          thePlanets[pi].gas_track[PL_SNK_Y] += acc_factor * dy;
-          thePlanets[pi].gas_track[PL_SNK_Z] += acc_factor * z;
-          thePlanets[pi].gas_track[PL_SNK_EGAS] += acc_factor * (
+          thePlanets[pi].gas_track[PL_SNK_MX] += dM * dx;
+          thePlanets[pi].gas_track[PL_SNK_MY] += dM * dy;
+          thePlanets[pi].gas_track[PL_SNK_MZ] += dM * z;
+          thePlanets[pi].gas_track[PL_SNK_EGAS] += dM * (
                   specenth + 0.5*v2
                   - 0.5*((vxg-vxg1)*(vxg-vxg1) + (vyg-vyg1)*(vyg-vyg1)));
+
+          int pi2;
+          for(pi2=0; pi2<Npl; pi2++)
+          {
+              double Phi = planetaryPotential(thePlanets+pi2, r, phi, z);
+              thePlanets[pi2].gas_track[PL_SNK_UGAS] += dM * Phi;
+          }
       }
     }
 }

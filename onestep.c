@@ -175,8 +175,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    if(!planet_motion_analytic())
       exchangePlanets(theDomain);
 
-   updatePlanetsKin(theDomain, dt);
-   updatePlanetsAux(theDomain);
+   updatePlanetsKinAux(theDomain, dt);
 
    if( !planet_motion_analytic()){
       movePlanetsLive(theDomain);

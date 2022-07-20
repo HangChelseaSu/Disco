@@ -10,10 +10,9 @@ void timestep( struct domain * theDomain , double dt ){
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
-   int Npl = theDomain->Npl;
    int stepper = theDomain->theParList.Timestep;
 
-   int i,jk,p;
+   int i,jk;
 
    for( jk=0 ; jk<Nr*Nz ; ++jk ){
       for( i=0 ; i<Np[jk] ; ++i ){
@@ -24,10 +23,7 @@ void timestep( struct domain * theDomain , double dt ){
    }
 
    copy_RK_diag(theDomain);
-
-   for( p=0 ; p<Npl ; ++p ){
-      copyPlanetsRK(theDomain);
-   }
+   copyPlanetsRK(theDomain);
 
    if(stepper == 1)
    {
