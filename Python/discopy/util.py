@@ -336,7 +336,7 @@ class DiscoReport:
         self.cons = np.loadtxt(filename, comments='#',
                                usecols=range(1, self.NUM_Q)).T
 
-        start = 2+self.NUM_Q + 8*self.Npl
+        start = 1+self.NUM_Q + self.Npl
         step = self.NUM_PL_KIN + self.NUM_PL_AUX
 
         self.kin = np.empty((self.NUM_PL_KIN, self.Npl, self.N))

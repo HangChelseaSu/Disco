@@ -5,9 +5,30 @@
 
 void initializeReport(struct domain *theDomain)
 {
-    if( theDomain->rank != 0 || theDomain->theParList.restart_flag )
+    if( theDomain->rank != 0)
         return;
-    FILE * rFile = fopen("report.dat","w");
+
+    // Open read-only to check if it exists
+    FILE *rFile = fopen("report.dat", "r");    
+
+    // if report.dat exists and we're restarting, then leave!
+    if(rFile && theDomain->theParList.restart_flag )
+    {
+        fclose(rFile);
+        return;
+    }
+
+    // Clean up.
+    if(rFile)
+        fclose(rFile);
+
+
+    // If we're still here, then either we're restarting but report.dat
+    // doesn't exist (and so we need to write the header)
+    // or
+    // we are not restarting, and need to write report.dat anyways.
+
+    rFile = fopen("report.dat","w");
 
     //Stamp file with compiler options
     fprintf(rFile, "# GIT_VERSION %s\n", GIT_VERSION);
@@ -120,24 +141,17 @@ void report( struct domain * theDomain )
       Uf[p] = thePlanets[p].Uf;
    }
 
-   double planet_aux[Npl * NUM_PL_AUX];
-   int iq;
-   for(j=0; j<Npl; j++)
-       for(iq=0; iq<NUM_PL_AUX; iq++)
-           planet_aux[j*NUM_PL_AUX+iq] = thePlanets[j].aux[iq];
-   
-   for(j=0; j<Npl; ++j)
-       planet_zero_aux(thePlanets + j);
-
 #if USE_MPI
    MPI_Allreduce( MPI_IN_PLACE , cons_tot    , NUM_Q , MPI_DOUBLE , MPI_SUM , grid_comm );
 
    MPI_Allreduce( MPI_IN_PLACE , Uf  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
    
    if(!theDomain->planet_gas_track_synced)
-      MPI_Allreduce( MPI_IN_PLACE , planet_aux  , Npl*NUM_PL_AUX , MPI_DOUBLE ,
-                    MPI_SUM , grid_comm );
+      MPI_Allreduce( MPI_IN_PLACE , theDomain->pl_aux, Npl*NUM_PL_AUX,
+                    MPI_DOUBLE , MPI_SUM , grid_comm );
 #endif
+
+   int iq;
 
    if( rank==0 ){
       FILE * rFile = fopen("report.dat","a");
@@ -151,16 +165,19 @@ void report( struct domain * theDomain )
       }
       for( j=0; j<Npl; ++j){
         for( iq=0; iq<NUM_PL_KIN; iq++){
-         fprintf(rFile," %.15le", theDomain->thePlanets[j].kin[iq]);
+         fprintf(rFile," %.15le", theDomain->pl_kin[j*NUM_PL_KIN+iq]);
         }
 
         for( iq=0; iq<NUM_PL_AUX; iq++){
-         fprintf(rFile," %.15le", planet_aux[j*NUM_PL_AUX+iq]);
+         fprintf(rFile," %.15le", theDomain->pl_aux[j*NUM_PL_AUX+iq]);
         }
       }
       fprintf(rFile,"\n");
 
       fclose(rFile);
    }
+
+   zeroAuxPlanets(theDomain);
+
    free(Uf);
 }

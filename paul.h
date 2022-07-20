@@ -228,6 +228,12 @@ struct domain{
 #endif
 
    int planet_gas_track_synced;
+   double *pl_gas_track;
+   double *pl_kin;
+   double *pl_RK_kin;
+   double *pl_aux;
+   double *pl_RK_aux;
+
    struct param_list theParList;
    int num_tools;
    struct diagnostic_avg theTools;
@@ -307,12 +313,6 @@ struct planet{
    double eps;
 
    double Uf;
-
-   double gas_track[NUM_PL_INTEGRALS];
-   double kin[NUM_PL_KIN];
-   double RK_kin[NUM_PL_KIN];
-   double aux[NUM_PL_AUX];
-   double RK_aux[NUM_PL_AUX];
 
    int type;
 };

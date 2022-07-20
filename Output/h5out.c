@@ -510,7 +510,7 @@ void output( struct domain * theDomain , char * filestart ){
 
          int q;
          for(q=0; q<NUM_PL_KIN; q++)
-             PlanetData[NpDat*p + q + 7] = pl->kin[q];
+             PlanetData[NpDat*p + q + 7] = theDomain->pl_kin[p*NUM_PL_KIN + q];
       }
       writeSimple(filename,"Data","Planets",PlanetData,H5T_NATIVE_DOUBLE);
    }

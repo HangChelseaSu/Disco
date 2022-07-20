@@ -33,10 +33,12 @@ void clean_pi( struct domain * theDomain ){
       while( phi < 0.0     ){ phi += phi_max;}
       pl->phi = phi; 
 
-      phi = pl->kin[PL_PHI];
-      while( phi > phi_max ){ phi -= phi_max; pl->RK_kin[PL_PHI] -= phi_max; }
-      while( phi < 0.0     ){ phi += phi_max; pl->RK_kin[PL_PHI] += phi_max; }
-      pl->kin[PL_PHI] = phi; 
+      phi = theDomain->pl_kin[p*NUM_PL_KIN + PL_PHI];
+      double RKphi = theDomain->pl_RK_kin[p*NUM_PL_KIN + PL_PHI];
+      while( phi > phi_max ){ phi -= phi_max; RKphi -= phi_max; }
+      while( phi < 0.0     ){ phi += phi_max; RKphi += phi_max; }
+      theDomain->pl_kin[p*NUM_PL_KIN + PL_PHI] = phi;
+      theDomain->pl_RK_kin[p*NUM_PL_KIN + PL_PHI] = RKphi;
    }
 
 }
@@ -566,7 +568,8 @@ void setup_faces( struct domain * theDomain , int dim ){
 }
 
 void omega_src( double * , double * , double * , double * , double );
-void sink_src( double * , double * , double * , double * , double, double );
+void sink_src( double * , double * , double * , double * , double, double,
+                double *);
 void cooling( double * , double * , double * , double * , double, double);
 void damping( double * , double * , double * , double * , double, double);
 
@@ -610,13 +613,15 @@ void add_source( struct domain * theDomain , double dt ){
             source( c->prim , sdVdt_hydro, xp , xm , dV*dt  );
             
             for( p=0 ; p<Npl ; ++p ){
-               planet_src( thePlanets+p, c->prim, sdVdt_grav, xp, xm, dV, dt);
+               planet_src( thePlanets+p, c->prim, sdVdt_grav, xp, xm, dV, dt,
+                          theDomain->pl_gas_track + p*NUM_PL_INTEGRALS);
             }
             if(visc_flag)
                 visc_source( c->prim, c->gradr, c->gradp, c->gradz, sdVdt_visc,
                             xp, xm, dV*dt);
             omega_src( c->prim , sdVdt_hydro , xp , xm , dV*dt );
-            sink_src( c->prim , sdVdt_sink , xp , xm , dV, dt );
+            sink_src( c->prim , sdVdt_sink , xp , xm , dV, dt,
+                      theDomain->pl_gas_track);
             cooling( c->prim , sdVdt_cool , xp , xm , dV, dt );
             damping( c->prim , sdVdt_damp , xp , xm , dV, dt );
 

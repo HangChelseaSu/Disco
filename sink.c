@@ -100,7 +100,8 @@ void setSinkParams(struct domain *theDomain)
     dampLenLower = theDomain->theParList.dampLenLower;
 }
 
-void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, double dt)
+void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
+              double dt, double *pl_gas_track)
 {
     if(nozzleType == 1)
     {
@@ -165,6 +166,8 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
 
       if ((sinkNumber>0) && (sinkNumber<numSinks)) numSinks = sinkNumber;
       for (pi=0; pi<numSinks; pi++){
+
+
           double cosp = cos(thePlanets[pi].phi);
           double sinp = sin(thePlanets[pi].phi);
           px = thePlanets[pi].r*cosp;
@@ -246,25 +249,24 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV, dou
           cons[TAU] -= dM*(specenth + 0.5*v2
                     - 0.5*((vxg-vxg1)*(vxg-vxg1) + (vyg-vyg1)*(vyg-vyg1)));
 
-          thePlanets[pi].gas_track[PL_SNK_M] += dM;
-          thePlanets[pi].gas_track[PL_SNK_PX] += dM * vxg;
-          thePlanets[pi].gas_track[PL_SNK_PY] += dM * vyg;
-          thePlanets[pi].gas_track[PL_SNK_PZ] += dM * vz;
-          thePlanets[pi].gas_track[PL_SNK_JZ] += dM * r*vg_p;
-          thePlanets[pi].gas_track[PL_SNK_SZ] += dM * (
-                  dx * vyn - dy * vxn);
-          thePlanets[pi].gas_track[PL_SNK_MX] += dM * dx;
-          thePlanets[pi].gas_track[PL_SNK_MY] += dM * dy;
-          thePlanets[pi].gas_track[PL_SNK_MZ] += dM * z;
-          thePlanets[pi].gas_track[PL_SNK_EGAS] += dM * (
-                  specenth + 0.5*v2
+          double *my_gas_track = pl_gas_track + pi*NUM_PL_INTEGRALS;
+          my_gas_track[PL_SNK_M] += dM;
+          my_gas_track[PL_SNK_PX] += dM * vxg;
+          my_gas_track[PL_SNK_PY] += dM * vyg;
+          my_gas_track[PL_SNK_PZ] += dM * vz;
+          my_gas_track[PL_SNK_JZ] += dM * r*vg_p;
+          my_gas_track[PL_SNK_SZ] += dM * (dx * vyn - dy * vxn);
+          my_gas_track[PL_SNK_MX] += dM * dx;
+          my_gas_track[PL_SNK_MY] += dM * dy;
+          my_gas_track[PL_SNK_MZ] += dM * z;
+          my_gas_track[PL_SNK_EGAS] += dM * (specenth + 0.5*v2
                   - 0.5*((vxg-vxg1)*(vxg-vxg1) + (vyg-vyg1)*(vyg-vyg1)));
 
           int pi2;
           for(pi2=0; pi2<Npl; pi2++)
           {
               double Phi = planetaryPotential(thePlanets+pi2, r, phi, z);
-              thePlanets[pi2].gas_track[PL_SNK_UGAS] += dM * Phi;
+              pl_gas_track[NUM_PL_INTEGRALS*pi2 + PL_SNK_UGAS] += dM * Phi;
           }
       }
     }

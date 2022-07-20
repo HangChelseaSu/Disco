@@ -41,7 +41,30 @@ void setupDomain( struct domain * theDomain ){
    setGravParams( theDomain );
    setPlanetParams( theDomain );
    int Npl = theDomain->Npl;
-   theDomain->thePlanets = (struct planet *) malloc( Npl*sizeof(struct planet) );
+
+   theDomain->thePlanets = NULL;
+   theDomain->pl_gas_track = NULL;
+   theDomain->pl_kin = NULL;
+   theDomain->pl_RK_kin = NULL;
+   theDomain->pl_aux = NULL;
+   theDomain->pl_RK_aux = NULL;
+
+   if(Npl > 0)
+   {
+       theDomain->thePlanets = (struct planet *) malloc(
+                                    Npl * sizeof(struct planet) );
+
+       theDomain->pl_gas_track = (double *) malloc(
+                                    Npl * NUM_PL_INTEGRALS * sizeof(double));
+       theDomain->pl_kin = (double *) malloc(
+                                    Npl * NUM_PL_KIN * sizeof(double));
+       theDomain->pl_RK_kin = (double *) malloc(
+                                    Npl * NUM_PL_KIN * sizeof(double));
+       theDomain->pl_aux = (double *) malloc(
+                                    Npl * NUM_PL_AUX * sizeof(double));
+       theDomain->pl_RK_aux = (double *) malloc(
+                                    Npl * NUM_PL_AUX * sizeof(double));
+   }
    setupPlanets(theDomain);
 
    int num_tools = num_diagnostics();
@@ -309,7 +332,19 @@ void freeDomain( struct domain * theDomain ){
    free( theDomain->r_jph );
    theDomain->z_kph--;
    free( theDomain->z_kph );
-   free( theDomain->thePlanets );
+
+   if(theDomain->thePlanets != NULL)
+      free( theDomain->thePlanets );
+   if(theDomain->pl_gas_track != NULL)
+      free( theDomain->pl_gas_track);
+   if(theDomain->pl_kin != NULL)
+      free( theDomain->pl_kin);
+   if(theDomain->pl_RK_kin != NULL)
+      free( theDomain->pl_RK_kin);
+   if(theDomain->pl_aux != NULL)
+      free( theDomain->pl_aux);
+   if(theDomain->pl_RK_aux != NULL)
+      free( theDomain->pl_RK_aux);
 
    free( theDomain->theTools.Qrz );
    free( theDomain->theTools.F_r );

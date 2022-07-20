@@ -12,11 +12,12 @@ double planetaryPotential(struct planet *pl, double r, double phi, double z);
 void planetaryForce( struct planet * pl , double r , double phi , double z ,
                     double * fr , double * fp , double * fz , int mode );
 void planet_src( struct planet * pl , double * prim , double * cons ,
-                double * xp , double * xm , double dV, double dt );
+                double * xp , double * xm , double dV, double dt,
+                double *pl_gas_track);
 
-void planet_init_kin(struct planet *pl);
-void planet_zero_aux(struct planet *pl);
+void planet_init_kin(struct planet *pl, double *pl_kin);
 
+void zeroAuxPlanets(struct domain *theDomain);
 void setupPlanets(struct domain *theDomain);
 void initializePlanetTracking(struct domain *theDomain);
 void updatePlanetsKinAux(struct domain *theDomain, double dt);

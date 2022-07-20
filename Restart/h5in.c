@@ -1,9 +1,11 @@
 #include "../paul.h"
 #include <hdf5.h>
 #include <string.h>
+#include "../analysis.h"
 #include "../boundary.h"
 #include "../omega.h"
 #include "../hydro.h"
+#include "../planet.h"
 
 void getH5dims( char * file , char * group , char * dset , hsize_t * dims ){
    hid_t h5fil = H5Fopen( file , H5F_ACC_RDWR , H5P_DEFAULT );
@@ -79,15 +81,11 @@ void Doub2Cell( double * Q , struct cell * c ){
 int getN0( int , int , int );
 void freeDomain( struct domain * );
 
-void setPlanetParams( struct domain * );
-void initializePlanets( struct planet * );
-int num_diagnostics( void );
 int get_num_rzFaces( int , int , int );
 
 void setICparams( struct domain * );
 void setRiemannParams( struct domain * );
 void setGravParams( struct domain * );
-void setPlanetParams( struct domain * );
 void setHlldParams( struct domain * );
 void setRotFrameParams( struct domain * );
 void setMetricParams( struct domain * );
@@ -280,10 +278,33 @@ void restart( struct domain * theDomain ){
          }
       }
 
-      // Setup Planets
-      setPlanetParams( theDomain );
-      int Npl = theDomain->Npl;
-      theDomain->thePlanets = (struct planet *) malloc( Npl*sizeof(struct planet) );
+       // Setup Planets
+       setPlanetParams( theDomain );
+       int Npl = theDomain->Npl;
+
+       theDomain->thePlanets = NULL;
+       theDomain->pl_gas_track = NULL;
+       theDomain->pl_kin = NULL;
+       theDomain->pl_RK_kin = NULL;
+       theDomain->pl_aux = NULL;
+       theDomain->pl_RK_aux = NULL;
+
+       if(Npl > 0)
+       {
+           theDomain->thePlanets = (struct planet *) malloc(
+                                    Npl * sizeof(struct planet) );
+
+           theDomain->pl_gas_track = (double *) malloc(
+                                    Npl * NUM_PL_INTEGRALS * sizeof(double));
+           theDomain->pl_kin = (double *) malloc(
+                                    Npl * NUM_PL_KIN * sizeof(double));
+           theDomain->pl_RK_kin = (double *) malloc(
+                                    Npl * NUM_PL_KIN * sizeof(double));
+           theDomain->pl_aux = (double *) malloc(
+                                    Npl * NUM_PL_AUX * sizeof(double));
+           theDomain->pl_RK_aux = (double *) malloc(
+                                    Npl * NUM_PL_AUX * sizeof(double));
+       }
       initializePlanets( theDomain->thePlanets );
       
       getH5dims( filename , group2 ,"Planets", dims );
@@ -300,7 +321,7 @@ void restart( struct domain * theDomain ){
 
       readPatch( filename , group2 ,"Planets", PlanetData , H5T_NATIVE_DOUBLE,
                     2, start2 , loc_size2 , glo_size2 );
-      int p;
+      int p, q;
       for(p=0; p<Npl; ++p){
          struct planet * pl = theDomain->thePlanets+p;
          pl->M     = PlanetData[NpDat*p + 0];
@@ -309,12 +330,23 @@ void restart( struct domain * theDomain ){
          pl->r     = PlanetData[NpDat*p + 3];
          pl->phi   = PlanetData[NpDat*p + 4];
          pl->eps   = PlanetData[NpDat*p + 5];
-         //if(NpDat > 6)
-         //   pl->type  = (int)PlanetData[NpDat*p + 6];
-         //else
-         pl->type  = PLPOINTMASS;
+         if(NpDat > 6)
+            pl->type  = (int)PlanetData[NpDat*p + 6];
+         else
+            pl->type  = PLPOINTMASS;
 
+         if(NpDat == 7 + NUM_PL_KIN)
+         {
+             for(q=0; q<NUM_PL_KIN; q++)
+                 theDomain->pl_kin[p*NUM_PL_KIN+q] = PlanetData[NpDat*p+q+7];
+         }
+         else
+             planet_init_kin(theDomain->thePlanets + p,
+                             theDomain->pl_kin + p*NUM_PL_KIN);
       }
+
+      zeroAuxPlanets(theDomain);
+      initializePlanetTracking(theDomain);
    }
 #if USE_MPI
    MPI_Barrier(theDomain->theComm);
@@ -327,8 +359,40 @@ void restart( struct domain * theDomain ){
    int num_tools = num_diagnostics();
    theDomain->num_tools = num_tools;
    theDomain->theTools.t_avg = 0.0;
-   theDomain->theTools.Qrz = (double *) calloc( Nr*Nz*num_tools , 
-                                            sizeof(double) );
+
+   theDomain->theTools.Qrz = (double *) malloc( Nr*Nz*num_tools*sizeof(double) );
+
+   theDomain->theTools.F_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                               * sizeof(double));
+   theDomain->theTools.Fvisc_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                   * sizeof(double));
+   theDomain->theTools.RK_F_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                  * sizeof(double));
+   theDomain->theTools.RK_Fvisc_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                      * sizeof(double));
+   theDomain->theTools.F_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                               * sizeof(double));
+   theDomain->theTools.Fvisc_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                   * sizeof(double));
+   theDomain->theTools.RK_F_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                  * sizeof(double));
+   theDomain->theTools.RK_Fvisc_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                      * sizeof(double));
+   
+   theDomain->theTools.S = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Sgrav = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Svisc = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Ssink = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Scool = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Sdamp = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.RK_S = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.RK_Sgrav = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Svisc = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Ssink = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Scool = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Sdamp = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+
+   zero_diagnostics(theDomain);
 
    theDomain->N_ftracks_r = get_num_rzFaces( theDomain->Nr , theDomain->Nz , 1 ); 
    theDomain->N_ftracks_z = get_num_rzFaces( theDomain->Nr , theDomain->Nz , 2 ); 
