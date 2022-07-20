@@ -196,6 +196,11 @@ struct diagnostic_avg{
    double t_avg;
 };
 
+struct diagnostic_inst {
+    double *Qrz;
+    int Ntools;
+};
+
 struct domain{
 
    struct cell ** theCells;

@@ -12,6 +12,10 @@ int num_diagnostics(void){
    return(5);
 }
 
+int num_inst_diagnostics(void){
+   return(0);
+}
+
 /* Generic Diagnostics for 2D boundary layers. Only good for m<40 modes.*/
 
 void get_diagnostics( double * x , double * prim , double * Qrz, 
@@ -40,5 +44,11 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    //   Qrz[i*2+4] = val*cos(phi*(i+1));
    //   Qrz[i*2+5] = val*sin(phi*(i+1));
    //}
+}
+
+void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
+                        struct domain * theDomain )
+{
+    //Silence is golden.
 }
 

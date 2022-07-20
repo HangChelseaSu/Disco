@@ -1,5 +1,6 @@
 
 #include "../paul.h"
+#include "../planet.h"
 
 static double gamma_law = 0.0;
 
@@ -11,7 +12,9 @@ int num_diagnostics(void){
    return(8);
 }
 
-void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
+int num_inst_diagnostics(void){
+   return(0);
+}
 
 /* Generic Diagnostics for Euler*/
 
@@ -44,3 +47,9 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    Qrz[7] = Pp;
 }
 
+
+void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
+                        struct domain * theDomain )
+{
+    //Silence is golden.
+}

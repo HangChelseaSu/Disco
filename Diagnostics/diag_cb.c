@@ -11,6 +11,10 @@ int num_diagnostics(void){
    return(11);
 }
 
+int num_inst_diagnostics(void){
+   return(0);
+}
+
 void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
 
 /* Generic Diagnostics for Euler*/
@@ -65,3 +69,9 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    Qrz[10] = rho * sin2p;
 }
 
+
+void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
+                        struct domain * theDomain )
+{
+    //Silence is golden.
+}

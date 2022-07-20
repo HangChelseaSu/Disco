@@ -270,3 +270,63 @@ void add_diagnostics( struct domain * theDomain , double dt ){
    theTools->t_avg += dt;
 }
 
+
+void run_inst_diagnostics( struct domain * theDomain ,
+                            struct diagnostic_inst *theSlowTools )
+{
+   int Nr = theDomain->Nr;
+   int Nz = theDomain->Nz;
+   int * Np = theDomain->Np;
+   int Nq = num_inst_diagnostics();
+   
+   theSlowTools->Ntools = Nq;
+   if(Nq == 0)
+   {
+       theSlowTools->Qrz = NULL;
+       return;
+   }
+
+   theSlowTools->Qrz = (double *)malloc(Nr*Nz*Nq*sizeof(double));
+   memset( theSlowTools->Qrz, 0 , Nr*Nz*Nq*sizeof(double) );
+   
+   struct cell ** theCells = theDomain->theCells;
+   double * r_jph = theDomain->r_jph;
+   double * z_kph = theDomain->z_kph;
+
+   int i,j,k,q;
+   int kmin = 0;
+   int kmax = Nz;
+   int jmin = 0;
+   int jmax = Nr;
+
+    for(k=kmin; k<kmax; k++)
+    {
+        for(j=jmin; j<jmax; j++)
+        {
+            int jk = k*Nr + j;
+            for(i=0; i<Np[jk]; i++)
+            {
+                struct cell * c = theCells[jk]+i;
+                double phip = c->piph;
+                double phim = phip - c->dphi;
+                double xp[3] = {r_jph[j  ] , phip , z_kph[k  ]};  
+                double xm[3] = {r_jph[j-1] , phim , z_kph[k-1]};
+                double xc[3];
+                get_centroid_arr(xp, xm, xc);  
+                double dV = get_dV(xp,xm);
+                double Qrz[Nq];
+                get_inst_diagnostics( xc , c->prim , Qrz , theDomain );
+                for( q=0 ; q<Nq ; ++q ) 
+                    theSlowTools->Qrz[ jk*Nq + q ] += Qrz[q]*dV;
+            }
+        }
+    }
+}
+
+void free_inst_diagnostics(struct diagnostic_inst *theSlowTools)
+{
+    if(theSlowTools->Qrz != NULL)
+        free(theSlowTools->Qrz);
+}
+
+
