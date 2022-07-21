@@ -144,6 +144,10 @@ void writeOpts(struct domain *theDomain, char filename[])
     buf[255] = '\0';
     dumpVal(filename, "Opts", "ANALYSIS", buf2, strtype);
     
+    strncpy(buf, REPORT, 256);
+    buf[255] = '\0';
+    dumpVal(filename, "Opts", "REPORT", buf2, strtype);
+    
     strncpy(buf, METRIC, 256);
     buf[255] = '\0';
     dumpVal(filename, "Opts", "METRIC", buf2, strtype);

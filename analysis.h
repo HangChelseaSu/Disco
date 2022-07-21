@@ -3,6 +3,7 @@
 
 #include "paul.h"
 
+void setDiagParams(struct domain *theDomain);
 int num_diagnostics(void);
 int num_inst_diagnostics(void);
 

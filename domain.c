@@ -6,19 +6,17 @@
 #include "omega.h"
 #include "analysis.h"
 #include "planet.h"
+#include "report.h"
 
 
-int num_diagnostics( void );
 
 void setICparams( struct domain * );
 void setRiemannParams( struct domain * );
 void setGravParams( struct domain * );
-void setPlanetParams( struct domain * );
 void setHlldParams( struct domain * );
 void setRotFrameParams( struct domain * );
 void setMetricParams( struct domain * );
 void setFrameParams(struct domain * );
-void setDiagParams( struct domain * );
 void setNoiseParams( struct domain * );
 void setSinkParams( struct domain * );
 
@@ -175,6 +173,7 @@ void setupDomain( struct domain * theDomain ){
    setMetricParams( theDomain );
    setFrameParams( theDomain );
    setDiagParams( theDomain );
+   setReportParams(theDomain);
    setNoiseParams( theDomain );
    setBCParams( theDomain );
    setSinkParams( theDomain );

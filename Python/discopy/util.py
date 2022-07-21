@@ -329,183 +329,45 @@ class DiscoReport:
         self.Npl = hdr['Npl']
         self.NUM_PL_KIN = hdr['NUM_PL_KIN']
         self.NUM_PL_AUX = hdr['NUM_PL_AUX']
+        self.N_shared = hdr['N_shared_reports']
+        self.N_dist_aux = hdr['N_distributed_aux_reports']
+        self.N_dist_int = hdr['N_distributed_integral_reports']
 
         self.t = np.loadtxt(filename, unpack=True, usecols=0, comments='#')
         self.N = self.t.shape[0]
 
         self.cons = np.loadtxt(filename, comments='#',
-                               usecols=range(1, self.NUM_Q)).T
+                               usecols=range(1, self.NUM_Q+1)).T
 
-        start = 1+self.NUM_Q + self.Npl
-        step = self.NUM_PL_KIN + self.NUM_PL_AUX
+        print(self.N_shared, self.N_dist_aux, self.N_dist_int)
 
-        self.kin = np.empty((self.NUM_PL_KIN, self.Npl, self.N))
-        self.aux = np.empty((self.NUM_PL_AUX, self.Npl, self.N))
+        a_shared = 1+self.NUM_Q
+        a_dist_aux = a_shared + self.N_shared
+        a_dist_int = a_dist_aux + self.N_dist_aux
 
-        self.Uf = np.atleast_2d(
-                np.loadtxt(filename, comments="#",
-                             usecols=range(start-self.Npl, start)).T)
+        print(a_shared, a_dist_aux, a_dist_int, a_dist_int+self.N_dist_int)
 
-        for i in range(self.Npl):
-            idx_a = start + i*step
-            idx_b = start + i*step + self.NUM_PL_KIN
-            self.kin[:, i, :] = np.loadtxt(filename, comments='#',
-                                    usecols=range(idx_a, idx_b)).T
-            self.aux[:, i, :] = np.loadtxt(filename, comments='#',
-                                    usecols=range(idx_b, idx_a+step)).T
+        self.shared = None
+        if self.N_shared > 0:
+            self.shared = np.loadtxt(filename, comments='#',
+                    usecols=range(a_shared, a_shared+self.N_shared)).T
+        
+        self.dist_aux = None
+        if self.N_dist_aux > 0:
+            self.dist_aux = np.loadtxt(filename, comments='#',
+                    usecols=range(a_dist_aux, a_dist_aux+self.N_dist_aux)).T
+        
+        self.dist_int = None
+        if self.N_dist_int > 0:
+            self.dist_int = np.loadtxt(filename, comments='#',
+                    usecols=range(a_dist_int, a_dist_int+self.N_dist_int)).T
+
 
     @property
     def dt(self):
         tdiff = np.zeros(self.t.shape)
         tdiff[1:] = self.t[1:] - self.t[:-1]
         return tdiff
-
-    @property
-    def KIN_M(self):
-        return self.kin[0]
-    @property
-    def KIN_R(self):
-        return self.kin[1]
-    @property
-    def KIN_PHI(self):
-        return self.kin[2]
-    @property
-    def KIN_Z(self):
-        return self.kin[3]
-    @property
-    def KIN_PR(self):
-        return self.kin[4]
-    @property
-    def KIN_LL(self):
-        return self.kin[5]
-    @property
-    def KIN_PZ(self):
-        return self.kin[6]
-    @property
-    def KIN_SZ(self):
-        return self.kin[7]
-    @property
-    def KIN_EINT(self):
-        return self.kin[8]
-
-    @property
-    def SNK_M(self):
-        return self.aux[0]
-    @property
-    def GRV_PX(self):
-        return self.aux[1]
-    @property
-    def GRV_PY(self):
-        return self.aux[2]
-    @property
-    def GRV_PZ(self):
-        return self.aux[3]
-    @property
-    def GRV_JZ(self):
-        return self.aux[4]
-    @property
-    def SNK_PX(self):
-        return self.aux[5]
-    @property
-    def SNK_PY(self):
-        return self.aux[6]
-    @property
-    def SNK_PZ(self):
-        return self.aux[7]
-    @property
-    def SNK_JZ(self):
-        return self.aux[8]
-    @property
-    def SNK_SZ(self):
-        return self.aux[9]
-    @property
-    def SNK_MX(self):
-        return self.aux[10]
-    @property
-    def SNK_MY(self):
-        return self.aux[11]
-    @property
-    def SNK_MZ(self):
-        return self.aux[12]
-    @property
-    def GRV_EGAS(self):
-        return self.aux[13]
-    @property
-    def SNK_EGAS(self):
-        return self.aux[14]
-    @property
-    def SNK_UGAS(self):
-        return self.aux[15]
-    @property
-    def GRV_LZ(self):
-        return self.aux[16]
-    @property
-    def SNK_LZ(self):
-        return self.aux[17]
-    @property
-    def GRV_K(self):
-        return self.aux[18]
-    @property
-    def SNK_K(self):
-        return self.aux[19]
-    @property
-    def GRV_U(self):
-        return self.aux[20]
-    @property
-    def SNK_U(self):
-        return self.aux[21]
-    @property
-    def SNK_EINT(self):
-        return self.aux[22]
-    @property
-    def EXT_PX(self):
-        return self.aux[23]
-    @property
-    def EXT_PY(self):
-        return self.aux[24]
-    @property
-    def EXT_PZ(self):
-        return self.aux[25]
-    @property
-    def EXT_JZ(self):
-        return self.aux[26]
-    @property
-    def EXT_K(self):
-        return self.aux[27]
-    @property
-    def EXT_U(self):
-        return self.aux[28]
-
-    def sample_at(t):
-
-        t2 = np.atleast_1d(t)
-        N2 = t2.shape[0]
-        if len(t2.shape) != 1:
-            raise ValueError("Time series must be 1D")
-
-        cons2 = interpolate_timeserise(self.t, self.cons.T, t2).T
-        kin2 = interpolate_timeserise(self.t, self.kin.T, t2).T
-
-        integrated_aux = np.cumsum(self.aux, axis=2)
-        integrated_aux2 = interpolate_timeseries(self.t, integrated_aux.T,
-                                                 t2).T
-
-        aux2 = np.diff(integrated_aux2, prepend=0.0)
-
-        new_report = DiscoReport()
-        new_report.NUM_C = self.NUM_C
-        new_report.NUM_N = self.NUM_N
-        new_report.NUM_Q = self.NUM_Q
-        new_report.Npl = self.Npl
-        new_report.NUM_PL_KIN = self.NUM_PL_KIN
-        new_report.NUM_PL_AUX = self.NUM_PL_AUX
-        new_report.t = t2
-        new_report.cons = cons2
-        new_report.kin = kin2
-        new_report.aux = aux2
-
-        return new_report
-
 
     def _readHeader(self, filename):
 
@@ -527,6 +389,134 @@ class DiscoReport:
                 hdr[key] = val
 
         return hdr
+
+
+class DiscoReportTestLive(DiscoReport):
+
+    def __init__(self, filename):
+        super().__init__(filename)
+        self.stride = self.NUM_PL_KIN + self.NUM_PL_AUX
+
+    @property
+    def Uf(self):
+        return self.dist_int[:, :]
+
+    @property
+    def KIN_M(self):
+        return self.shared[0::self.stride, :]
+    @property
+    def KIN_R(self):
+        return self.shared[1::self.stride, :]
+    @property
+    def KIN_PHI(self):
+        return self.shared[2::self.stride, :]
+    @property
+    def KIN_Z(self):
+        return self.shared[3::self.stride, :]
+    @property
+    def KIN_PR(self):
+        return self.shared[4::self.stride, :]
+    @property
+    def KIN_LL(self):
+        return self.shared[5::self.stride, :]
+    @property
+    def KIN_PZ(self):
+        return self.shared[6::self.stride, :]
+    @property
+    def KIN_SZ(self):
+        return self.shared[7::self.stride, :]
+    @property
+    def KIN_EINT(self):
+        return self.shared[8::self.stride, :]
+
+    @property
+    def SNK_M(self):
+        return self.shared[0+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_PX(self):
+        return self.shared[1+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_PY(self):
+        return self.shared[2+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_PZ(self):
+        return self.shared[3+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_JZ(self):
+        return self.shared[4+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_PX(self):
+        return self.shared[5+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_PY(self):
+        return self.shared[6+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_PZ(self):
+        return self.shared[7+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_JZ(self):
+        return self.shared[8+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_SZ(self):
+        return self.shared[9+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_MX(self):
+        return self.shared[10+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_MY(self):
+        return self.shared[11+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_MZ(self):
+        return self.shared[12+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_EGAS(self):
+        return self.shared[13+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_EGAS(self):
+        return self.shared[14+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_UGAS(self):
+        return self.shared[15+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_LZ(self):
+        return self.shared[16+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_LZ(self):
+        return self.shared[17+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_K(self):
+        return self.shared[18+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_K(self):
+        return self.shared[19+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def GRV_U(self):
+        return self.shared[20+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_U(self):
+        return self.shared[21+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def SNK_EINT(self):
+        return self.shared[22+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def EXT_PX(self):
+        return self.shared[23+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def EXT_PY(self):
+        return self.shared[24+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def EXT_PZ(self):
+        return self.shared[25+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def EXT_JZ(self):
+        return self.shared[26+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def EXT_K(self):
+        return self.shared[27+self.NUM_PL_KIN::self.stride, :]
+    @property
+    def EXT_U(self):
+        return self.shared[28+self.NUM_PL_KIN::self.stride, :]
+
 
 def interpolate_timeseries(t1, x1, t2):
 

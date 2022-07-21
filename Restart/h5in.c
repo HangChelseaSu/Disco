@@ -6,6 +6,7 @@
 #include "../omega.h"
 #include "../hydro.h"
 #include "../planet.h"
+#include "../report.h"
 
 void getH5dims( char * file , char * group , char * dset , hsize_t * dims ){
    hid_t h5fil = H5Fopen( file , H5F_ACC_RDWR , H5P_DEFAULT );
@@ -410,6 +411,7 @@ void restart( struct domain * theDomain ){
    setMetricParams( theDomain );
    setFrameParams( theDomain );
    setDiagParams( theDomain );
+   setReportParams( theDomain );
    setNoiseParams( theDomain );
    setBCParams( theDomain );
    setSinkParams( theDomain );

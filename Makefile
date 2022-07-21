@@ -24,6 +24,7 @@ OPT_DEFS += -DRESTART=\"$(RESTART)\"
 OPT_DEFS += -DPLANETS=\"$(PLANETS)\"
 OPT_DEFS += -DHLLD=\"$(HLLD)\"
 OPT_DEFS += -DANALYSIS=\"$(ANALYSIS)\"
+OPT_DEFS += -DREPORT=\"$(REPORT)\"
 OPT_DEFS += -DMETRIC=\"$(METRIC)\"
 OPT_DEFS += -DFRAME=\"$(FRAME)\"
 OPT_DEFS += -DENABLE_CART_INTERP=$(ENABLE_CART_INTERP)
@@ -43,7 +44,7 @@ LIB = -L$(H55)/lib -lhdf5 -lm
 #INC = -I/usr/include
 #LIB = -L/usr/include -lhdf5 -lm
 
-OBJ = main.o readpar.o timestep.o onestep.o riemann.o mpisetup.o gridsetup.o domain.o misc.o $(GEOMETRY).o faces_alt.o exchange.o plm.o report.o profiler.o planet.o omega.o analysis.o bfields.o $(HLLD).o rotframe.o boundary_functions.o geometry_functions.o $(INITIAL).o $(OUTPUT).o $(HYDRO).o $(BOUNDARY).o $(RESTART).o $(PLANETS).o $(METRIC).o $(FRAME).o calc.a $(ANALYSIS).o  noise.o sink.o #snapshot.o
+OBJ = main.o readpar.o timestep.o onestep.o riemann.o mpisetup.o gridsetup.o domain.o misc.o $(GEOMETRY).o faces_alt.o exchange.o plm.o report.o profiler.o planet.o omega.o analysis.o bfields.o $(HLLD).o rotframe.o boundary_functions.o geometry_functions.o $(INITIAL).o $(OUTPUT).o $(HYDRO).o $(BOUNDARY).o $(RESTART).o $(PLANETS).o $(METRIC).o $(FRAME).o calc.a $(ANALYSIS).o $(REPORT).o noise.o sink.o #snapshot.o
 
 CALC_OBJ = Calc/bondi.o Calc/integrate.o Calc/magnetosonic.o
 
@@ -89,6 +90,9 @@ $(RESTART).o : Restart/$(RESTART).c paul.h
 
 $(ANALYSIS).o : Diagnostics/$(ANALYSIS).c paul.h
 	$(CC) $(FLAGS) $(LOCAL_CFLAGS) $(INC) -c Diagnostics/$(ANALYSIS).c
+
+$(REPORT).o : Reports/$(REPORT).c paul.h
+	$(CC) $(FLAGS) $(LOCAL_CFLAGS) $(INC) -c Reports/$(REPORT).c
 
 $(METRIC).o : Hydro/Metric/$(METRIC).c paul.h Hydro/metric.h
 	$(CC) $(FLAGS) $(LOCAL_CFLAGS) $(INC) -c Hydro/Metric/$(METRIC).c

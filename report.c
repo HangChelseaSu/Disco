@@ -1,7 +1,7 @@
 #include "paul.h"
-#include "hydro.h"
 #include "geometry.h"
 #include "planet.h"
+#include "report.h"
 
 void initializeReport(struct domain *theDomain)
 {
@@ -41,6 +41,7 @@ void initializeReport(struct domain *theDomain)
     fprintf(rFile, "# PLANETS %s\n", PLANETS);
     fprintf(rFile, "# HLLD %s\n", HLLD);
     fprintf(rFile, "# ANALYSIS %s\n", ANALYSIS);
+    fprintf(rFile, "# REPORT %s\n", REPORT);
     fprintf(rFile, "# METRIC %s\n", METRIC);
     fprintf(rFile, "# FRAME %s\n", FRAME);
     fprintf(rFile, "# CT_MODE %d\n", CT_MODE);
@@ -52,132 +53,149 @@ void initializeReport(struct domain *theDomain)
     fprintf(rFile, "# NUM_PL_KIN %d\n", NUM_PL_KIN);
     fprintf(rFile, "# NUM_PL_AUX %d\n", NUM_PL_AUX);
 
+    int N_shared = num_shared_reports();
+    int N_dist_aux = num_distributed_aux_reports();
+    int N_dist_int = num_distributed_integral_reports();
+
+    fprintf(rFile, "# N_shared_reports %d\n", N_shared);
+    fprintf(rFile, "# N_distributed_aux_reports %d\n", N_dist_aux);
+    fprintf(rFile, "# N_distributed_integral_reports %d\n", N_dist_int);
+
     fclose(rFile);
 }
 
 
 void report( struct domain * theDomain )
 {
-   double t = theDomain->t;
+    double t = theDomain->t;
 #if USE_MPI
-   MPI_Comm grid_comm = theDomain->theComm;
+    MPI_Comm grid_comm = theDomain->theComm;
 #endif
 
-   double * r_jph = theDomain->r_jph;
-   double * z_kph = theDomain->z_kph;
-   int Nr = theDomain->Nr;
-   int Nz = theDomain->Nz;
-   int *Np = theDomain->Np;
-   int NgRa = theDomain->NgRa;
-   int NgRb = theDomain->NgRb;
-   int NgZa = theDomain->NgZa;
-   int NgZb = theDomain->NgZb;
 
-   struct cell ** theCells = theDomain->theCells;
-   struct planet * thePlanets = theDomain->thePlanets;
-   int Npl = theDomain->Npl;
+    double cons_tot[NUM_Q] = {0};
+    double *Q_shared = NULL;
+    double *Q_dist = NULL;
 
-   int jmin = NgRa;
-   int jmax = Nr-NgRb;
-   int kmin = NgZa;
-   int kmax = Nz-NgZb;
+    //Get the number of report entries
+    int N_shared = num_shared_reports();
+    int N_dist_aux = num_distributed_aux_reports();
+    int N_dist_int = num_distributed_integral_reports();
+    int N_dist = N_dist_aux + N_dist_int;
 
-   int j,k,i;
+    //Allocate the arrays if needed
+    if(N_shared > 0)
+    {
+        Q_shared = (double *)malloc(N_shared * sizeof(double));
+        memset(Q_shared, 0, N_shared * sizeof(double));
+    }
+   
+    if(N_dist > 0)
+    {
+        Q_dist = (double *)malloc(N_dist * sizeof(double));
+        memset(Q_dist, 0, N_dist * sizeof(double));
+    }
 
-   double cons_tot[NUM_Q] = {0};
+    // Get the shared entries
+    if(N_shared > 0)
+        get_shared_reports(Q_shared, theDomain);
 
-   int p;
-   for(p=0; p<theDomain->Npl; p++)
-        theDomain->thePlanets[p].Uf = 0.0;
+    // Get the distributed entries that do not need to be integrated
+    if(N_dist_aux > 0)
+        get_distributed_aux_reports(Q_dist, theDomain);
 
-   for( j=jmin ; j<jmax ; ++j ){
-      for( k=kmin ; k<kmax ; ++k ){
-         int jk = j+Nr*k;
-         for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            /*
-            double phi = c->piph - .5*c->dphi;
-            double Pp  = c->prim[PPP];
-            double rho = c->prim[RHO];
+    // Now for the integrals
 
-            double phip = c->piph;
-            double phim = phip-c->dphi;
-            double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
-            double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
-            double dV = get_dV( xp , xm );
+    if(N_dist_int > 0)
+    {
+        double * r_jph = theDomain->r_jph;
+        double * z_kph = theDomain->z_kph;
+        int Nr = theDomain->Nr;
+        int Nz = theDomain->Nz;
+        int *Np = theDomain->Np;
+        int NgRa = theDomain->NgRa;
+        int NgRb = theDomain->NgRb;
+        int NgZa = theDomain->NgZa;
+        int NgZb = theDomain->NgZb;
 
-            double r = get_centroid( xp[0] , xm[0], 1 );
-            */
-            
-            int l;
-            for(l=0; l<NUM_Q; l++)
-                cons_tot[l] += c->cons[l];
-            double phip = c->piph;
-            double phim = phip-c->dphi;
-            double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
-            double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
+        struct cell ** theCells = theDomain->theCells;
 
-            double x[3];
-            double rpz[3];
-            get_centroid_arr(xp, xm, x);
-            get_rpz(x, rpz);
-            
-            for(p=0; p<theDomain->Npl; p++)
+        int jmin = NgRa;
+        int jmax = Nr-NgRb;
+        int kmin = NgZa;
+        int kmax = Nz-NgZb;
+
+        int j, k, i, q;
+        for(k = kmin; k < kmax; k++)
+        {
+            for(j = jmin; j < jmax; j++)
             {
-                double Phi = planetaryPotential(theDomain->thePlanets+p,
-                        rpz[0], rpz[1], rpz[2]);
-                theDomain->thePlanets[p].Uf += c->cons[DDD] * Phi;
+                int jk = j + Nr*k;
+                for(i = 0; i < Np[jk]; i++)
+                {
+                    struct cell * c = &(theCells[jk][i]);
+                
+                    for(q=0; q<NUM_Q; q++)
+                        cons_tot[q] += c->cons[q];
+                    
+                    double phip = c->piph;
+                    double phim = phip-c->dphi;
+                    double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
+                    double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
+
+                    double x[3];
+                    get_centroid_arr(xp, xm, x);
+                    double dV = get_dV(xp, xm);
+
+                    double Q[N_dist_int];
+
+                    get_distributed_integral_reports(x, c->prim, Q, theDomain);
+
+                    for(q=0; q<N_dist_int; q++)
+                        Q_dist[N_dist_aux+q] += Q[q] * dV;
+                }
             }
-         }
-      }
-   }
+        }
+    }
 
-   int rank = theDomain->rank;
-
-   double *Uf;
-   Uf = malloc(Npl * sizeof(double) );
-   
-   for(p=0; p<Npl; ++p){
-      Uf[p] = thePlanets[p].Uf;
-   }
+    int rank = theDomain->rank;
 
 #if USE_MPI
-   MPI_Allreduce( MPI_IN_PLACE , cons_tot    , NUM_Q , MPI_DOUBLE , MPI_SUM , grid_comm );
+    double *send_cons = cons_tot;
+    double *send_Q = Q_dist;
+    
+    if(rank == 0)
+    {
+        send_cons = MPI_IN_PLACE;
+        send_Q = MPI_IN_PLACE;
+    }
 
-   MPI_Allreduce( MPI_IN_PLACE , Uf  , Npl , MPI_DOUBLE , MPI_SUM , grid_comm );
-   
-   if(!theDomain->planet_gas_track_synced)
-      MPI_Allreduce( MPI_IN_PLACE , theDomain->pl_aux, Npl*NUM_PL_AUX,
-                    MPI_DOUBLE , MPI_SUM , grid_comm );
+    MPI_Reduce(send_cons, cons_tot, NUM_Q, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
+    MPI_Reduce(send_Q, Q_dist, N_dist, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
 #endif
 
-   int iq;
+    if(rank == 0)
+    {
+        int q;
 
-   if( rank==0 ){
-      FILE * rFile = fopen("report.dat","a");
-      fprintf(rFile,"%.15le",  t);
+        FILE *rFile = fopen("report.dat","a");
+        fprintf(rFile, "%.15le", t);
 
-      for(j=0; j<NUM_Q; j++)
-          fprintf(rFile, " %.15le", cons_tot[j]);
+        for(q=0; q<NUM_Q; q++)
+            fprintf(rFile, " %.15le", cons_tot[q]);
 
-      for( j=0; j<Npl; ++j){
-         fprintf(rFile," %.15le", Uf[j]);
-      }
-      for( j=0; j<Npl; ++j){
-        for( iq=0; iq<NUM_PL_KIN; iq++){
-         fprintf(rFile," %.15le", theDomain->pl_kin[j*NUM_PL_KIN+iq]);
-        }
+        for(q=0; q<N_shared; q++)
+            fprintf(rFile," %.15le", Q_shared[q]);
+        
+        for(q=0; q<N_dist; q++)
+            fprintf(rFile," %.15le", Q_dist[q]);
+        
+        fprintf(rFile,"\n");
+        fclose(rFile);
+    }
 
-        for( iq=0; iq<NUM_PL_AUX; iq++){
-         fprintf(rFile," %.15le", theDomain->pl_aux[j*NUM_PL_AUX+iq]);
-        }
-      }
-      fprintf(rFile,"\n");
+    zeroAuxPlanets(theDomain);
 
-      fclose(rFile);
-   }
-
-   zeroAuxPlanets(theDomain);
-
-   free(Uf);
+    free(Q_shared);
+    free(Q_dist);
 }
