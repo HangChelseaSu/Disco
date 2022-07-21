@@ -339,13 +339,9 @@ class DiscoReport:
         self.cons = np.loadtxt(filename, comments='#',
                                usecols=range(1, self.NUM_Q+1)).T
 
-        print(self.N_shared, self.N_dist_aux, self.N_dist_int)
-
         a_shared = 1+self.NUM_Q
         a_dist_aux = a_shared + self.N_shared
         a_dist_int = a_dist_aux + self.N_dist_aux
-
-        print(a_shared, a_dist_aux, a_dist_int, a_dist_int+self.N_dist_int)
 
         self.shared = None
         if self.N_shared > 0:
@@ -516,6 +512,118 @@ class DiscoReportTestLive(DiscoReport):
     @property
     def EXT_U(self):
         return self.shared[28+self.NUM_PL_KIN::self.stride, :]
+
+
+class CBDiscoReport(DiscoReport):
+
+    def __init__(self, filename):
+        super().__init__(filename)
+
+    @property
+    def dt(self):
+        return self.t[1:] - self.t[:-1]
+    
+    @property
+    def tc(self):
+        return 0.5*(self.t[1:] + self.t[:-1])
+
+    @property
+    def M_Pl(self):
+        return self.shared[0:2]
+    @property
+    def r_Pl(self):
+        return self.shared[2:4]
+    @property
+    def phi_Pl(self):
+        return self.shared[4:6]
+
+    @property
+    def dM_Pl(self):
+        return self.dist_aux[0:2]
+
+    @property
+    def dJgrv_Pl(self):
+        return self.dist_aux[2:4]
+
+    @property
+    def dJsnk_Pl(self):
+        return self.dist_aux[4:6]
+
+    @property
+    def dPXgrv_Pl(self):
+        return self.dist_aux[6:8]
+
+    @property
+    def dPYgrv_Pl(self):
+        return self.dist_aux[8:10]
+
+    @property
+    def dPXsnk_Pl(self):
+        return self.dist_aux[10:12]
+
+    @property
+    def dPYsnk_Pl(self):
+        return self.dist_aux[12:14]
+
+    @property
+    def dKgrv_Pl(self):
+        return self.dist_aux[14:16]
+
+    @property
+    def dKsnk_Pl(self):
+        return self.dist_aux[16:18]
+
+    @property
+    def dMXsnk_Pl(self):
+        return self.dist_aux[18:20]
+
+    @property
+    def dMYsnk_Pl(self):
+        return self.dist_aux[20:22]
+
+    @property
+    def dSsnk_Pl(self):
+        return self.dist_aux[22:24]
+
+    @property
+    def Jdot_grv_exc_Gas(self):
+        return self.dist_int[0:2]
+
+    @property
+    def Psi0(self):
+        return self.dist_int[2]
+
+    @property
+    def Psi1R(self):
+        return self.dist_int[3]
+
+    @property
+    def Psi1I(self):
+        return self.dist_int[4]
+
+    @property
+    def Psi2R(self):
+        return self.dist_int[5]
+
+    @property
+    def Psi2I(self):
+        return self.dist_int[6]
+
+    @property
+    def dV_cav(self):
+        return self.dist_int[7::4]
+
+    @property
+    def dM_cav(self):
+        return self.dist_int[8::4]
+
+    @property
+    def dMex_cav(self):
+        return self.dist_int[9::4]
+
+    @property
+    def dMey_cav(self):
+        return self.dist_int[10::4]
 
 
 def interpolate_timeseries(t1, x1, t2):

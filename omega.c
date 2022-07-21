@@ -1,6 +1,7 @@
 
 #include "paul.h"
 #include "omega.h"
+#include "planet.h"
 
 static int meshOmChoice = 0;
 static double meshOmPar = 0.0;
@@ -29,10 +30,6 @@ static double eps = 0.0;
 static struct planet *thePlanets = NULL;
 
 
-double phigrav( double , double , double , int); //int here is type
-double fgrav( double , double , double , int); //int here is type
-
-
 void setOmegaParams( struct domain * theDomain ){
    gamma_law = theDomain->theParList.Adiabatic_Index;
    meshOmChoice = theDomain->theParList.Exact_Mesh_Omega;
@@ -54,6 +51,7 @@ void setOmegaParams( struct domain * theDomain ){
    r2 = theDomain->theParList.initPar3; // Outer Edge
    H0 = theDomain->theParList.initPar4; // Scale Height
    M = theDomain->theParList.metricPar2;
+   
    Npl = theDomain->Npl;
    eps = theDomain->theParList.grav_eps;
 
@@ -208,8 +206,8 @@ double get_cs2( const double *x ){
         sinp = sin(thePlanets[pi].phi);
         px = thePlanets[pi].r*cosp;
         py = thePlanets[pi].r*sinp;
-        pr = (px-gx)*(px-gx) + (py-gy)*(py-gy);
-        phip += phigrav( thePlanets[pi].M , sqrt(pr) , thePlanets[pi].eps , thePlanets[pi].type );
+        pr = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
+        phip += phigrav( thePlanets[pi].M , pr , thePlanets[pi].eps , thePlanets[pi].type );
       }
       cs2 = phip/(Mach*Mach);        
     }

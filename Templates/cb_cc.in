@@ -1,6 +1,6 @@
-### Makefile.in for Disco ###
+### Makefile_opt.in for Disco ###
 
-# This file contains user-specified build options
+# This file contains user-specified build options.
 
 # Build options
 INITIAL  = cb_cc
@@ -12,6 +12,7 @@ RESTART  = h5in
 PLANETS  = cmA
 HLLD     = hlld
 ANALYSIS = diag_cb
+REPORT	 = rep_cb
 
 METRIC   = flat_rpz
 FRAME    = normal
@@ -20,3 +21,11 @@ NUM_C	 = 5	# Number of conserved variables (Hydro: 5, MHD: 8)
 NUM_N	 = 0	# Number of passive variables   (>=0)
 CT_MODE	 = 0	# Constained Transport mode. None: 0, 2D: 1, 3D: 2.
 
+ENABLE_CART_INTERP = 0	# 0: Default.  Cartesian Interpolation routines will
+						#	 NOT be compiled into Disco. The Cartesian_Interp
+						#    parameters will do nothing, but the code may run
+						#    faster.
+						# 1: Cartesian Interpolation routines will be compiled
+						#    into Disco. The Cartesian_Interp parameters will
+						#    be active.
+						 

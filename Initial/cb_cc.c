@@ -3,6 +3,11 @@
 
 static double gam = 0.0;
 static double Mach = 0.0;
+static double rho0 = 0.0;
+static double d0 = 0.0;
+static double Rcav = 0.0;
+static double Rout = 0.0;
+static double v0 = 0.0;
 
 double get_cs2(double *);
 
@@ -10,6 +15,12 @@ void setICparams( struct domain * theDomain )
 {
     gam = theDomain->theParList.Adiabatic_Index;
     Mach = theDomain->theParList.Disk_Mach;
+
+    rho0 = theDomain->theParList.initPar1;
+    d0 = theDomain->theParList.initPar2;
+    Rcav = theDomain->theParList.initPar3;
+    Rout = theDomain->theParList.initPar4;
+    v0 = theDomain->theParList.initPar5;
 }
 
 void initial(double *prim, double *x)
@@ -19,14 +30,9 @@ void initial(double *prim, double *x)
 
     double cs2 = get_cs2(x);
 
-    double rho0 = 1.0e-2;//1.0;
-    double Rcav = 0.5;//2.5;
-    double d0 = 1.0e-5;
-    double Rout = 5;
-    double v0 = 1.0e-2;//1.0e-3;
-
-    double f = 1 - 1/(1 + exp(-2*(r-Rout)));
-    //double f = 1.0;
+    double f = 1.0;
+    if(Rout > 0.0)
+        f = 1 - 1/(1 + exp(-2*(r-Rout)));
 
     double rho = rho0 * ((1-d0)*exp(-pow(Rcav/r, 12)) + d0) * f;
 
