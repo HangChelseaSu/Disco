@@ -1,204 +1,201 @@
-
 #include "paul.h"
+#include "geometry.h"
+#include "planet.h"
+#include "report.h"
 
-void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
+void initializeReport(struct domain *theDomain)
+{
+    if( theDomain->rank != 0)
+        return;
 
-double get_dV( double * , double * );
-double get_centroid( double , double , int);
+    // Open read-only to check if it exists
+    FILE *rFile = fopen("report.dat", "r");    
 
-void report( struct domain * theDomain ){
+    // if report.dat exists and we're restarting, then leave!
+    if(rFile && theDomain->theParList.restart_flag )
+    {
+        fclose(rFile);
+        return;
+    }
 
-   double t = theDomain->t;
-   struct cell ** theCells = theDomain->theCells;
-   int Nr = theDomain->Nr;
-   int Nz = theDomain->Nz;
-   int * Np = theDomain->Np;
-   int NgRa = theDomain->NgRa;
-   int NgRb = theDomain->NgRb;
-   int NgZa = theDomain->NgZa;
-   int NgZb = theDomain->NgZb;
-   int rank = theDomain->rank;
+    // Clean up.
+    if(rFile)
+        fclose(rFile);
+
+
+    // If we're still here, then either we're restarting but report.dat
+    // doesn't exist (and so we need to write the header)
+    // or
+    // we are not restarting, and need to write report.dat anyways.
+
+    rFile = fopen("report.dat","w");
+
+    //Stamp file with compiler options
+    fprintf(rFile, "# GIT_VERSION %s\n", GIT_VERSION);
+    fprintf(rFile, "# INITIAL %s\n", INITIAL);
+    fprintf(rFile, "# HYDRO %s\n", HYDRO);
+    fprintf(rFile, "# GEOMETRY %s\n", GEOMETRY);
+    fprintf(rFile, "# BOUNDARY %s\n", BOUNDARY);
+    fprintf(rFile, "# OUTPUT %s\n", OUTPUT);
+    fprintf(rFile, "# RESTART %s\n", RESTART);
+    fprintf(rFile, "# PLANETS %s\n", PLANETS);
+    fprintf(rFile, "# HLLD %s\n", HLLD);
+    fprintf(rFile, "# ANALYSIS %s\n", ANALYSIS);
+    fprintf(rFile, "# REPORT %s\n", REPORT);
+    fprintf(rFile, "# METRIC %s\n", METRIC);
+    fprintf(rFile, "# FRAME %s\n", FRAME);
+    fprintf(rFile, "# CT_MODE %d\n", CT_MODE);
+
+    //Print numerical parameters helpful for parsing
+    fprintf(rFile, "# NUM_C %d\n", NUM_C);
+    fprintf(rFile, "# NUM_N %d\n", NUM_N);
+    fprintf(rFile, "# Npl %d\n", theDomain->Npl);
+    fprintf(rFile, "# NUM_PL_KIN %d\n", NUM_PL_KIN);
+    fprintf(rFile, "# NUM_PL_AUX %d\n", NUM_PL_AUX);
+
+    int N_shared = num_shared_reports();
+    int N_dist_aux = num_distributed_aux_reports();
+    int N_dist_int = num_distributed_integral_reports();
+
+    fprintf(rFile, "# N_shared_reports %d\n", N_shared);
+    fprintf(rFile, "# N_distributed_aux_reports %d\n", N_dist_aux);
+    fprintf(rFile, "# N_distributed_integral_reports %d\n", N_dist_int);
+
+    fclose(rFile);
+}
+
+
+void report( struct domain * theDomain )
+{
+    double t = theDomain->t;
 #if USE_MPI
-   MPI_Comm grid_comm = theDomain->theComm;
+    MPI_Comm grid_comm = theDomain->theComm;
 #endif
 
-   double gamma_law = theDomain->theParList.Adiabatic_Index;
 
-   struct planet * thePlanets = theDomain->thePlanets;
-   int Npl = theDomain->Npl;
+    double cons_tot[NUM_Q] = {0};
+    double *Q_shared = NULL;
+    double *Q_dist = NULL;
 
-   double r_p = 0.0;
-   if( Npl > 1 ) r_p = thePlanets[1].r;
+    //Get the number of report entries
+    int N_shared = num_shared_reports();
+    int N_dist_aux = num_distributed_aux_reports();
+    int N_dist_int = num_distributed_integral_reports();
+    int N_dist = N_dist_aux + N_dist_int;
 
-   double * r_jph = theDomain->r_jph;
-   double * z_kph = theDomain->z_kph;
+    //Allocate the arrays if needed
+    if(N_shared > 0)
+    {
+        Q_shared = (double *)malloc(N_shared * sizeof(double));
+        memset(Q_shared, 0, N_shared * sizeof(double));
+    }
+   
+    if(N_dist > 0)
+    {
+        Q_dist = (double *)malloc(N_dist * sizeof(double));
+        memset(Q_dist, 0, N_dist * sizeof(double));
+    }
 
-   int jmin = NgRa;
-   int jmax = Nr-NgRb;
-   int kmin = NgZa;
-   int kmax = Nz-NgZb;
+    // Get the shared entries
+    if(N_shared > 0)
+        get_shared_reports(Q_shared, theDomain);
 
-   int j,k,i;
-   double L1_isen = 0.0;
-   double L1_rho  = 0.0;
-   double L1_P    = 0.0;
-   double L1_B    = 0.0;
-   double Br2     = 0.0;
-   double B2      = 0.0;
-   double Power  = 0.0;
-   double Torque = 0.0;
-   double Torque2 = 0.0;
-   double Fr=0.0;
-   double PsiR = 0.0;
-   double PsiI = 0.0;
-   double Vol = 0.0;
-   double rho_min = HUGE_VAL;
-   double rhoavg_min = HUGE_VAL;
-   double Mass = 0.0;
-   double Mdot = 0.0;
+    // Get the distributed entries that do not need to be integrated
+    if(N_dist_aux > 0)
+        get_distributed_aux_reports(Q_dist, theDomain);
 
-   double BrBp = 0.0;
-   double PdV  = 0.0;
+    // Now for the integrals
 
-   double S_R = 0.0;
-   double S_0 = 0.0;
+    if(N_dist_int > 0)
+    {
+        double * r_jph = theDomain->r_jph;
+        double * z_kph = theDomain->z_kph;
+        int Nr = theDomain->Nr;
+        int Nz = theDomain->Nz;
+        int *Np = theDomain->Np;
+        int NgRa = theDomain->NgRa;
+        int NgRb = theDomain->NgRb;
+        int NgZa = theDomain->NgZa;
+        int NgZb = theDomain->NgZb;
 
-   //double T_cut[10];
-   //double P_cut[10];
-   //for( j=0 ; j<10 ; ++j ){ T_cut[j]=0.;  P_cut[j]=0.; }
+        struct cell ** theCells = theDomain->theCells;
 
-   for( j=jmin ; j<jmax ; ++j ){
-      double rho0 = 1.0;//pow( r , -1.5 );
-      double rho_avg = 0.0;
-      double Vol_avg = 0.0;
-      for( k=kmin ; k<kmax ; ++k ){
-         int jk = j+Nr*k;
-         for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phi = c->piph - .5*c->dphi;
-            double Pp  = c->prim[PPP];
-            double rho = c->prim[RHO];
+        int jmin = NgRa;
+        int jmax = Nr-NgRb;
+        int kmin = NgZa;
+        int kmax = Nz-NgZb;
 
-            double phip = c->piph;
-            double phim = phip-c->dphi;
-            double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
-            double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
-            double dV = get_dV( xp , xm );
-            double r = get_centroid( xp[0] , xm[0], 1 );
+        int j, k, i, q;
+        for(k = kmin; k < kmax; k++)
+        {
+            for(j = jmin; j < jmax; j++)
+            {
+                int jk = j + Nr*k;
+                for(i = 0; i < Np[jk]; i++)
+                {
+                    struct cell * c = &(theCells[jk][i]);
+                
+                    for(q=0; q<NUM_Q; q++)
+                        cons_tot[q] += c->cons[q];
+                    
+                    double phip = c->piph;
+                    double phim = phip-c->dphi;
+                    double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
+                    double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
 
-            PsiR += rho*dV*cos(phi);
-            PsiI += rho*dV*sin(phi);
- 
-            L1_isen += fabs(Pp/pow(rho,gamma_law)-1.)*dV;
-            L1_rho  += fabs(rho/rho0-1.)*dV;
-            L1_P    += fabs(Pp/pow(rho,5./3.)/0.01-1.)*dV;
-            if( NUM_C > BZZ ){
-               double Br = c->prim[BRR];
-               double Bp = c->prim[BPP];
-               double Bz = c->prim[BZZ];
-               L1_B += fabs(Br)*dV;
-               Br2 += .5*Br*Br*dV;
-               BrBp += Br*Bp*dV;
-               B2  += .5*(Br*Br+Bp*Bp+Bz*Bz)*dV;
+                    double x[3];
+                    get_centroid_arr(xp, xm, x);
+                    double dV = get_dV(xp, xm);
+
+                    double Q[N_dist_int];
+
+                    get_distributed_integral_reports(x, c->prim, Q, theDomain);
+
+                    for(q=0; q<N_dist_int; q++)
+                        Q_dist[N_dist_aux+q] += Q[q] * dV;
+                }
             }
-            PdV += Pp*dV;
-            Mdot += 2.*M_PI*r*rho*dV*c->prim[URR];
-            Vol += dV;
+        }
+    }
 
-            if( rho_min > rho/rho0 ) rho_min = rho/rho0;
-            rho_avg += rho*dV;
-            Vol_avg += dV;
-            Mass += rho*dV;
-
-            S_R += pow(rho,4.)*r*dV;
-            S_0 += pow(rho,4.)*dV;
-
-            if( Npl > 1 ){
-               double fr,fp,fz,fp2;
-               double rp = thePlanets[1].r;
-               double om = thePlanets[1].omega;
-               double vr = thePlanets[1].vr;
-               //double mp = thePlanets[1].M;
-               planetaryForce( thePlanets   , r , phi , 0.0 , &fr , &fp2 , &fz , 1 );
-               planetaryForce( thePlanets+1 , r , phi , 0.0 , &fr , &fp  , &fz , 1 );
-
-               //double pp = thePlanets[1].phi;
-               //double cosp = cos(phi);
-               //double sinp = sin(phi);
-               //double dx = r*cosp-rp*cos(pp);
-               //double dy = r*sinp-rp*sin(pp);
-               //double script_r = sqrt(dx*dx+dy*dy);
-               //double rH = pow( thePlanets[1].M/3. , 1./3. );
-
-               Torque -= (rho-1.0)*rp*fp*dV;
-               Power  -= (rho-1.0)*( rp*om*fp + vr*fr )*dV;
-               Torque2 -= (rho-1.0)*rp*fp2*dV;
-               Fr -= (rho-1.0)*fr*dV;
-
-/*
-               int n_cut;
-               for( n_cut=0 ; n_cut<10 ; ++n_cut ){
-                  double r_cut = 0.3*((double)(n_cut+1.)/10.);
-                  double scriptr2 = rp*rp + r*r - 2.*r*rp*cos(phi-pp);
-                  if( scriptr2 > r_cut*r_cut ){
-                     T_cut[n_cut] -= (rho-1.0)*rp*fp*dV;
-                     P_cut[n_cut] -= (rho-1.0)*( rp*om*fp + vr*fr )*dV;
-                  }
-               }
-*/
-            }
-         }
-      }
-      rho_avg /= Vol_avg;
-      if( rhoavg_min > rho_avg/rho0 ) rhoavg_min = rho_avg/rho0;
-   }
+    int rank = theDomain->rank;
 
 #if USE_MPI
-   MPI_Allreduce( MPI_IN_PLACE , &L1_isen , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &L1_rho  , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &L1_P    , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &L1_B    , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Br2     , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &B2      , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &BrBp    , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &PdV     , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Vol     , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Torque  , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Torque2 , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Power   , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Fr      , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &PsiR    , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &PsiI    , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &rho_min    , 1 , MPI_DOUBLE , MPI_MIN , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &rhoavg_min , 1 , MPI_DOUBLE , MPI_MIN , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Mass    , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &S_R     , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &S_0     , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
-   MPI_Allreduce( MPI_IN_PLACE , &Mdot    , 1 , MPI_DOUBLE , MPI_SUM , grid_comm );
+    double *send_cons = cons_tot;
+    double *send_Q = Q_dist;
+    
+    if(rank == 0)
+    {
+        send_cons = MPI_IN_PLACE;
+        send_Q = MPI_IN_PLACE;
+    }
 
-//   MPI_Allreduce( MPI_IN_PLACE , T_cut  , 10 , MPI_DOUBLE , MPI_SUM , grid_comm );
-//   MPI_Allreduce( MPI_IN_PLACE , P_cut  , 10 , MPI_DOUBLE , MPI_SUM , grid_comm );
+    MPI_Reduce(send_cons, cons_tot, NUM_Q, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
+    MPI_Reduce(send_Q, Q_dist, N_dist, MPI_DOUBLE, MPI_SUM, 0, grid_comm);
 #endif
 
-   L1_isen /= Vol;
-   L1_rho  /= Vol;
-   L1_P    /= Vol;
-   L1_B    /= Vol;
-   Mdot /= Vol;
-   S_R /= S_0;
+    if(rank == 0)
+    {
+        int q;
 
-   double aM = BrBp/PdV;
-   double bM = PdV/B2;
+        FILE *rFile = fopen("report.dat","a");
+        fprintf(rFile, "%.15le", t);
 
-   if( rank==0 ){
-      FILE * rFile = fopen("report.dat","a");
-      fprintf(rFile,"%le %le %le %le %le %le %le %le %le %le %le %le %le %le %le %le %le\n",
-                t,Torque,Power,Fr,rho_min,rhoavg_min,PsiR,PsiI,Mass,Mdot,S_R,
-                L1_rho,L1_isen,L1_B,Br2,aM,bM);
-      //fprintf(rFile,"%e %e %e ",t,Torque,Power);
-      //for( j=0 ; j<10 ; ++j ) fprintf(rFile,"%e %e ",T_cut[j],P_cut[j]);
-      //fprintf(rFile,"\n");
-      fclose(rFile);
-   }
+        for(q=0; q<NUM_Q; q++)
+            fprintf(rFile, " %.15le", cons_tot[q]);
 
+        for(q=0; q<N_shared; q++)
+            fprintf(rFile," %.15le", Q_shared[q]);
+        
+        for(q=0; q<N_dist; q++)
+            fprintf(rFile," %.15le", Q_dist[q]);
+        
+        fprintf(rFile,"\n");
+        fclose(rFile);
+    }
+
+    zeroAuxPlanets(theDomain);
+
+    free(Q_shared);
+    free(Q_dist);
 }

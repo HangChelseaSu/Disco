@@ -1,10 +1,9 @@
 #include "paul.h"
+#include "geometry.h"
 
 static int type = 0;
 static double absMag = 0.0;
 static double relMag = 0.0;
-
-void get_vec_covariant(double *, double *, double *);
 
 void setNoiseParams(struct domain *theDomain)
 {

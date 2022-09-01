@@ -10,6 +10,10 @@ int num_diagnostics(void){
    return(18);
 }
 
+int num_inst_diagnostics(void){
+   return(0);
+}
+
 void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
 
 /* MHD */
@@ -58,3 +62,8 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
 
 }
 
+void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
+                        struct domain * theDomain )
+{
+    //Silence is golden.
+}

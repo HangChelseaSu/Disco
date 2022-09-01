@@ -30,6 +30,7 @@ Viewer/vdisco
 *.png
 *.eps
 *.ppm
+*.gif
 test*
 out
 UnitTest

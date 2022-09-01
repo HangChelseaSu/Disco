@@ -53,7 +53,3 @@ void movePlanets( struct planet * thePlanets , double t , double dt ){
 //   thePlanets[1].eps = eps;
 }
 
-void forcePlanets( struct planet * thePlanets , double dt ){
-   //Silence is golden.
-}
-

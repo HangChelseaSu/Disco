@@ -3,18 +3,14 @@
 #include <stdlib.h>
 #include <math.h>
 #include "paul.h"
+#include "geometry.h"
 
-void get_centroid_arr(double *, double *, double *);
-double get_dL(double *, double *, int);
-double get_scale_factor(double *, int);
 
 int getN0( int drank , int dsize , int dnum ){
    int N0 = (dnum*drank)/dsize;
    return(N0);
 }
 
-
-void setGeometryParams( struct domain * );
 
 void setupGrid( struct domain * theDomain ){
 
@@ -116,6 +112,16 @@ void setupGrid( struct domain * theDomain ){
    for( k=-1 ; k<Nz ; ++k ){
       theDomain->z_kph[k] = z0 + ((double)k+1.)*dz;
    }
+
+   double dr0;
+   if(LogZoning == 0)
+       dr0 = (Rmax-Rmin) / (double) Num_R;
+   else if(LogZoning == 1)
+       dr0 = Rmin * (pow(Rmax/Rmin, 1.0/Num_R) - 1.0);
+   else
+       dr0 = R0*(pow(Rmax/R0,1.0/Num_R)-1) + (R0-Rmin)/Num_R;
+   theDomain->dr0 = dr0;
+      
 
    theDomain->phi_max = theDomain->theParList.phimax;
    setGeometryParams( theDomain );

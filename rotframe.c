@@ -1,24 +1,16 @@
 #include "paul.h"
+#include "omega.h"
+#include "geometry.h"
 
 static int om_flag = 0;
 static double Omega0 = 0.0;
 static double d = 0.0;
-
-void get_centroid_arr(double *xp, double *xm, double *x);
-void get_rpz(double *x, double *rpz);
-void get_vec_covariant(double *x, double *v, double *vc);
-void get_vec_contravariant(double *x, double *v, double *vc);
-void get_vec_rpz(double *x, double *v, double *vrpz);
-void get_vec_from_rpz(double *x, double *vrpz, double *v);
 
 void setRotFrameParams( struct domain * theDomain ){
    om_flag = theDomain->theParList.RotFrame;
    Omega0  = theDomain->theParList.RotOmega;
    d       = theDomain->theParList.RotD;
 }
-
-double get_dp( double , double );
-double get_centroid( double , double , int);
 
 void subtract_omega( double * prim ){
    if( om_flag ) prim[UPP] -= Omega0;
@@ -72,6 +64,9 @@ void omega_src( double * prim , double * cons , double * xp , double * xm , doub
       double frpz[3], f[3];
       omegaForce(rpz[0], rpz[1], vrpz[0], vrpz[1], frpz);  //frpz is orthonormal
       get_vec_from_rpz(x, frpz, f);  //f is orthonormal
+
+      //adjust v for energy-subtraction scheme.
+      v[1] -= get_scale_factor(x, 0) * get_om(x);  //still orthonormal
 
       double vf = v[0]*f[0] + v[1]*f[1] + v[2]*f[2];  //both in same basis,
                                                       // easy dot product

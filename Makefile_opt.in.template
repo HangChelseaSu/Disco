@@ -12,6 +12,7 @@ RESTART  = h5in
 PLANETS  = none
 HLLD     = hlld
 ANALYSIS = diag_euler
+REPORT	 = rep_test
 
 METRIC   = flat_rpz
 FRAME    = normal
@@ -19,3 +20,12 @@ FRAME    = normal
 NUM_C	 = 5	# Number of conserved variables (Hydro: 5, MHD: 8)
 NUM_N	 = 1	# Number of passive variables   (>=0)
 CT_MODE	 = 0	# Constained Transport mode. None: 0, 2D: 1, 3D: 2.
+
+ENABLE_CART_INTERP = 0	# 0: Default.  Cartesian Interpolation routines will
+						#	 NOT be compiled into Disco. The Cartesian_Interp
+						#    parameters will do nothing, but the code may run
+						#    faster.
+						# 1: Cartesian Interpolation routines will be compiled
+						#    into Disco. The Cartesian_Interp parameters will
+						#    be active.
+						 

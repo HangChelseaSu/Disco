@@ -43,7 +43,7 @@ double get_centroid(double xp, double xm, int dim)
         return 0.5*(xp+xm);
 }
 
-double get_dL( double * xp , double * xm , int dim ){
+double get_dL( const double * xp , const double * xm , int dim ){
     double r = .5*(xp[0]+xm[0]);
     if(dim == 0)
     {
@@ -58,7 +58,7 @@ double get_dL( double * xp , double * xm , int dim ){
         return r*(xp[2]-xm[2]);
 }
 
-double get_dA( double * xp , double * xm , int dim ){
+double get_dA( const double * xp , const double * xm , int dim ){
     
     double r  = .5*(xp[0]+xm[0]);
 
@@ -84,7 +84,7 @@ double get_dA( double * xp , double * xm , int dim ){
     }
 }
 
-double get_dV( double * xp , double * xm ){
+double get_dV( const double * xp , const double * xm ){
     double r2 = (xp[0]*xp[0]+xp[0]*xm[0]+xm[0]*xm[0])/3.0;
     double dr   = xp[0]-xm[0];
     double dphi = get_dp(xp[1],xm[1]);
@@ -94,7 +94,7 @@ double get_dV( double * xp , double * xm ){
     return r2*sinth*dr*sindth*dphi;
 }
 
-double get_scale_factor( double * x, int dim)
+double get_scale_factor( const double * x, int dim)
 {
     if(dim == 0)
         return x[0]*sin(x[2]);
@@ -103,12 +103,12 @@ double get_scale_factor( double * x, int dim)
     return 1.0;
 }
 
-double get_vol_element(double *x)
+double get_vol_element(const double *x)
 {
     return x[0]*x[0]*sin(x[2]);
 }
 
-void get_xyz(double *x, double *xyz)
+void get_xyz(const double *x, double *xyz)
 {
     double sinth = sin(x[2]);
     xyz[0] = x[0] * cos(x[1]) * sinth ;
@@ -116,14 +116,14 @@ void get_xyz(double *x, double *xyz)
     xyz[2] = x[0] * cos(x[2]);
 }
 
-void get_rpz(double *x, double *rpz)
+void get_rpz(const double *x, double *rpz)
 {
     rpz[0] = x[0]*sin(x[2]);
     rpz[1] = x[1];
     rpz[2] = x[0]*cos(x[2]);
 }
 
-void get_coords_from_xyz(double *xyz, double *x)
+void get_coords_from_xyz(const double *xyz, double *x)
 {
     double r = sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]);
     x[0] = r;
@@ -131,7 +131,7 @@ void get_coords_from_xyz(double *xyz, double *x)
     x[2] = acos(xyz[2] / r);
 }
 
-void get_coords_from_rpz(double *rpz, double *x)
+void get_coords_from_rpz(const double *rpz, double *x)
 {
     double r = sqrt(rpz[0]*rpz[0]+rpz[2]*rpz[2]);
     x[0] = r;
@@ -139,7 +139,7 @@ void get_coords_from_rpz(double *rpz, double *x)
     x[2] = acos(rpz[2] / r);
 }
 
-void get_vec_rpz(double *x, double *v, double *vrpz)
+void get_vec_rpz(const double *x, const double *v, double *vrpz)
 {
     double st = sin(x[2]);
     double ct = cos(x[2]);
@@ -148,7 +148,7 @@ void get_vec_rpz(double *x, double *v, double *vrpz)
     vrpz[2] = -st*v[2] + ct*v[0];
 }
 
-void get_vec_from_rpz(double *x, double *vrpz, double *v)
+void get_vec_from_rpz(const double *x, const double *vrpz, double *v)
 {
     double st = sin(x[2]);
     double ct = cos(x[2]);
@@ -157,7 +157,7 @@ void get_vec_from_rpz(double *x, double *vrpz, double *v)
     v[2] = -st*vrpz[2] + ct*vrpz[0];
 }
 
-void get_vec_xyz(double *x, double *v, double *vxyz)
+void get_vec_xyz(const double *x, const double *v, double *vxyz)
 {
     double cp = cos(x[1]);
     double sp = sin(x[1]);
@@ -170,7 +170,7 @@ void get_vec_xyz(double *x, double *v, double *vxyz)
     vxyz[2] = ct*v[0] - st*v[2];
 }
 
-void get_vec_from_xyz(double *x, double *vxyz, double *v)
+void get_vec_from_xyz(const double *x, const double *vxyz, double *v)
 {
     double cp = cos(x[1]);
     double sp = sin(x[1]);
@@ -184,7 +184,7 @@ void get_vec_from_xyz(double *x, double *vxyz, double *v)
     v[2] = ct*cp*vxyz[0] + ct*sp*vxyz[1] - st*vxyz[2];
 }
 
-void geom_grad(double *prim, double *grad, double *xp, double *xm, 
+void geom_grad(const double *prim, double *grad, const double *xp, const double *xm, 
                 double PLM, int dim, int LR)
 {
     if(!(dim==2 || (dim==1 && LR ==0)))
@@ -253,4 +253,12 @@ void geom_grad(double *prim, double *grad, double *xp, double *xm,
                 grad[q] = 0.0;
         }
     }
+}
+
+void geom_polar_vec_adjust(const double *xp, const double *xm, double *fac)
+{
+    //TODO: IMPLEMENT THIS!!!
+    fac[0] = 1.0;
+    fac[1] = 1.0;
+    fac[2] = 1.0;
 }

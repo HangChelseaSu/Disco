@@ -1,25 +1,23 @@
 
 #include "paul.h"
+#include "boundary.h"
+#include "geometry.h"
+#include "hydro.h"
+#include "omega.h"
+#include "analysis.h"
+#include "planet.h"
+#include "report.h"
 
-double get_centroid( double , double , int);
-double get_dV( double * , double * );
 
-int num_diagnostics( void );
-void initializePlanets( struct planet * );
 
 void setICparams( struct domain * );
-void setHydroParams( struct domain * );
 void setRiemannParams( struct domain * );
 void setGravParams( struct domain * );
-void setPlanetParams( struct domain * );
 void setHlldParams( struct domain * );
-void setOmegaParams( struct domain * );
 void setRotFrameParams( struct domain * );
 void setMetricParams( struct domain * );
 void setFrameParams(struct domain * );
-void setDiagParams( struct domain * );
 void setNoiseParams( struct domain * );
-void setBCParams( struct domain * );
 void setSinkParams( struct domain * );
 
 int get_num_rzFaces( int , int , int );
@@ -41,15 +39,67 @@ void setupDomain( struct domain * theDomain ){
    setGravParams( theDomain );
    setPlanetParams( theDomain );
    int Npl = theDomain->Npl;
-   theDomain->thePlanets = (struct planet *) malloc( Npl*sizeof(struct planet) );
-   initializePlanets( theDomain->thePlanets );
+
+   theDomain->thePlanets = NULL;
+   theDomain->pl_gas_track = NULL;
+   theDomain->pl_kin = NULL;
+   theDomain->pl_RK_kin = NULL;
+   theDomain->pl_aux = NULL;
+   theDomain->pl_RK_aux = NULL;
+
+   if(Npl > 0)
+   {
+       theDomain->thePlanets = (struct planet *) malloc(
+                                    Npl * sizeof(struct planet) );
+
+       theDomain->pl_gas_track = (double *) malloc(
+                                    Npl * NUM_PL_INTEGRALS * sizeof(double));
+       theDomain->pl_kin = (double *) malloc(
+                                    Npl * NUM_PL_KIN * sizeof(double));
+       theDomain->pl_RK_kin = (double *) malloc(
+                                    Npl * NUM_PL_KIN * sizeof(double));
+       theDomain->pl_aux = (double *) malloc(
+                                    Npl * NUM_PL_AUX * sizeof(double));
+       theDomain->pl_RK_aux = (double *) malloc(
+                                    Npl * NUM_PL_AUX * sizeof(double));
+   }
+   setupPlanets(theDomain);
 
    int num_tools = num_diagnostics();
    theDomain->num_tools = num_tools;
    theDomain->theTools.t_avg = 0.0;
    theDomain->theTools.Qrz = (double *) malloc( Nr*Nz*num_tools*sizeof(double) );
-   int i;
-   for( i=0 ; i<Nr*Nz*num_tools ; ++i ) theDomain->theTools.Qrz[i] = 0.0;
+   theDomain->theTools.F_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                               * sizeof(double));
+   theDomain->theTools.Fvisc_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                   * sizeof(double));
+   theDomain->theTools.RK_F_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                  * sizeof(double));
+   theDomain->theTools.RK_Fvisc_r = (double *) malloc((Nr-1) * Nz * NUM_Q
+                                                      * sizeof(double));
+   theDomain->theTools.F_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                               * sizeof(double));
+   theDomain->theTools.Fvisc_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                   * sizeof(double));
+   theDomain->theTools.RK_F_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                  * sizeof(double));
+   theDomain->theTools.RK_Fvisc_z = (double *) malloc(Nr * (Nz-1) * NUM_Q
+                                                      * sizeof(double));
+   
+   theDomain->theTools.S = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Sgrav = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Svisc = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Ssink = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Scool = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.Sdamp = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.RK_S = (double *) malloc( Nr*Nz*NUM_Q*sizeof(double) );
+   theDomain->theTools.RK_Sgrav = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Svisc = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Ssink = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Scool = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+   theDomain->theTools.RK_Sdamp = (double *) malloc(Nr*Nz*NUM_Q*sizeof(double));
+
+   zero_diagnostics(theDomain);
 
     //Setup independent of node layout: pick the right rand()'s
     double Pmax = theDomain->phi_max;
@@ -60,6 +110,7 @@ void setupDomain( struct domain * theDomain ){
         for(j=0; j<theDomain->Nr_glob; j++)
             rand();
 
+    int i;
     for( k=0 ; k<Nz ; ++k )
     {
         //Discard randoms from inner (global) annuli
@@ -122,23 +173,20 @@ void setupDomain( struct domain * theDomain ){
    setMetricParams( theDomain );
    setFrameParams( theDomain );
    setDiagParams( theDomain );
+   setReportParams(theDomain);
    setNoiseParams( theDomain );
    setBCParams( theDomain );
    setSinkParams( theDomain );
 }
 
 void initial( double * , double * ); 
-void prim2cons( double * , double * , double * , double );
-void cons2prim( double * , double * , double * , double );
 void restart( struct domain * ); 
 void calc_dp( struct domain * );
 void set_wcell( struct domain * );
 void adjust_gas( struct planet * , double * , double * , double );
-int set_B_flag();
 void set_B_fields( struct domain * );
 void subtract_omega( double * );
 void addNoise(double *prim, double *x);
-void get_centroid_arr(double *, double *, double *);
 void exchangeData(struct domain *, int);
 
 void setupCells( struct domain * theDomain ){
@@ -172,6 +220,10 @@ void setupCells( struct domain * theDomain ){
             struct cell * c = &(theCells[jk][i]);
             c->wiph = 0.0; 
             c->real = 0;
+
+            memset(c->gradr, 0, NUM_Q*sizeof(double));
+            memset(c->gradp, 0, NUM_Q*sizeof(double));
+            memset(c->gradz, 0, NUM_Q*sizeof(double));
          }
       }
    }
@@ -207,7 +259,7 @@ void setupCells( struct domain * theDomain ){
             }
             if(noiseType != 0)
                 addNoise(c->prim, x);
-            prim2cons( c->prim , c->cons , x , dV );
+            prim2cons( c->prim , c->cons , x , dV, xp, xm);
             c->real = 1;
          }    
       }    
@@ -216,6 +268,7 @@ void setupCells( struct domain * theDomain ){
    if(!restart_flag && set_B_flag() && theDomain->theParList.CT)
    {
       // Communicate piph values to ghost zones.
+      // TODO: WHY is this obly for CT??
       exchangeData(theDomain, 0);
       if( Nz > 1 )
          exchangeData(theDomain, 1);
@@ -237,7 +290,7 @@ void setupCells( struct domain * theDomain ){
             double dV = get_dV( xp , xm );
             double phi = c->piph-.5*c->dphi;
             double x[3] = {r, phi, z};
-            cons2prim( c->cons , c->prim , x , dV );
+            cons2prim( c->cons , c->prim , x , dV, xp, xm);
          }
       }
    }
@@ -253,8 +306,9 @@ void clear_cell( struct cell * c ){
       c->prim[q]   = 0.0;
       c->cons[q]   = 0.0;
       c->RKcons[q] = 0.0;
-      c->grad[q]   = 0.0;
-      c->gradr[q]  = 0.0;
+      c->gradr[q]   = 0.0;
+      c->gradp[q]  = 0.0;
+      c->gradz[q]  = 0.0;
    }
    c->riph = 0.0;
    c->RKriph = 0.0;
@@ -277,8 +331,43 @@ void freeDomain( struct domain * theDomain ){
    free( theDomain->r_jph );
    theDomain->z_kph--;
    free( theDomain->z_kph );
-   free( theDomain->thePlanets );
+
+   if(theDomain->thePlanets != NULL)
+      free( theDomain->thePlanets );
+   if(theDomain->pl_gas_track != NULL)
+      free( theDomain->pl_gas_track);
+   if(theDomain->pl_kin != NULL)
+      free( theDomain->pl_kin);
+   if(theDomain->pl_RK_kin != NULL)
+      free( theDomain->pl_RK_kin);
+   if(theDomain->pl_aux != NULL)
+      free( theDomain->pl_aux);
+   if(theDomain->pl_RK_aux != NULL)
+      free( theDomain->pl_RK_aux);
+
    free( theDomain->theTools.Qrz );
+   free( theDomain->theTools.F_r );
+   free( theDomain->theTools.Fvisc_r );
+   free( theDomain->theTools.F_z );
+   free( theDomain->theTools.Fvisc_z );
+   free( theDomain->theTools.RK_F_r );
+   free( theDomain->theTools.RK_Fvisc_r );
+   free( theDomain->theTools.RK_F_z );
+   free( theDomain->theTools.RK_Fvisc_z );
+   
+   free( theDomain->theTools.S );
+   free( theDomain->theTools.Sgrav );
+   free( theDomain->theTools.Svisc );
+   free( theDomain->theTools.Ssink );
+   free( theDomain->theTools.Scool );
+   free( theDomain->theTools.Sdamp );
+   free( theDomain->theTools.RK_S );
+   free( theDomain->theTools.RK_Sgrav );
+   free( theDomain->theTools.RK_Svisc );
+   free( theDomain->theTools.RK_Ssink );
+   free( theDomain->theTools.RK_Scool );
+   free( theDomain->theTools.RK_Sdamp );
+
    free( theDomain->fIndex_r );
    free( theDomain->fIndex_z );
 
@@ -334,7 +423,7 @@ void possiblyOutput( struct domain * theDomain , int override ){
       theDomain->nrpt = n0;
       //longandshort( &theDomain , &L , &S , &iL , &iS , theDomain.theCells[0] , 0 , 0 );
       report( theDomain );
-      if( theDomain->rank==0 ) printf("t = %.3e\n",t);
+      //if( theDomain->rank==0 ) printf("t = %.5e\n",t);
    }
    n0 = (int)( t*Nchk/t_fin );
    if( LogOut ) n0 = (int)( Nchk*log(t/t_min)/log(t_fin/t_min) );

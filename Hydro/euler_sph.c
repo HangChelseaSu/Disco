@@ -1,17 +1,14 @@
 
 #include "../paul.h"
-
-double get_om( double *);
-double get_om1( double *);
-double get_cs2( double *);
+#include "../hydro.h"
+#include "../geometry.h"
+#include "../omega.h"
 
 static double gamma_law = 0.0; 
 static double RHO_FLOOR = 0.0; 
 static double PRE_FLOOR = 0.0; 
-static double explicit_viscosity = 0.0;
 static int include_viscosity = 0;
 static int isothermal = 0;
-static int alpha_flag = 0;
 static int polar_sources_r = 0;
 static int polar_sources_th = 0;
 
@@ -20,9 +17,7 @@ void setHydroParams( struct domain * theDomain ){
    isothermal = theDomain->theParList.isothermal_flag;
    RHO_FLOOR = theDomain->theParList.Density_Floor;
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
-   explicit_viscosity = theDomain->theParList.viscosity;
    include_viscosity = theDomain->theParList.visc_flag;
-   alpha_flag = theDomain->theParList.alpha_flag;
    if(theDomain->theParList.NoBC_Rmin == 1)
        polar_sources_r = 1;
    if(theDomain->theParList.NoBC_Zmin == 1
@@ -34,13 +29,13 @@ int set_B_flag(void){
    return(0);
 }
 
-double get_omega( double * prim , double * x ){
+double get_omega( const double * prim , const double * x ){
    return( prim[UPP] );
 }
 
-void planetaryForce( struct planet * , int , double , double , double * , double * );
 
-void prim2cons( double * prim , double * cons , double * x , double dV ){
+void prim2cons( const double * prim , double * cons , const double * x ,
+                double dV, const double *xp, const double *xm ){
 
    double r = x[0];
    double sinth = sin(x[2]);
@@ -68,7 +63,7 @@ void prim2cons( double * prim , double * cons , double * x , double dV ){
    }
 }
 
-void getUstar( double * prim , double * Ustar , double * x , double Sk , double Ss , double * n , double * Bpack ){
+void getUstar( const double * prim , double * Ustar , const double * x , double Sk , double Ss , const double * n , const double * Bpack ){
 
    double r = x[0];
    double sinth = sin(x[2]);
@@ -106,7 +101,7 @@ void getUstar( double * prim , double * Ustar , double * x , double Sk , double 
 
 }
 
-void cons2prim( double * cons , double * prim , double * x , double dV ){
+void cons2prim( const double * cons , double * prim , const double * x , double dV, const double *xp, const double *xm ){
    
    double r = x[0];
    double sinth = sin(x[2]);
@@ -152,7 +147,7 @@ void cons2prim( double * cons , double * prim , double * x , double dV ){
 
 }
 
-void flux( double * prim , double * flux , double * x , double * n ){
+void flux( const double * prim , double * flux , const double * x , const double * n, const double *xp, const double *xm ){
   
    double r = x[0];
    double sinth = sin(x[2]);
@@ -189,17 +184,19 @@ void flux( double * prim , double * flux , double * x , double * n ){
    
 }
 
-double get_dp( double , double );
-double get_centroid( double , double , int);
-
-void source( double * prim , double * cons , double * xp , double * xm , double dVdt ){
+void source( const double * prim , double * cons , const double * xp , const double * xm , double dVdt )
+{
    
-   double rho = prim[RHO];
-   double Pp  = prim[PPP];
-   double r = get_centroid(xp[0], xm[0], 1);
-   double th = get_centroid(xp[2], xm[2], 2);
+   double x[3];
+   get_centroid_arr(xp, xm, x);
+   double r = x[0];
+   double th = x[2];
    double sinth = sin(th);
    double costh = cos(th);
+
+   double rho = prim[RHO];
+   double Pp  = prim[PPP];
+   double ur = prim[URR];
    double up = prim[UPP];
    double ut = prim[UZZ];
 
@@ -211,18 +208,22 @@ void source( double * prim , double * cons , double * xp , double * xm , double 
    //
    //TODO: IMPLEMENT THIS
    //
-   //The naive source term (polar_sources==0), on the other hand, can exactly
-   //cancel with gravitational source terms.
+   //The naive source term (polar_sources==0), on the other hand, may exactly
+   //cancel with source terms from other physics in the code. Gravitational
+   //source terms obey polar_sources.
    //
-   double centrifugal_r, centrifugal_th;
-   if(polar_sources_r)
-      centrifugal_r = rho*r*sinth*sinth*up*up + rho*r*ut*ut;
-   else
-      centrifugal_r = rho*r*sinth*sinth*up*up + rho*r*ut*ut;
-   if(polar_sources_th)
-      centrifugal_th = rho*r*r*sinth*costh*up*up;
-   else
-      centrifugal_th = rho*r*r*sinth*costh*up*up;
+   double centrifugal_r = rho*r*sinth*sinth*up*up + rho*r*ut*ut;
+   double centrifugal_th = rho*r*r*sinth*costh*up*up;
+
+   if(polar_sources_r || polar_sources_th)
+   {
+      double adjust[3];
+      geom_polar_vec_adjust(xp, xm, adjust);
+      if(polar_sources_r)
+          centrifugal_r *= adjust[0];
+      if(polar_sources_th)
+          centrifugal_th *= adjust[2];
+   }
 
    double r1_2 = 0.5*(xp[0]+xm[0]);
    double r2_3 = (xp[0]*xp[0] + xp[0]*xm[0] + xm[0]*xm[0]) / 3.0;
@@ -237,56 +238,101 @@ void source( double * prim , double * cons , double * xp , double * xm , double 
    cons[SRR] += dVdt*( centrifugal_r + press_bal_r );
    cons[SZZ] += dVdt*( centrifugal_th + press_bal_th );
 
-   /*
-   if(centrifugal_r != centrifugal_r)
-       printf("WHOA! c_r is NaN @ r=%.6lg th=%.6lg ph=%.6lg\n", 
-                r, th, 0.5*(xp[1]*xm[1]));
-   if(centrifugal_th != centrifugal_th)
-       printf("WHOA! c_th is NaN @ r=%.6lg th=%.6lg ph=%.6lg\n", 
-                r, th, 0.5*(xp[1]*xm[1]));
-   if(press_bal_r != press_bal_r)
-       printf("WHOA! p_r is NaN @ r=%.6lg th=%.6lg ph=%.6lg\n", 
-                r, th, 0.5*(xp[1]*xm[1]));
-   if(press_bal_th != press_bal_th)
-       printf("WHOA! p_th is NaN @ r=%.6lg th=%.6lg ph=%.6lg\n", 
-                r, th, 0.5*(xp[1]*xm[1]));
-    */
 
-   //TODO: IMPLEMENT THIS
-   //double om  = get_om( x );
-   //double om1 = get_om1( x );
+   // Om for energy frame
+   double om  = get_om( x );
+   double om_r = get_om1( x );
+   double om_t = get_om2( x );
 
-   //cons[TAU] += dVdt*rho*vr*( om*om*r2_3/r_1 - om1*(omega-om)*r2_3 );
- 
-   //TODO: IMPLEMENT THIS
-   /*
-   if( include_viscosity ){
-      double nu = explicit_viscosity;
-      if( alpha_flag ){
-         double alpha = explicit_viscosity;
-         double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-         double h = c*pow( r_1 , 1.5 );
-         nu = alpha*c*h;
-      }
-      cons[SRR] += -dVdt*nu*rho*vr/(r_1*r_1);
-   }
-   */
-
+   cons[TAU] += dVdt*rho*( r*sinth*(sinth*ur+r*costh*ut) * om*om
+                            - r*r*sinth*sinth*(up-om) * (ur*om_r + ut*om_t));
 }
 
-void visc_flux( double * prim , double * gprim , double * flux , double * x , double * n ){
+void visc_flux(const double * prim, const double * gradr, const double * gradp,
+               const double * gradt, double * flux,
+               const double * x, const double * n)
+{
+   double r = x[0];
+   double th = x[2];
+   double sinth = sin(th);
+   double costh = cos(th);
+   double nu = get_nu(x, prim);
 
-    //Silence is Golden
+   double rho = prim[RHO];
+   double vr  = prim[URR];
+   double om  = prim[UPP];
+   double om_off = om - get_om(x);
+   double vt  = prim[UZZ];
 
+   //Divergence of v divided by number of spatial dimensions (3)
+   double divV_o_d = (gradr[URR] + gradp[UPP] + gradt[UZZ] + 2*vr/r
+                      + costh*vt/sinth) / 3.0;
+
+   // Covariant components of shear tensor.
+   double srr = gradr[URR] - divV_o_d;
+   double spp = r*r*sinth*sinth*(gradp[UPP] + vr/r + costh*vt/sinth - divV_o_d);
+   double stt = r*(r*gradt[UZZ] + vr - r*divV_o_d);
+   double srp = 0.5*(r*r*sinth*sinth*gradr[UPP] + gradp[URR]);
+   double srt = 0.5*(r*r*gradr[UZZ] + gradt[URR]);
+   double spt = 0.5*r*r*(gradp[UZZ] + sinth*sinth*gradt[UPP]);
+
+   // Covariant components of shear normal to face, shear_{ij} * n^{j}.
+   // Given n is in orthonormal basis, 1/r factor corrects to coordinate basis
+   double nc[3] = {n[0], n[1]/(r*sinth), n[2]/r};
+   double srn = srr*nc[0] + srp*nc[1] + srt*nc[2];
+   double spn = srp*nc[0] + spp*nc[1] + spt*nc[2];
+   double stn = srt*nc[0] + spt*nc[1] + stt*nc[2];
+
+   flux[SRR] = -2 * nu * rho * srn;
+   flux[LLL] = -2 * nu * rho * spn;
+   flux[SZZ] = -2 * nu * rho * stn;
+   flux[TAU] = -2 * nu * rho * ( vr*srn + om_off*spn + vt*stn);
 }
 
-void flux_to_E( double * Flux , double * Ustr , double * x , double * E1_riemann , double * B1_riemann , double * E2_riemann , double * B2_riemann , int dim ){
+void visc_source(const double * prim, const double * gradr, const double *gradp,
+                 const double * gradt, double * cons, const double *xp,
+                 const double *xm, double dVdt)
+{
+   double x[3];
+   get_centroid_arr(xp, xm, x);
+   double r = x[0];
+   double th = x[2];
+   double sinth = sin(th);
+   double costh = cos(th);
+   double nu = get_nu(x, prim);
+
+   double rho = prim[RHO];
+   double vr  = prim[URR];
+   double vt  = prim[UZZ];
+
+   //Divergence of v divided by number of spatial dimensions (3)
+   double divV_o_d = (gradr[URR] + gradp[UPP] + gradt[UZZ] + 2*vr/r
+                      + costh*vt/sinth) / 3.0;
+
+   // Relevant contravariant components of shear tensor.
+   double spp = (r*gradp[UPP] + vr + r*costh*vt/sinth - r*divV_o_d)
+                    / (r*r*r*sinth*sinth);
+   double stt = (r*gradt[UZZ] + vr - r*divV_o_d) / (r*r*r);
+
+   cons[SRR] += (-2 * rho * nu * (r * stt + r*sinth*sinth * spp)) * dVdt;
+   cons[SZZ] += (-2 * rho * nu * (r*r*sinth*costh * spp)) * dVdt;
+
+   // Mixed ^r_phi and ^theta_phi components of shear tensor
+   double srp = 0.5*(r*r*sinth*sinth*gradr[UPP] + gradp[URR]);
+   double spt = 0.5*(gradp[UZZ] + sinth*sinth*gradt[UPP]);
+   double om_r = get_om1( x );
+   double om_t = get_om2( x );
+
+   cons[TAU] += (2 * rho * nu * (srp * om_r + spt * om_t)) * dVdt;
+}
+
+void flux_to_E( const double * Flux , const double * Ustr , const double * x , double * E1_riemann , double * B1_riemann , double * E2_riemann , double * B2_riemann , int dim ){
 
    //Silence is Golden.
 
 }
 
-void vel( double * prim1 , double * prim2 , double * Sl , double * Sr , double * Ss , double * n , double * x , double * Bpack ){
+void vel( const double * prim1 , const double * prim2 , double * Sl , double * Sr , double * Ss , const double * n , const double * x , double * Bpack ){
 
    double r = x[0];
    double sinth = sin(x[2]);
@@ -312,12 +358,13 @@ void vel( double * prim1 , double * prim2 , double * Sl , double * Sr , double *
 
 }
 
-double get_dL( double * , double * , int );
 
-double mindt(double * prim , double w , double * xp , double * xm ){
+double mindt(const double * prim , double w , const double * xp , const double * xm ){
 
-   double r = get_centroid(xp[0], xm[0], 1);
-   double sinth = sin(get_centroid(xp[2], xm[2], 2));
+   double x[3];
+   get_centroid_arr(xp, xm, x);
+   double r = x[0];
+   double sinth = sin(x[2]);
    double Pp  = prim[PPP];
    double rho = prim[RHO];
    double vp  = (prim[UPP]-w)*r*sinth;
@@ -336,31 +383,29 @@ double mindt(double * prim , double w , double * xp , double * xm ){
    double dt = dtr;
    if( dt > dtp ) dt = dtp;
    if( dt > dtth ) dt = dtth;
-/*
-   double dL0 = get_dL(xp,xm,0);
-   double dL1 = get_dL(xp,xm,1);
-   double dL2 = get_dL(xp,xm,2);
-   double dx = dL0;
-   if( dx>dL1 ) dx = dL1;
-   if( dx>dL2 ) dx = dL2;
 
-   double nu = explicit_viscosity;
+   if(include_viscosity)
+   {
+       double dL0 = get_dL(xp,xm,0);
+       double dL1 = get_dL(xp,xm,1);
+       double dL2 = get_dL(xp,xm,2);
+       
+       double dx = dL0;
+       if( dx>dL1 ) dx = dL1;
+       if( dx>dL2 ) dx = dL2;
 
-   if( alpha_flag ){
-      double alpha = explicit_viscosity;
-      double c = sqrt( gamma_law*prim[PPP]/prim[RHO] );
-      double h = c*pow( r , 1.5 );
-      nu = alpha*c*h;
+       double nu = get_nu(x, prim);
+
+       double dt_visc = 0.5*dx*dx/nu;
+       if( dt > dt_visc )
+           dt = dt_visc;
    }
 
-   double dt_visc = .03*dx*dx/nu;
-   if( dt > dt_visc ) dt = dt_visc;
-*/
    return( dt );
 
 }
 
-void reflect_prims(double * prim, double * x, int dim)
+void reflect_prims(double * prim, const double * x, int dim)
 {
     //dim == 0: r, dim == 1: p, dim == 2: z
     if(dim == 0)
@@ -378,4 +423,9 @@ double bfield_scale_factor(double x, int dim)
     // dim == 0: r, dim == 1: p, dim == 2: z
     
     return 1.0;
+}
+
+double getCartInterpWeight(const double *x)
+{
+    return 0.0;
 }

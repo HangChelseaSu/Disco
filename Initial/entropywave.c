@@ -10,6 +10,7 @@ static double a = 0.0;
 static double x0 = 0.0;
 static double costheta0 = 0.0;
 static double phi0_o_pi = 0.0;
+static double *t = NULL;
     
 void get_xyz(double *, double *);
 void get_vec_from_xyz(double *, double *, double *);
@@ -24,6 +25,8 @@ void setICparams( struct domain * theDomain )
     L = theDomain->theParList.initPar4;     //0.3 in RAM
     phi0_o_pi = theDomain->theParList.initPar5;
     costheta0 = theDomain->theParList.initPar6;
+
+    t = &(theDomain->t);
 }
 
 void initial(double *prim, double *x)
@@ -38,7 +41,9 @@ void initial(double *prim, double *x)
     double ky = sin(phi0)*sintheta0;
     double kz = costheta0;
 
-    double X = (xyz[0]*kx+xyz[1]*ky+xyz[2]*kz - x0) / L;
+    double v0 = cs*mach;
+
+    double X = (xyz[0]*kx+xyz[1]*ky+xyz[2]*kz - (x0 + v0*(*t))) / L;
 
     double rho, v, P;
 
@@ -50,9 +55,13 @@ void initial(double *prim, double *x)
 
     P = rho_ref * cs*cs/gam;
 
-    v = mach*cs;
+    v = v0;
 
     double Vxyz[3] = {v*kx, v*ky, v*kz};
+
+    //Vxyz[0] = sin(4*xyz[0]) * cos(7*xyz[1]);
+    //Vxyz[1] = cos(5*xyz[0] - 3*xyz[1]) - 1.0;
+
     double V[3];
     get_vec_from_xyz(x, Vxyz, V);
     get_vec_contravariant(x, V, V);

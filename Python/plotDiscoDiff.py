@@ -19,15 +19,25 @@ def plotDiff(f, file0):
     primSlice = dat[2]
     diff = primSlice - primSlice0
 
+    diff_eq = prim - prim0
+
     names, texnames, num_c, num_n = util.getVarNames(f)
     
     name = '.'.join(f.split('/')[-1].split('.')[:-1])
 
     for q in range(diff.shape[2]):
-        figname = "diff_{0:s}_{1:s}.png".format(name, names[q])
+        figname = "diff_phi0_{0:s}_{1:s}.png".format(name, names[q])
         fig, ax = plt.subplots(1,1, figsize=(12,9))
         plot.plotPhiSlice(fig, ax, dat[0], dat[1], diff[:,:,q], texnames[q],
                         pars, opts)
+        print("Saving " + figname)
+        fig.savefig(figname)
+        plt.close(fig)
+        
+        figname = "diff_eq_{0:s}_{1:s}.png".format(name, names[q])
+        fig, ax = plt.subplots(1,1, figsize=(12,9))
+        plot.plotZSlice(fig, ax, dat[0], dat[3], x1, diff_eq[:,q], x3.mean(),
+                        texnames[q], pars, opts)
         print("Saving " + figname)
         fig.savefig(figname)
         plt.close(fig)

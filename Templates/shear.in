@@ -6,8 +6,8 @@
 INITIAL  = shear
 HYDRO    = euler
 GEOMETRY = cylindrical
-BOUNDARY = fixed
-OUTPUT   = ascii
+BOUNDARY = fixed3d
+OUTPUT   = h5out
 RESTART  = h5in
 PLANETS  = none
 HLLD     = hlld

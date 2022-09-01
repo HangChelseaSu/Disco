@@ -1,20 +1,19 @@
-
 #include "../paul.h"
+#include "../omega.h"
 
 static double gam = 0.0;
 static double visc = 0.0;
-static int alpha_flag = 0;
 static double Mdot = 0.0;
 static double R0 = 0.0;
 static double rho0 = 0.0;
 
 double get_cs2(double *);
+double get_nu(double *, double *);
 
 void setICparams( struct domain * theDomain )
 {
     gam = theDomain->theParList.Adiabatic_Index;
     visc = theDomain->theParList.viscosity;
-    alpha_flag = theDomain->theParList.alpha_flag;
     Mdot = theDomain->theParList.initPar1;
     R0 = theDomain->theParList.initPar2;
     rho0 = theDomain->theParList.initPar3;
@@ -32,11 +31,7 @@ void initial(double *prim, double *x)
     else
         om = 1.0;
 
-    double nu;
-    if(alpha_flag)
-        nu = visc*cs2/om;
-    else
-        nu = visc;
+    double nu = get_nu(x, prim);
 
     double rho = Mdot/(3*M_PI*nu);
     if(nu == 0.0)

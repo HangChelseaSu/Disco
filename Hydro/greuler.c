@@ -1,5 +1,8 @@
 
 #include "../paul.h"
+#include "../geometry.h"
+#include "../hydro.h"
+#include "../omega.h"
 #include "metric.h"
 #include "frame.h"
 
@@ -10,19 +13,13 @@
 #define DEBUG_ZMAX 10.0
 #define ND 2
 
-//Global Functions
-double get_cs2( double *);
-double get_dp( double , double );
-double get_dL( double * , double * , int );
-double get_centroid(double, double, int);
-double get_vol_element(double *);
-double get_scale_factor(double *, int);
-
 //Local Functions
-void cons2prim_prep(double *cons, double *x);
-void cons2prim_solve_isothermal(double *cons, double *prim, double *x);
-void cons2prim_solve_adiabatic(double *cons, double *prim, double *x);
-void cons2prim_finalize(double *prim, double *x);
+void cons2prim_prep(double *cons, const double *x);
+void cons2prim_solve_isothermal(const double *cons, double *prim,
+                                const double *x);
+void cons2prim_solve_adiabatic(const double *cons, double *prim,
+                               const double *x);
+void cons2prim_finalize(double *prim, const double *x);
 
 static double gamma_law = 0.0; 
 static double RHO_FLOOR = 0.0; 
@@ -40,7 +37,7 @@ int set_B_flag(void){
    return(0);
 }
 
-double get_omega(double *prim, double *x)
+double get_omega(const double *prim, const double *x)
 {
     int i,j;
     double l[3] = {prim[URR], prim[UPP], prim[UZZ]};
@@ -63,7 +60,7 @@ double get_omega(double *prim, double *x)
     return vp;
 }
 
-void prim2cons( double *prim, double *cons, double *x, double dV)
+void prim2cons( const double *prim, double *cons, const double *x, double dV)
 {
     double rho = prim[RHO];
     double Pp  = prim[PPP];
@@ -113,8 +110,8 @@ void prim2cons( double *prim, double *cons, double *x, double dV)
         cons[q] = prim[q]*cons[DDD];
 }
 
-void getUstar(double *prim, double *Ustar, double *x, double Sk, double Ss, 
-                double *n, double *Bpack)
+void getUstar(const double *prim, double *Ustar, const double *x,
+                double Sk, double Ss, const double *n, const double *Bpack)
 {
     double r = x[0];
     double rho = prim[RHO];
@@ -185,7 +182,7 @@ void getUstar(double *prim, double *Ustar, double *x, double Sk, double Ss,
         Ustar[q] = prim[q]*Ustar[DDD];
 }
 
-void cons2prim(double *cons, double *prim, double *x, double dV)
+void cons2prim(const double *cons, double *prim, const double *x, double dV)
 {
     int q;
     double cons1[NUM_Q];
@@ -200,7 +197,7 @@ void cons2prim(double *cons, double *prim, double *x, double dV)
     cons2prim_finalize(prim, x);
 }
 
-void flux(double *prim, double *flux, double *x, double *n)
+void flux(const double *prim, double *flux, const double *x, const double *n)
 {
     double rho = prim[RHO];
     double Pp  = prim[PPP];
@@ -263,7 +260,8 @@ void flux(double *prim, double *flux, double *x, double *n)
         flux[q] = prim[q]*flux[DDD];
 }
 
-void source(double *prim, double *cons, double *xp, double *xm, double dVdt)
+void source(const double *prim, double *cons,
+            const double *xp, const double *xm, double dVdt)
 {
     double x[3] = {0.5*(xm[0]+xp[0]), 0.5*(xm[1]+xp[1]), 0.5*(xm[2]+xp[2])};
     double r = x[0];
@@ -342,15 +340,21 @@ void source(double *prim, double *cons, double *xp, double *xm, double dVdt)
     cons[TAU] += jac * S0 * dVdt;
 }
 
-void visc_flux(double *prim, double *gprim, double *flux, double *x, 
-                double *n){}
+void visc_flux(const double * prim, const double * gradr, const double * gradp,
+               const double * gradz, double * flux,
+               const double * x, const double * n){}
+void visc_source(const double * prim, const double * gradr, const double *gradp,
+                 const double * gradt, double * cons, const double *xp,
+                 const double *xm, double dVdt){}
 
-void flux_to_E(double *Flux, double *Ustr, double *x, double *E1_riemann, 
-                double *B1_riemann, double *E2_riemann, double *B2_riemann, 
+void flux_to_E(const double *Flux, const double *Ustr, const double *x,
+                double *E1_riemann, double *B1_riemann, 
+                double *E2_riemann, double *B2_riemann, 
                 int dim){}
 
-void vel(double *prim1, double *prim2, double *Sl, double *Sr, double *Ss, 
-            double *n, double *x, double *Bpack)
+void vel(const double *prim1, const double *prim2,
+            double *Sl, double *Sr, double *Ss, 
+            const double *n, const double *x, double *Bpack)
 {
     double rho1 = prim1[RHO];
     double P1   = prim1[PPP];
@@ -479,7 +483,7 @@ void vel(double *prim1, double *prim2, double *Sl, double *Sr, double *Ss,
     *Ss = hn * (a*sS - bn);
 }
 
-double mindt(double *prim, double wc, double *xp, double *xm)
+double mindt(const double *prim, double wc, const double *xp, const double *xm)
 {
     double x[3] = {get_centroid(xp[0],xm[0],1), get_centroid(xp[1],xm[1],0),
                     get_centroid(xp[2],xm[2],2)};
@@ -545,12 +549,12 @@ double mindt(double *prim, double wc, double *xp, double *xm)
     return dt;
 }
 
-double getReynolds(double *prim, double w, double *x, double dx)
+double getReynolds(const double *prim, double w, const double *x, double dx)
 {
     return 0.0;
 }
 
-void reflect_prims(double *prim, double *x, int dim)
+void reflect_prims(double *prim, const double *x, int dim)
 {
     double lapse;
     double shift[3];
@@ -609,12 +613,23 @@ void reflect_prims(double *prim, double *x, int dim)
     prim[UZZ] = l[2];
 }
 
-void cons2prim_prep(double *cons, double *x)
+double bfield_scale_factor(double x, int dim)
+{
+    // Returns the factor used to scale B_cons.
+    // x is coordinate location in direction dim.
+    // dim == 0: r, dim == 1: p, dim == 2: z
+    
+    return 1.0;
+}
+
+
+
+void cons2prim_prep(double *cons, const double *x)
 {
     //TODO: complete this.
 }
 
-void cons2prim_solve_isothermal(double *cons, double *prim, double *x)
+void cons2prim_solve_isothermal(const double *cons, double *prim, const double *x)
 {
     double prec = 1.0e-12;
     double max_iter = 30;
@@ -762,7 +777,7 @@ void cons2prim_solve_isothermal(double *cons, double *prim, double *x)
     }
 }
 
-void cons2prim_solve_adiabatic(double *cons, double *prim, double *x)
+void cons2prim_solve_adiabatic(const double *cons, double *prim, const double *x)
 {
     double prec = 1.0e-15;
     double max_iter = 100;
@@ -904,7 +919,7 @@ void cons2prim_solve_adiabatic(double *cons, double *prim, double *x)
     }
 }
 
-void cons2prim_finalize(double *prim, double *x)
+void cons2prim_finalize(double *prim, const double *x)
 {
 
 }

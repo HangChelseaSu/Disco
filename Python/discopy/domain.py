@@ -324,8 +324,8 @@ class DiscoDomain:
                 if bflux is not None:
                     bflux[n1:n2,:] = self.bflux[k][j][:,:]
 
-        data = (prim, bflux, piph, self.planets, self.diagRZ, self.diagR,
-                self.diagZ)
+        #data = (prim, bflux, piph, self.planets, self.diagRZ, self.diagR, self.diagZ)
+        data = (prim, bflux, piph, self.planets, self.diagRZ, self.diagRZ, self.diagRZ)
 
         return data
 

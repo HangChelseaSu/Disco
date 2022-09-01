@@ -18,18 +18,18 @@ def plotCheckpoint(file):
 
     if nc <= 5:
         fig, ax = plt.subplots(2,3,figsize=(14,9))
-        util.plotAx(ax[0,0], r, prim[:,0], "linear", "log", r"$r$", r"$\rho$", 
+        util.plotAx(ax[0,0], r, prim[:,0], "log", "log", r"$r$", r"$\rho$", 
                     'k+')
-        util.plotAx(ax[0,1], r, prim[:,1], "linear", "log", r"$r$", r"$P$", 
+        util.plotAx(ax[0,1], r, prim[:,1], "log", "log", r"$r$", r"$P$", 
                     'k+')
-        util.plotAx(ax[1,0], r, prim[:,2], "linear", "linear", r"$r$", r"$u_1$",
+        util.plotAx(ax[1,0], r, prim[:,2], "log", "linear", r"$r$", r"$u_1$",
                     'k+')
-        util.plotAx(ax[1,1], r, prim[:,3], "linear", "linear", r"$r$", 
+        util.plotAx(ax[1,1], r, prim[:,3], "log", "linear", r"$r$", 
                     r"$u_2$",'k+')
-        util.plotAx(ax[1,2], r, prim[:,4], "linear", "linear", r"$r$", r"$u_3$", 
+        util.plotAx(ax[1,2], r, prim[:,4], "log", "linear", r"$r$", r"$u_3$", 
                     'k+')
         if nq > 5:
-            util.plotAx(ax[0,2], r, prim[:,5], "linear", "linear", r"$r$", 
+            util.plotAx(ax[0,2], r, prim[:,5], "log", "linear", r"$r$", 
                     r"$q$", 'k+')
     else:
         fig, ax = plt.subplots(3,3,figsize=(14,12))

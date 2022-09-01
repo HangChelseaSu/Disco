@@ -15,6 +15,7 @@ Currently new parameters (values read from an `in.par`) must be specified in thr
 ```
 
 Here `"NAME_IN_PARFILE"` is the name of the parameter in the `in.par` file, `VAR_TYPE` is the data type (either `VAR_INT` or `VAR_DOUB`) and `NAME_IN_STRUCT` is the name of this variable in the `param_list` struct.
+
 3. `Output/h5out.c`: In the function `void writePars(struct domain *, char *)`  add a line that writes your parameter to the checkpoint file.  This line looks like:
 
 ```c

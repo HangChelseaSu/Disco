@@ -13,6 +13,10 @@ int num_diagnostics(void){
    return(48);
 }
 
+int num_inst_diagnostics(void){
+   return(0);
+}
+
 
 /* GRMHD */
 
@@ -164,3 +168,9 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
     Qrz[47] = tau;
 }
 
+
+void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
+                        struct domain * theDomain )
+{
+    //Silence is golden.
+}

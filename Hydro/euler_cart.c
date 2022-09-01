@@ -1,39 +1,33 @@
 
 #include "../paul.h"
-
-double get_om( double *);
-double get_om1( double *);
-double get_cs2( double *);
+#include "../hydro.h"
+#include "../geometry.h"
+#include "../omega.h"
 
 static double gamma_law = 0.0; 
 static double RHO_FLOOR = 0.0; 
 static double PRE_FLOOR = 0.0; 
-static double explicit_viscosity = 0.0;
 static int include_viscosity = 0;
 static int isothermal = 0;
-static int alpha_flag = 0;
 
 void setHydroParams( struct domain * theDomain ){
    gamma_law = theDomain->theParList.Adiabatic_Index;
    isothermal = theDomain->theParList.isothermal_flag;
    RHO_FLOOR = theDomain->theParList.Density_Floor;
    PRE_FLOOR = theDomain->theParList.Pressure_Floor;
-   explicit_viscosity = theDomain->theParList.viscosity;
    include_viscosity = theDomain->theParList.visc_flag;
-   alpha_flag = theDomain->theParList.alpha_flag;
 }
 
 int set_B_flag(void){
    return(0);
 }
 
-double get_omega( double * prim , double * x ){
+double get_omega( const double * prim , const double * x ){
    return( prim[UPP] );
 }
 
-void planetaryForce( struct planet * , int , double , double , double * , double * );
 
-void prim2cons( double * prim , double * cons , double * x , double dV ){
+void prim2cons( const double * prim , double * cons , const double * x , double dV, const double *xp, const double *xm ){
 
    double rho = prim[RHO];
    double Pp  = prim[PPP];
@@ -59,7 +53,7 @@ void prim2cons( double * prim , double * cons , double * x , double dV ){
    }
 }
 
-void getUstar( double * prim , double * Ustar , double * x , double Sk , double Ss , double * n , double * Bpack ){
+void getUstar( const double * prim , double * Ustar , const double * x , double Sk , double Ss , const double * n , const double * Bpack ){
 
    double rho = prim[RHO];
    double vr  = prim[URR];
@@ -95,7 +89,7 @@ void getUstar( double * prim , double * Ustar , double * x , double Sk , double 
 
 }
 
-void cons2prim( double * cons , double * prim , double * x , double dV ){
+void cons2prim( const double * cons , double * prim , const double * x , double dV, const double *xp, const double *xm ){
    
    double rho = cons[DDD]/dV;
    if( rho < RHO_FLOOR )   rho = RHO_FLOOR;
@@ -133,7 +127,7 @@ void cons2prim( double * cons , double * prim , double * x , double dV ){
 
 }
 
-void flux( double * prim , double * flux , double * x , double * n ){
+void flux( const double * prim , double * flux , const double * x , const double * n, const double *xp, const double *xm ){
    
    double rho = prim[RHO];
    double Pp  = prim[PPP];
@@ -162,20 +156,54 @@ void flux( double * prim , double * flux , double * x , double * n ){
    
 }
 
-double get_dp( double , double );
-double get_centroid( double , double , int);
+void source( const double * prim , double * cons , const double * xp , const double * xm , double dVdt ){}
 
-void source( double * prim , double * cons , double * xp , double * xm , double dVdt ){}
+void visc_flux(const double * prim, const double * gradx, const double * grady,
+               const double * gradz, double * flux,
+               const double * x, const double * n)
+{
+   double nu = get_nu(x, prim);
 
-void visc_flux( double * prim , double * gprim , double * flux , double * x , double * n ){}
+   double rho = prim[RHO];
+   double vx  = prim[URR];
+   double vy  = prim[UPP];
+   double vy_off = vy - get_om(x);
+   double vz  = prim[UZZ];
 
-void flux_to_E( double * Flux , double * Ustr , double * x , double * E1_riemann , double * B1_riemann , double * E2_riemann , double * B2_riemann , int dim ){
+   //Divergence of v divided by number of spatial dimensions (3)
+   double divV_o_d = (gradx[URR] + grady[UPP] + gradz[UZZ]) / 3.0;
+
+   // Covariant components of shear tensor.
+   double sxx = gradx[URR] - divV_o_d;
+   double syy = grady[UPP] - divV_o_d;
+   double szz = gradz[UZZ] - divV_o_d;
+   double sxy = 0.5*(gradx[UPP] + grady[URR]);
+   double sxz = 0.5*(gradx[UZZ] + gradz[URR]);
+   double syz = 0.5*(grady[UZZ] + gradz[UPP]);
+
+   // Covariant components of shear normal to face, shear_{ij} * n^{j}.
+   // Given n is in orthonormal basis, 1/r factor corrects to coordinate basis
+   double sxn = sxx*n[0] + sxy*n[1] + sxz*n[2];
+   double syn = sxy*n[0] + syy*n[1] + syz*n[2];
+   double szn = sxz*n[0] + syz*n[1] + szz*n[2];
+
+   flux[SRR] = -2 * nu * rho * sxn;
+   flux[LLL] = -2 * nu * rho * syn;
+   flux[SZZ] = -2 * nu * rho * szn;
+   flux[TAU] = -2 * nu * rho * ( vx*sxn + vy_off*syn + vz*szn);
+}
+
+void visc_source(const double * prim, const double * gradr, const double *gradp,
+                 const double * gradt, double * cons, const double *xp,
+                 const double *xm, double dVdt){}
+
+void flux_to_E( const double * Flux , const double * Ustr , const double * x , double * E1_riemann , double * B1_riemann , double * E2_riemann , double * B2_riemann , int dim ){
 
    //Silence is Golden.
 
 }
 
-void vel( double * prim1 , double * prim2 , double * Sl , double * Sr , double * Ss , double * n , double * x , double * Bpack ){
+void vel( const double * prim1 , const double * prim2 , double * Sl , double * Sr , double * Ss , const double * n , const double * x , double * Bpack ){
 
    double P1   = prim1[PPP];
    double rho1 = prim1[RHO];
@@ -199,9 +227,8 @@ void vel( double * prim1 , double * prim2 , double * Sl , double * Sr , double *
 
 }
 
-double get_dL( double * , double * , int );
 
-double mindt(double * prim , double w , double * xp , double * xm ){
+double mindt(const double * prim , double w , const double * xp , const double * xm ){
 
    double Pp  = prim[PPP];
    double rho = prim[RHO];
@@ -222,10 +249,29 @@ double mindt(double * prim , double w , double * xp , double * xm ){
    if( dt > dtp ) dt = dtp;
    if( dt > dtz ) dt = dtz;
 
+   if(include_viscosity)
+   {
+       double dL0 = get_dL(xp,xm,0);
+       double dL1 = get_dL(xp,xm,1);
+       double dL2 = get_dL(xp,xm,2);
+       
+       double dx = dL0;
+       if( dx>dL1 ) dx = dL1;
+       if( dx>dL2 ) dx = dL2;
+
+       double x[3];
+       get_centroid_arr(xp, xm, x);
+       double nu = get_nu(x, prim);
+
+       double dt_visc = 0.5*dx*dx/nu;
+       if( dt > dt_visc )
+           dt = dt_visc;
+   }
+
    return( dt );
 }
 
-void reflect_prims(double * prim, double * x, int dim)
+void reflect_prims(double * prim, const double * x, int dim)
 {
     //dim == 0: r, dim == 1: p, dim == 2: z
     if(dim == 0)
@@ -243,4 +289,9 @@ double bfield_scale_factor(double x, int dim)
     // dim == 0: r, dim == 1: p, dim == 2: z
     
     return 1.0;
+}
+
+double getCartInterpWeight(const double *x)
+{
+    return 0.0;
 }

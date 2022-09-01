@@ -11,6 +11,10 @@ int num_diagnostics(void){
    return(5);
 }
 
+int num_inst_diagnostics(void){
+   return(0);
+}
+
 void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
 
 /* 2D Disk */
@@ -20,7 +24,6 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
 {
    double r = x[0];
    double phi = x[1];
-   double z = x[2];
 
    double rho = prim[RHO];
    double vr = prim[URR];
@@ -39,3 +42,9 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    Qrz[4] = omega;
 }
 
+
+void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
+                        struct domain * theDomain )
+{
+    //Silence is golden.
+}

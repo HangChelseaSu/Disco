@@ -1,9 +1,7 @@
 
 #include "paul.h"
-
-double get_dV( double * , double * );
-void prim2cons( double * , double * , double , double );
-void cons2prim( double * , double * , double , double );
+#include "geometry.h"
+#include "hydro.h"
 
 void snapshot( struct domain * theDomain , char * filestart ){
 

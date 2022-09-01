@@ -188,7 +188,7 @@ void initial( double * prim , double * X )
     else
     {
         rho = fac_atm * rho0;
-        P = rho * cs_atm*cs_atm;
+        P = rho * cs_atm*cs_atm / gam;
 
         double vxyz[3] = {0.0, 0.0, 0.0};
         get_vec_from_xyz(X, vxyz, v);
@@ -203,10 +203,17 @@ void initial( double * prim , double * X )
     prim[UPP] = v[1];
     prim[UZZ] = v[2];
 
-    int q;
-    for(q = 5; q < NUM_Q; q++)
+    if(NUM_N > 0)
     {
-        if(q == 5)
+       double s = log(P * pow(rho, -gam)) / (gam - 1.0);
+       prim[NUM_C] = s;
+        
+    }
+
+    int q;
+    for(q = NUM_C+1; q < NUM_Q; q++)
+    {
+        if(q == NUM_C+1)
             prim[q] = q1;
         else
             prim[q] = 0.0;

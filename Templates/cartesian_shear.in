@@ -1,0 +1,21 @@
+### Makefile_opt.in for Disco ###
+
+# This file contains user-specified build options.
+
+# Build options
+INITIAL  = shear_cart
+HYDRO    = euler
+GEOMETRY = cylindrical
+BOUNDARY = fixed3d
+OUTPUT   = h5out
+RESTART  = h5in
+PLANETS  = none
+HLLD     = hlld
+ANALYSIS = diag_euler
+
+METRIC   = flat_rpz
+FRAME    = normal
+
+NUM_C	 = 5	# Number of conserved variables (Hydro: 5, MHD: 8)
+NUM_N	 = 1	# Number of passive variables   (>=0)
+CT_MODE	 = 0	# Constained Transport mode. None: 0, 2D: 1, 3D: 2.

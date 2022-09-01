@@ -17,20 +17,20 @@ void setMetricParams(struct domain *theDomain)
    M = theDomain->theParList.metricPar2;
 }
 
-double metric_lapse(double x[3])
+double metric_lapse(const double x[3])
 {
     double R = sqrt(x[0]*x[0] + x[2]*x[2]);
     return sqrt(1.0 - 2*M/R);
 }
 
-void metric_shift(double x[3], double b[3])
+void metric_shift(const double x[3], double b[3])
 {
     b[0] = 0.0;
     b[1] = 0.0;
     b[2] = 0.0;
 }
 
-void metric_gam(double x[3], double gam[9])
+void metric_gam(const double x[3], double gam[9])
 {
     double r = x[0];
     double z = x[2];
@@ -47,7 +47,7 @@ void metric_gam(double x[3], double gam[9])
     gam[8] = r*r/(R*R) + z*z/(R*R-2*M*R);
 }
 
-void metric_igam(double x[3], double igam[9])
+void metric_igam(const double x[3], double igam[9])
 {
     double r = x[0];
     double z = x[2];
@@ -64,12 +64,12 @@ void metric_igam(double x[3], double igam[9])
     igam[8] = (r*r*R + z*z*(R-2*M)) / (R*R*R);
 }
 
-double metric_jacobian(double x[3])
+double metric_jacobian(const double x[3])
 {
     return x[0];
 }
 
-void metric_der_g(double x[3], int i, double dg[16])
+void metric_der_g(const double x[3], int i, double dg[16])
 {
     int mu;
     for(mu=0; mu<16; mu++)
@@ -101,7 +101,7 @@ void metric_der_g(double x[3], int i, double dg[16])
     }
 }
 
-void metric_der_lapse(double x[3], double da[4])
+void metric_der_lapse(const double x[3], double da[4])
 {
     double r = x[0];
     double z = x[2];
@@ -119,7 +119,7 @@ void metric_der_lapse(double x[3], double da[4])
     da[3] = ia * MoR2 * ct;
 }
 
-void metric_der_shift(double x[3], double db[12])
+void metric_der_shift(const double x[3], double db[12])
 {
     int i;
     for(i=0; i<12; i++)

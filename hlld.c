@@ -5,6 +5,8 @@ enum{DEN,TAX,SXX,SYY,SSZ};
 #include <stdio.h>
 #include <math.h>
 #include "paul.h"
+#include "geometry.h"
+#include "hydro.h"
 
 //#define GAMMA_LAW (5./3.)
 #define TOL 1e-10
@@ -15,7 +17,8 @@ void setHlldParams( struct domain * theDomain ){
    GAMMA_LAW = theDomain->theParList.Adiabatic_Index;
 }
 
-void get_velocities( double * pL , double * pR , double * n , double * vel , double * Pt_star ){
+void get_velocities( const double * pL , const double * pR , const double * n ,
+                    double * vel , double * Pt_star ){
   
    double gam = GAMMA_LAW;
 
@@ -66,7 +69,7 @@ void get_velocities( double * pL , double * pR , double * n , double * vel , dou
    *Pt_star = num/denom;
 }
 
-void prim_to_cons( double * prim , double * cons ){
+void prim_to_cons( const double * prim , double * cons ){
 
    double rho  = prim[RHO];
    double Pp   = prim[PPP];
@@ -96,7 +99,7 @@ void prim_to_cons( double * prim , double * cons ){
 
 }
 
-void get_flux( double * prim , double * flux , double * n ){
+void get_flux( const double * prim , double * flux , const double * n ){
 
    double rho = prim[RHO];
    double Pp  = prim[PPP];
@@ -129,7 +132,7 @@ void get_flux( double * prim , double * flux , double * n ){
 
 }
 
-void get_single_star( double * prim , double * Ustar , double S_K , double S_M , double Pt_star , double * n ){
+void get_single_star( const double * prim , double * Ustar , double S_K , double S_M , double Pt_star , const double * n ){
 
    double rho = prim[RHO];
    double vx  = prim[UXX];
@@ -189,7 +192,7 @@ void get_single_star( double * prim , double * Ustar , double S_K , double S_M ,
 
 }
 
-void get_double_star( double * UsL , double * UsR , double * Uss , double * vel , double * n , int LR ){
+void get_double_star( const double * UsL , const double * UsR , double * Uss , const double * vel , const double * n , int LR ){
 
    double rho_L = UsL[RHO];
    double rho_R = UsR[RHO];
@@ -275,10 +278,10 @@ void get_double_star( double * UsL , double * UsR , double * Uss , double * vel 
 
 }
 
-double get_scale_factor(double *, int);
-double bfield_scale_factor(double, int);
 
-void get_Ustar_HLLD( double w , double * pL , double * pR , double * F , double * U , double * x , double * n ){
+void get_Ustar_HLLD( double w , const double * primL , const double * primR , 
+                double * F , double * U , 
+                const double * x , const double * n ){
 
    //Get Velocities
    double vel[5];
@@ -286,6 +289,30 @@ void get_Ustar_HLLD( double w , double * pL , double * pR , double * F , double 
    double hr = get_scale_factor(x, 1);
    double hp = get_scale_factor(x, 0);
    double hz = get_scale_factor(x, 2);
+
+   size_t size = NUM_C < 8 ? 8+NUM_N : NUM_Q;
+
+   double pL[size], pR[size];
+
+   int q;
+
+   if(NUM_C < 8)
+   {
+      memcpy(pL, primL, NUM_C*sizeof(double));
+      memcpy(pR, primR, NUM_C*sizeof(double));
+      for(q=NUM_C; q<8; q++) {pL[q] = 0.0; pR[q] = 0.0;}
+      for(q=8; q<NUM_Q; q++)
+      {
+          pL[q] = primL[NUM_C+q-8];
+          pR[q] = primR[NUM_C+q-8];
+      }
+   }
+   else
+   {
+      memcpy(pL, primL, NUM_Q*sizeof(double));
+      memcpy(pR, primR, NUM_Q*sizeof(double));
+   }
+
    pL[UXX] *= hr;
    pR[UXX] *= hr;
    pL[UYY] *= hp;
@@ -294,7 +321,6 @@ void get_Ustar_HLLD( double w , double * pL , double * pR , double * F , double 
    pR[UZZ] *= hz;
    get_velocities( pL , pR , n , vel , &Pt_star );
 
-   int q;
 
    if( w < vel[2] ){
       //Left Side

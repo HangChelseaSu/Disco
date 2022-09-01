@@ -103,7 +103,7 @@ def analyzeSingle(filename):
 
     dV = geom.getDV(dat, opts, pars)
 
-    maskDistance = 0.1
+    maskDistance = 0.2
 
     dVmask = dV.copy()
     # dVmask[(x1 < pars['R_Min']+maskDistance)] = 0.0
@@ -173,6 +173,8 @@ def makeErrPlot(t, nx, err, name, label):
         nn = np.logspace(math.log10(NX[1]), math.log10(NX[-1]),
                          num=10, base=10.0)
         ax.plot(nn, err.max() * np.power(nn/nn[0], -2), ls='--', lw=2,
+                color='grey')
+        ax.plot(nn, err.max() * np.power(nn/nn[0], -1), ls=':', lw=2,
                 color='grey')
         ax.set_xlabel(r"$n_x$")
         ax.set_ylabel(label)

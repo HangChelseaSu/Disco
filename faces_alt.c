@@ -1,10 +1,6 @@
 
 #include "paul.h"
-
-double get_dA( double * , double * , int );
-double get_dL( double * , double * , int );
-double get_dp( double , double );
-double get_centroid( double , double , int );
+#include "geometry.h"
 
 int get_num_rzFaces( int Nr , int Nz , int dim ){
    if( dim==1 ) return( (Nr-1)*Nz );

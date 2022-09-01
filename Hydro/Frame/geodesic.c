@@ -12,7 +12,7 @@ void setFrameParams(struct domain *theDomain)
    a = theDomain->theParList.metricPar3;
 }
 
-void frame_U(double x[3], double U[4])
+void frame_U(const double x[3], double U[4])
 {
     double r = x[0];
     double Risco = 6.0*M;
@@ -40,7 +40,7 @@ void frame_U(double x[3], double U[4])
     U[3] = 0.0;
 }
 
-void frame_der_U(double x[3], double dU[16])
+void frame_der_U(const double x[3], double dU[16])
 {
     int i;
     for(i=0; i<16; i++)

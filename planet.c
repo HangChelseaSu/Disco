@@ -1,14 +1,36 @@
 #include "paul.h"
+#include "geometry.h"
+#include "planet.h"
 
 double PHI_ORDER = 2.0;
 static int grav2D = 0;
-
-double get_scale_factor( double * , int );
-double get_dp( double , double );
+static int polar_sources_r = 0;
+static int polar_sources_p = 0;
+static int polar_sources_z = 0;
 
 void setGravParams( struct domain * theDomain ){
 
-   grav2D = theDomain->theParList.grav2D; 
+   grav2D = theDomain->theParList.grav2D;
+   if(strcmp(GEOMETRY, "cylindrical") == 0
+             && theDomain->theParList.NoBC_Rmin == 1)
+   {
+       polar_sources_r = 1;
+       polar_sources_p = 1;
+   }
+   if(strcmp(GEOMETRY, "spherical") == 0)
+   {
+       if(theDomain->theParList.NoBC_Rmin == 1)
+       {
+           polar_sources_r = 1;
+           polar_sources_p = 1;
+       }
+       if(theDomain->theParList.NoBC_Zmin == 1
+          || theDomain->theParList.NoBC_Zmax == 1)
+       {
+           polar_sources_p = 1;
+           polar_sources_z = 1;
+       }
+   }
 
 }
 
@@ -23,12 +45,34 @@ double phigrav( double M , double r , double eps , int type)
     {
         return M / (r - 2*M);
     }
+    else if(type == PLWEGGC)
+    {
+        //potential "C" from Wegg 2012, ApJ 749
+        double sq6 = sqrt(6);
+        double Alpha = -4*(2.0+sq6)/3;
+        double Rx = M*(4.0*sq6 - 9);
+        double Ry = -4*M*(2*sq6 - 3.0)/3.0;
+        return -Alpha*M/r - (1-Alpha)*M/(r-Rx) - M*Ry/(r*r);
+    }
     else if(type == PLSURFACEGRAV)
     {
         return M*r; // M is gravitational acceleration
                     // only makes sense if grav2D is on
     }
-
+    else if(type == PLQUAD)
+    {
+        return 0.5*M*r*r;
+    }
+    else if(type == PLSPLINE)
+    {
+        eps = eps*2.8;
+        double u = r/eps;
+        double val;
+        if (u<0.5) val = 16.*u*u/3. - 48.*u*u*u*u/5. + 32.*u*u*u*u*u/5. - 14./5.;
+        else if (u < 1.0) val = 1./(15.*u) + 32.*u*u/3. - 16.*u*u*u + 48.*u*u*u*u/5. - 32.*pow(u, 5.0)/15. - 3.2;
+        else val = -1./u ;
+        return -1*M*val/eps;
+    }
     return 0.0;
 }
 
@@ -48,6 +92,29 @@ double fgrav( double M , double r , double eps , int type)
         return M; // M is gravitational acceleration
                   // only makes sense if grav2D is on
     }
+    else if(type == PLQUAD)
+    {
+        return M * r;
+    }
+    else if(type == PLWEGGC)
+    {
+        //potential "C" from Wegg 2012, ApJ 749
+        double sq6 = sqrt(6);
+        double Alpha = -4*(2.0+sq6)/3;
+        double Rx = M*(4.0*sq6 - 9);
+        double Ry = -4*M*(2*sq6 - 3.0)/3.0;
+        return -Alpha*M/(r*r) - (1-Alpha)*M/((r-Rx)*(r-Rx)) - 2*M*Ry/(r*r*r);
+    }
+    else if(type == PLSPLINE)
+    {
+        eps = eps*2.8;
+        double u = r/eps;
+        double val;
+        if (u<0.5) val = 32.*u/3. - 192.*u*u*u/5. + 32.*u*u*u*u;
+        else if (u < 1.0) val = -1./(15.*u*u) + 64.*u/3. - 48.*u*u + 192.*u*u*u/5. - 32*u*u*u*u/3.;
+        else val = 1./u/u;
+        return M*val/eps/eps;
+    }
     return 0.0;
     
 }
@@ -65,6 +132,7 @@ void adjust_gas( struct planet * pl , double * x , double * prim , double gam ){
    double dy = r*sinp-rp*sin(pp);
    double script_r = sqrt(dx*dx+dy*dy);
 
+   //double z = M_PI*0.5; //x[2];
    double pot = phigrav( pl->M , script_r , pl->eps , pl->type);
 
    double c2 = gam*prim[PPP]/prim[RHO];
@@ -75,7 +143,43 @@ void adjust_gas( struct planet * pl , double * x , double * prim , double gam ){
 
 }
 
-void planetaryForce( struct planet * pl , double r , double phi , double z , double * fr , double * fp , double * fz , int mode ){
+double planetaryPotential(struct planet *pl, double r, double phi, double z)
+{
+    /*
+     * Returns the gravitational potential (with correct sign) at position
+     * (r, phi, z) from planet pl.
+     */
+
+    double rp = pl->r;
+    double pp = pl->phi;
+    if(grav2D == 1)
+        z = 0.0;
+    else if(grav2D == 2)
+    {
+        rp = r;
+        pp = phi;
+        z = 1.0;
+    }
+
+    double cosp = cos(phi);
+    double sinp = sin(phi);
+    double dx = r*cosp-rp*cos(pp);
+    double dy = r*sinp-rp*sin(pp);
+    double script_r = sqrt(dx*dx+dy*dy+z*z);
+
+    return -phigrav(pl->M, script_r, pl->eps, pl->type);
+}
+
+void planetaryForce( struct planet * pl , double r , double phi , double z , double * fr , double * fp , double * fz , int mode )
+{
+    /*
+     * Calculates the specific gravitational force (ie. acceleration) between
+     * the gas and planet.
+     * The force is returned in an orthonormal basis in cylindrical coords:
+     *    |F| = sqrt(fr*fr + fp*fp + fz*fz)
+     * mode == 0 computes the force components At The Gas Position
+     * mode == 1 computes the force components At The Planet Position
+     */
 
    double rp = pl->r;
    double pp = pl->phi;
@@ -113,11 +217,11 @@ void planetaryForce( struct planet * pl , double r , double phi , double z , dou
        cosap = 0.0;
        sinap = 0.0;
    }
-/*
+   /*
    double rH = rp*pow( pl->M/3.,1./3.);
    double pd = 0.8; 
    double fd = 1./(1.+exp(-( script_r/rH-pd)/(pd/10.)));
-*/
+   */
 
    double sint = script_r_perp/script_r;
    double cost = z/script_r;
@@ -125,14 +229,9 @@ void planetaryForce( struct planet * pl , double r , double phi , double z , dou
    *fr = cosap*f1*sint; //*fd;
    *fp = sinap*f1*sint; //*fd;
    *fz = f1*cost;
-
 }
 
-double get_centroid( double , double , int);
-double get_rpz( double *, double *);
-double get_vec_from_rpz( double *, double *, double *);
-
-void planet_src( struct planet * pl , double * prim , double * cons , double * xp , double * xm , double dVdt ){
+void planet_src( struct planet * pl , double * prim , double * cons , double * xp , double * xm , double dV, double dt, double *pl_gas_track ){
 
    double rho = prim[RHO];
    double vr  = prim[URR];
@@ -159,26 +258,397 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
    double hp = get_scale_factor(x, 0);
    double hz = get_scale_factor(x, 2);
 
+   if(polar_sources_r || polar_sources_p || polar_sources_z)
+   {
+       double adjust[3];
+       geom_polar_vec_adjust(xp, xm, adjust);
+       if(polar_sources_r)
+           F[0] *= adjust[0];
+       if(polar_sources_p)
+           F[1] *= adjust[1];
+       if(polar_sources_z)
+           F[2] *= adjust[2];
+   }
+
+   double dVdt = dV*dt;
 
    cons[SRR] += rho*hr*F[0]*dVdt;
    cons[LLL] += rho*hp*F[1]*dVdt;
    cons[SZZ] += rho*hz*F[2]*dVdt;
    cons[TAU] += rho*( hr*F[0]*vr + hz*F[2]*vz + hp*F[1]*omega )*dVdt;
 
+   //TODO: WAY TOO MANY sincos calls!
+   double Fp_xyz[3];
+   get_vec_xyz(x, F, Fp_xyz);
+   double cosp = cos(pl->phi);
+   double sinp = sin(pl->phi);
+   double Fp[3] = {cosp*Fp_xyz[0] + sinp*Fp_xyz[1],
+                   -sinp*Fp_xyz[0] + cosp*Fp_xyz[1], Fp_xyz[2]};
+
+   double Phi = planetaryPotential(pl, xcyl[0], xcyl[1], xcyl[2]);
+
+   pl_gas_track[PL_GRV_PX] -= rho*Fp_xyz[0]*dVdt;
+   pl_gas_track[PL_GRV_PY] -= rho*Fp_xyz[1]*dVdt;
+   pl_gas_track[PL_GRV_PZ] -= rho*Fp_xyz[2]*dVdt;
+   pl_gas_track[PL_GRV_JZ] -= rho*(pl->r)*Fp[1]*dVdt;
+   pl_gas_track[PL_GRV_EGAS] -= rho*(hr*F[0]*vr + hz*F[2]*vz
+                                      + hp*F[1]*omega )*dVdt;
+   pl->Uf += rho*Phi*dV;
 }
 
-void planet_RK_copy( struct planet * pl ){
-   pl->RK_r     = pl->r;
-   pl->RK_phi   = pl->phi;
-   pl->RK_M     = pl->M;
-   pl->RK_omega = pl->omega;
-   pl->RK_vr    = pl->vr;
+void copyPlanetsRK( struct domain * theDomain ){
+    int pq;
+
+    double *pl_kin = theDomain->pl_kin;
+    double *pl_RK_kin = theDomain->pl_RK_kin;
+    double *pl_aux = theDomain->pl_aux;
+    double *pl_RK_aux = theDomain->pl_RK_aux;
+
+    for(pq=0; pq < theDomain->Npl * NUM_PL_KIN; pq++)
+        pl_RK_kin[pq] = pl_kin[pq];
+
+    for(pq=0; pq < theDomain->Npl * NUM_PL_AUX; pq++)
+        pl_RK_aux[pq] = pl_aux[pq];
 }
 
-void planet_RK_adjust( struct planet * pl , double RK ){
-   pl->r     = (1.-RK)*pl->r     + RK*pl->RK_r;
-   pl->phi   = (1.-RK)*pl->phi   + RK*pl->RK_phi;
-   pl->M     = (1.-RK)*pl->M     + RK*pl->RK_M;
-   pl->omega = (1.-RK)*pl->omega + RK*pl->RK_omega;
-   pl->vr    = (1.-RK)*pl->vr    + RK*pl->RK_vr;
+void adjustPlanetsRKkin( struct domain * theDomain , double RK ){
+    int pq;
+
+    double *pl_kin = theDomain->pl_kin;
+    double *pl_RK_kin = theDomain->pl_RK_kin;
+
+    for(pq=0; pq < theDomain->Npl * NUM_PL_KIN; pq++)
+        pl_kin[pq] = (1-RK) * pl_kin[pq] + RK * pl_RK_kin[pq];
 }
+
+void adjustPlanetsRKaux( struct domain * theDomain , double RK ){
+    int pq;
+
+    double *pl_aux = theDomain->pl_aux;
+    double *pl_RK_aux = theDomain->pl_RK_aux;
+    
+    for(pq=0; pq < theDomain->Npl * NUM_PL_AUX; pq++)
+        pl_aux[pq] = (1-RK) * pl_aux[pq] + RK * pl_RK_aux[pq];
+}
+
+void planet_init_kin(struct planet *pl, double *pl_kin)
+{
+    /* Set the planet kin[] parameters consistent with the
+     * planet's M, r, phi, etc.
+     * Analagous to prim2cons() in Hydro.
+     */
+
+    pl_kin[PL_M] = pl->M;
+    pl_kin[PL_R] = pl->r;
+    pl_kin[PL_PHI] = pl->phi;
+    pl_kin[PL_Z] = 0.0;
+    pl_kin[PL_PR] = pl->M * pl->vr;
+    pl_kin[PL_LL] = pl->M * pl->r * pl->r * pl->omega;
+    pl_kin[PL_PZ] = 0.0;
+    pl_kin[PL_SZ] = 0.0;
+    pl_kin[PL_EINT] = 0.0;
+}
+
+void zeroAuxPlanets( struct domain *theDomain)
+{
+    int pq;
+    for(pq=0; pq < NUM_PL_AUX * theDomain->Npl; pq++)
+    {
+        theDomain->pl_aux[pq] = 0.0;
+        theDomain->pl_RK_aux[pq] = 0.0;
+    }
+}
+
+void setupPlanets(struct domain *theDomain)
+{
+   initializePlanets( theDomain->thePlanets );
+  
+   int Npl = theDomain->Npl;
+   int p;
+   for(p=0; p<Npl; p++)
+   {
+       planet_init_kin(theDomain->thePlanets + p,
+                       theDomain->pl_kin + p*NUM_PL_KIN);
+   }
+
+   zeroAuxPlanets(theDomain);
+   initializePlanetTracking(theDomain);
+}
+
+void movePlanetsLive(struct domain *theDomain)
+{
+    /* 
+     * Adjusts planet mass, position, and velocity from kin[]
+     * values.  Like cons2prim.
+     */
+
+    int p;
+    int Npl = theDomain->Npl;
+    struct planet *thePlanets = theDomain->thePlanets;
+
+    for(p=0; p<Npl; p++)
+    {
+        struct planet *pl = thePlanets + p;
+        double *pl_kin = theDomain->pl_kin + p*NUM_PL_KIN;
+
+        double r = pl_kin[PL_R];
+        double M = pl_kin[PL_M];
+
+        pl->M = M;
+        pl->r = r;
+        pl->phi = pl_kin[PL_PHI];
+        pl->vr = pl_kin[PL_PR] / M;
+        pl->omega = pl_kin[PL_LL] / (M * r * r);
+    }
+}
+
+void initializePlanetTracking(struct domain *theDomain)
+{
+    int Npl = theDomain->Npl;
+    int p, pq;
+    
+    for(p=0; p<Npl; p++)
+        theDomain->thePlanets[p].Uf = 0.0;
+    
+    for(pq=0; pq<Npl * NUM_PL_INTEGRALS; pq++)
+        theDomain->pl_gas_track[pq] = 0.0;
+
+    theDomain->planet_gas_track_synced = 0;
+}
+
+void updatePlanetsKinAux(struct domain *theDomain, double dt)
+{
+    /*
+     * If the planets are LIVE, then the gas_track integrals *must*
+     * have been reduced (summed) over MPI ranks already for this to work.
+     *
+     * This is like updating cons from the fluxes.
+     */
+    int p;
+    int Npl = theDomain->Npl;
+    struct planet *thePlanets = theDomain->thePlanets;
+
+    int live_planet = !planet_motion_analytic();
+
+    for(p=0; p<Npl; p++)
+    {
+        struct planet *pl = thePlanets + p;
+
+        double cosp = cos(pl->phi);
+        double sinp = sin(pl->phi);
+
+        double M = pl->M;
+        double r = pl->r;
+        double omega = pl->omega;
+        
+        double x = r * cosp;
+        double y = r * sinp;
+        double vx = pl->vr * cosp - r * pl->omega * sinp;
+        double vy = pl->vr * sinp + r * pl->omega * cosp;
+        double vz = 0.0;
+
+        double v2 = vx*vx + vy*vy + vz*vz;
+
+
+        // Compute the gravitational potential and acceleration due to other
+        // planets.
+
+        double Phi_ext = 0.0;
+        double gx_ext = 0;
+        double gy_ext = 0;
+        double gz_ext = 0;
+
+        int p2;
+
+        for(p2=0; p2<Npl; p2++)
+        {
+            if(p == p2)
+                continue;
+        
+            struct planet *pl2 = theDomain->thePlanets + p2;
+            double r2 = pl2->r;
+            double cosp2 = cos(pl2->phi);
+            double sinp2 = sin(pl2->phi);
+            double x2 = r2*cosp2;
+            double y2 = r2*sinp2;
+
+            double rsep = sqrt((x-x2)*(x-x2) + (y-y2)*(y-y2));
+
+            Phi_ext += -phigrav(pl2->M, rsep, pl2->eps, pl2->type);
+            double g = fgrav(pl2->M, rsep, pl2->eps, pl2->type);
+
+            gx_ext += g * (x2-x) / rsep;
+            gy_ext += g * (y2-y) / rsep;
+            gz_ext += 0;
+        }
+
+        // These "*_pl" values are only set if the planet is live.
+        // In this case, the "kin" values track the full evolution of the
+        // planet.  Otherwise, "kin" only stores the *additional* accumulated
+        // offset from accretion
+
+        double vr_pl = 0;
+        double om_pl = 0;
+        double vz_pl = 0;
+        double Fr_pl = 0;
+        double rFp_pl = 0;
+        double Fz_pl = 0;
+        double Fx_pl = 0;
+        double Fy_pl = 0;
+
+        if(live_planet)
+        {
+            vr_pl = pl->vr;
+            om_pl = omega;
+
+            double gr = cosp * gx_ext + sinp * gy_ext;
+            double gp = r * (-sinp * gx_ext + cosp * gy_ext);
+
+            Fr_pl = M * (gr + r*omega*omega);
+            rFp_pl = M * gp;
+            Fz_pl = M * gz_ext;
+
+            Fx_pl = M*gx_ext;
+            Fy_pl = M*gy_ext;
+        }
+
+        /*
+         * Just giving the integrals names for ease later.
+         */
+
+        double *pl_gas_track = theDomain->pl_gas_track + p*NUM_PL_INTEGRALS;
+
+        //Mass & Momentum
+        double dM = pl_gas_track[PL_SNK_M];
+        double dPx_grv = pl_gas_track[PL_GRV_PX];
+        double dPy_grv = pl_gas_track[PL_GRV_PY];
+        double dPz_grv = pl_gas_track[PL_GRV_PZ];
+        
+        double dPx_snk = pl_gas_track[PL_SNK_PX];
+        double dPy_snk = pl_gas_track[PL_SNK_PY];
+        double dPz_snk = pl_gas_track[PL_SNK_PZ];
+
+        //Radial & Angular Momentum
+        double dJ_grv = pl_gas_track[PL_GRV_JZ];
+
+        double dJ_snk = pl_gas_track[PL_SNK_JZ];
+        double dS_snk = pl_gas_track[PL_SNK_SZ];
+
+        //Mass dipole movement
+        double dMx_snk = pl_gas_track[PL_SNK_MX];
+        double dMy_snk = pl_gas_track[PL_SNK_MY];
+        double dMz_snk = pl_gas_track[PL_SNK_MZ];
+       
+        //Fluid energy added to planet
+        double dEf_grv = pl_gas_track[PL_GRV_EGAS];
+        double dEf_snk = pl_gas_track[PL_SNK_EGAS];
+
+        //Potential energy btw gas & planet lost during accretion
+        double dUpot_snk = pl_gas_track[PL_SNK_UGAS];
+
+        double Uf = pl->Uf;
+
+        /*
+         * Calculating some things from the integrals
+         */
+
+        //Center of mass movement
+        double dx_snk = dMx_snk / M;
+        double dy_snk = dMy_snk / M;
+        double dz_snk = dMz_snk / M;
+        
+        double dr_snk = cosp * dx_snk + sinp * dy_snk;
+        double dphi_snk = (-sinp * dx_snk + cosp * dy_snk) / r;
+
+        // Radial Momentum
+        double dPr_grv = cosp * dPx_grv + sinp * dPy_grv;
+        double dPr_snk = cosp * dPx_snk + sinp * dPy_snk
+                        + M * r*omega * dphi_snk;
+
+        // Orbital Angular Momentum
+        double dL_grv = x * dPy_grv - y * dPx_grv;
+        double dL_snk = x * dPy_snk - y * dPx_snk 
+                        + dMx_snk * vy - dMy_snk * vx;
+        
+        // Kinetic energy added to the planet
+        double dK_grv = vx * dPx_grv + vy * dPy_grv + vz * dPz_grv;
+        double dK_snk = vx * dPx_snk + vy * dPy_snk + vz * dPz_snk 
+                            - 0.5*v2 * dM;
+
+        // Potential energy added to planet
+        double dU_grv = dEf_grv - dK_grv;
+
+        double dUf_snk = - dUpot_snk + (Uf/M) * dM
+                        - (dPx_grv/M) * dMx_snk
+                        - (dPy_grv/M) * dMy_snk
+                        - (dPz_grv/M) * dMz_snk;
+        double dUext_snk = Phi_ext * dM
+                        - gx_ext * dMx_snk
+                        - gy_ext * dMy_snk
+                        - gz_ext * dMz_snk;
+
+
+        double dU_snk = dUf_snk + dUext_snk;
+        
+        // Internal energy added to planet
+        double dEint_snk = dEf_snk - dK_snk - dU_snk;
+
+        double *pl_kin = theDomain->pl_kin + p*NUM_PL_KIN;
+        double *pl_aux = theDomain->pl_aux + p*NUM_PL_AUX;
+
+
+        pl_kin[PL_M] += dM;
+
+        pl_kin[PL_R] += vr_pl * dt + dr_snk;
+        pl_kin[PL_PHI] += om_pl * dt + dphi_snk;
+        pl_kin[PL_Z] += vz_pl * dt + dz_snk;
+
+        pl_kin[PL_PR] += Fr_pl * dt + dPr_grv + dPr_snk;
+        pl_kin[PL_LL] += rFp_pl * dt + dJ_grv + (dJ_snk - dS_snk);
+        pl_kin[PL_PZ] += Fz_pl * dt + dPz_grv + dPz_snk;
+
+        pl_kin[PL_SZ] += dS_snk;
+        pl_kin[PL_EINT] += dEint_snk;
+
+        //Direct values, easy!
+        pl_aux[PL_SNK_M] += dM;
+        pl_aux[PL_GRV_PX] += dPx_grv;
+        pl_aux[PL_GRV_PY] += dPy_grv;
+        pl_aux[PL_GRV_PZ] += dPz_grv;
+        pl_aux[PL_GRV_JZ] += dJ_grv;
+        pl_aux[PL_SNK_PX] += dPx_snk;
+        pl_aux[PL_SNK_PY] += dPy_snk;
+        pl_aux[PL_SNK_PZ] += dPz_snk;
+        pl_aux[PL_SNK_JZ] += dJ_snk;
+        pl_aux[PL_SNK_SZ] += dS_snk;
+        pl_aux[PL_SNK_MX] += dMx_snk;
+        pl_aux[PL_SNK_MY] += dMy_snk;
+        pl_aux[PL_SNK_MZ] += dMz_snk;
+        pl_aux[PL_GRV_EGAS] += dEf_grv;
+        pl_aux[PL_SNK_EGAS] += dEf_snk;
+        pl_aux[PL_SNK_UGAS] += dUf_snk;
+        
+
+        // Some more complicated things.
+        pl_aux[PL_GRV_LZ] += dL_grv;
+        pl_aux[PL_SNK_LZ] += dL_snk;
+
+        pl_aux[PL_GRV_K] += dK_grv;
+        pl_aux[PL_SNK_K] += dK_snk;
+        
+        pl_aux[PL_GRV_U] += dU_grv;
+        pl_aux[PL_SNK_U] += dU_snk;
+
+        pl_aux[PL_SNK_EINT] += dEint_snk;
+
+        // The external things
+        pl_aux[PL_EXT_PX] += Fx_pl*dt;
+        pl_aux[PL_EXT_PY] += Fy_pl*dt;
+        pl_aux[PL_EXT_PZ] += Fz_pl*dt;
+        pl_aux[PL_EXT_JZ] += rFp_pl*dt;
+        pl_aux[PL_EXT_K] += (vx*Fx_pl + vy*Fy_pl + vz*Fz_pl) * dt;
+        pl_aux[PL_EXT_U] -= (vx*Fx_pl + vy*Fy_pl + vz*Fz_pl) * dt;
+
+    }
+}
+

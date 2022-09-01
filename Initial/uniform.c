@@ -10,7 +10,9 @@ static double vz = 0.0;
 static double Bx = 0.0;
 static double By = 0.0;
 static double Bz = 0.0;
+static double *t = NULL;
 
+void get_xyz(const double *x, double *xyz);
 void get_vec_from_xyz(double *x, double *vxyz, double *v);
 void get_vec_contravariant(double *x, double *v, double *vc);
     
@@ -23,6 +25,7 @@ void setICparams( struct domain * theDomain )
     Bx = theDomain->theParList.initPar4;
     By = theDomain->theParList.initPar5;
     Bz = theDomain->theParList.initPar6;
+    t = &(theDomain->t);
 }
 
 void initial( double * prim , double * x )
@@ -52,4 +55,12 @@ void initial( double * prim , double * x )
     int q;
     for(q = NUM_C; q < NUM_Q; q++)
         prim[q] = 0.0;
+
+    if(NUM_N > 0)
+    {
+        double xyz[3];
+        get_xyz(x, xyz);
+        if(xyz[0] < Vxyz[0]*(*t)-0.1)
+            prim[NUM_C] = 1.0;
+    }
 }

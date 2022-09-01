@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "paul.h"
+#include "profiler.h"
 
 struct cell_lite{
    double prim[NUM_Q];
@@ -207,8 +208,13 @@ void exchangeData( struct domain * theDomain , int dim ){
 //Send Np[jk]...
 ////////////////
 
+   prof_tick(theDomain->prof, PROF_EXCH_NP_COUNT1);
+
 //Count the number of Np's to send...
    generate_intbuffer( theDomain , rnum , znum , dim , nijk , &indexL , &indexR , NULL    , NULL    , Ng , NN-2*Ng , 0 );
+   prof_tock(theDomain->prof, PROF_EXCH_NP_COUNT1);
+   prof_tick(theDomain->prof, PROF_EXCH_NP_COMM1);
+
    send_sizeL = indexL;
    send_sizeR = indexR;
 //Tell your neighbor how many to expect...
@@ -216,6 +222,9 @@ void exchangeData( struct domain * theDomain , int dim ){
                  &recv_sizeR , 1 , MPI_INT , right_rank[dim] , tag  , grid_comm , &status);
    MPI_Sendrecv( &send_sizeR , 1 , MPI_INT , right_rank[dim] , tag+1 , 
                  &recv_sizeL , 1 , MPI_INT ,  left_rank[dim] , tag+1, grid_comm , &status);
+   
+   prof_tock(theDomain->prof, PROF_EXCH_NP_COMM1);
+   prof_tick(theDomain->prof, PROF_EXCH_NP_COUNT2);
 
    int Nl_send[send_sizeL];
    int Nr_send[send_sizeR];
@@ -223,17 +232,25 @@ void exchangeData( struct domain * theDomain , int dim ){
    int Nr_recv[recv_sizeR];
 //Build up list of ints to send...
    generate_intbuffer( theDomain , rnum , znum , dim , nijk , &indexL , &indexR , Nl_send , Nr_send , Ng , NN-2*Ng , 1 );
+   prof_tock(theDomain->prof, PROF_EXCH_NP_COUNT2);
+   prof_tick(theDomain->prof, PROF_EXCH_NP_COMM2);
 //Send!
    MPI_Sendrecv( Nl_send , send_sizeL , MPI_INT ,  left_rank[dim] , tag+2 ,
                  Nr_recv , recv_sizeR , MPI_INT , right_rank[dim] , tag+2, grid_comm , &status);
    MPI_Sendrecv( Nr_send , send_sizeR , MPI_INT , right_rank[dim] , tag+3 ,
                  Nl_recv , recv_sizeL , MPI_INT ,  left_rank[dim] , tag+3, grid_comm , &status);
+   prof_tock(theDomain->prof, PROF_EXCH_NP_COMM2);
+   prof_tick(theDomain->prof, PROF_EXCH_NP_FIN);
 //Now take the list of ints and put them where they belong...
    generate_intbuffer( theDomain , rnum , znum , dim , nijk , &indexL , &indexR , Nl_recv , Nr_recv , 0  , NN-Ng   , 2 );
+   
+   prof_tock(theDomain->prof, PROF_EXCH_NP_FIN);
 
 ////////////
 //Send Cells
 ////////////
+
+   prof_tick(theDomain->prof, PROF_EXCH_PREP);
 
 //Count the number of cell_lites to send...
    generate_sendbuffer( theDomain , rnum , znum , dim , nijk , &indexL , &indexR , NULL    , NULL    , Ng , NN-2*Ng , 0 );
@@ -261,13 +278,23 @@ void exchangeData( struct domain * theDomain , int dim ){
                                         sizeof(struct cell_lite) * recv_sizeR);
 //Build up list of cells to send...
    generate_sendbuffer( theDomain , rnum , znum , dim , nijk , &indexL , &indexR , pl_send , pr_send , Ng , NN-2*Ng , 1 );
+
+   prof_tock(theDomain->prof, PROF_EXCH_PREP);
+   prof_tick(theDomain->prof, PROF_EXCH_COMM);
+
 //Send!
    MPI_Sendrecv( pl_send , send_sizeL , cell_mpi ,  left_rank[dim] , tag+2 ,
                  pr_recv , recv_sizeR , cell_mpi , right_rank[dim] , tag+2, grid_comm , &status);
    MPI_Sendrecv( pr_send , send_sizeR , cell_mpi , right_rank[dim] , tag+3 ,
                  pl_recv , recv_sizeL , cell_mpi ,  left_rank[dim] , tag+3, grid_comm , &status);
+
+   prof_tock(theDomain->prof, PROF_EXCH_COMM);
+   prof_tick(theDomain->prof, PROF_EXCH_FIN);
+
 //Now take the list of cells and put them into the appropriate locations...
    generate_sendbuffer( theDomain , rnum , znum , dim , nijk , &indexL , &indexR , pl_recv , pr_recv , 0  , NN-Ng   , 2 );
+   
+   prof_tock(theDomain->prof, PROF_EXCH_FIN);
 
    free(pl_send);
    free(pr_send);
@@ -276,5 +303,22 @@ void exchangeData( struct domain * theDomain , int dim ){
 
    MPI_Type_free( &cell_mpi );
 #endif
+}
+
+void exchangePlanets(struct domain *theDomain)
+{
+    /*
+     * This reduces (sums) the gas_track integrals to allow live planet motion
+     * to work.
+     */
+#if USE_MPI
+
+    int buf_size = theDomain->Npl * NUM_PL_INTEGRALS;
+
+    MPI_Allreduce(MPI_IN_PLACE, theDomain->pl_gas_track, buf_size,
+                  MPI_DOUBLE, MPI_SUM, theDomain->theComm);
+
+#endif
+    theDomain->planet_gas_track_synced = 1;
 }
 

@@ -6,7 +6,7 @@ void setFrameParams(struct domain *theDomain)
 {
 }
 
-void frame_U(double x[3], double U[4])
+void frame_U(const double x[3], double U[4])
 {
     double ia, b[3];
     ia = 1.0/metric_lapse(x);
@@ -18,7 +18,7 @@ void frame_U(double x[3], double U[4])
     U[3] = -ia*b[2];
 }
 
-void frame_der_U(double x[3], double dU[16])
+void frame_der_U(const double x[3], double dU[16])
 {
     int i,j;
     double ia, da[4], b[3], db[12];

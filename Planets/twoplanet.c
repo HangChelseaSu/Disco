@@ -52,7 +52,3 @@ void movePlanets( struct planet * thePlanets , double t , double dt ){
    thePlanets[2].phi += thePlanets[2].omega*dt;
 }
 
-void forcePlanets( struct planet * thePlanets , double dt ){
-   //Silence is golden.
-}
-
