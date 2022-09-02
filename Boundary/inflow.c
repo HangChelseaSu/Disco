@@ -12,7 +12,6 @@ void subtract_omega( double * );
 void boundary_trans( struct domain * theDomain , int dim ){
 
    struct cell ** theCells = theDomain->theCells;
-   struct face * theFaces = theDomain->theFaces_1;
    int * fIndex = theDomain->fIndex_r;
 
    int Nr = theDomain->Nr;
@@ -88,31 +87,6 @@ void boundary_trans( struct domain * theDomain , int dim ){
             }    
          }  
       }
-/*
-      for( j=Ng-1 ; j>=0 ; --j ){
-         for( k=0 ; k<Nz ; ++k ){
-            int jk  = j+Nr*k;
-            int jkp = j+1+Nr*k;
-            int n0 = fIndex[jk];
-            int n1 = fIndex[jkp];
-            int n;
-            for( n=n0 ; n<n1 ; ++n ){
-               struct face * f = theFaces+n;
-               struct cell * cL = f->L;
-               struct cell * cR = f->R;
-               cL->prim[RHO] += cR->prim[RHO]*f->dA;
-               cL->prim[PPP] += cR->prim[PPP]*f->dA;
-               cL->tempDoub += f->dA;
-            }
-            for( i=0 ; i<Np[jk] ; ++i ){
-               struct cell * c = theCells[jk]+i;
-               c->prim[RHO] /= c->tempDoub;
-               c->prim[PPP] /= c->tempDoub;
-               c->tempDoub = 0.0;
-            }
-         }
-      }
-*/
    }
 
 }

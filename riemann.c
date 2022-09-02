@@ -143,12 +143,12 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
    }
 }
 
-void riemann_trans( struct face * F , double dt , int dim , double rp,
-                    double rm, double zp, double zm,
+void riemann_trans( struct face * F , struct cell **theCells, double dt ,
+                    int dim , double rp, double rm, double zp, double zm,
                     double *fdAdt_hydro, double *fdAdt_visc){
 
-   struct cell * cL = F->L;
-   struct cell * cR = F->R;
+   struct cell * cL = &(theCells[F->jkL][F->iL]);
+   struct cell * cR = &(theCells[F->jkR][F->iR]);
    double dAdt      = F->dA*dt;
    double dxL       = F->dxL;
    double dxR       = F->dxR;

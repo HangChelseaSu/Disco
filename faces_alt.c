@@ -7,7 +7,7 @@ int get_num_rzFaces( int Nr , int Nz , int dim ){
    else return( (Nz-1)*Nr );
 }
 
-void addFace( struct face * theFaces , int n , struct cell * cL , struct cell * cR , double dxL , double dxR , double * xp , double * xm , int dim , int LRtype ){
+void addFace( struct face * theFaces , int n , int jkL, int jkR, int iL, int iR, double dxL , double dxR , double * xp , double * xm , int dim , int LRtype ){
    double dp = get_dp(xp[1],xm[1]);
    double phic = get_dp(xp[1],.5*dp);
    double r = dim==1 ? 0.5*(xp[0]+xm[0]) : get_centroid(xp[0], xm[0], 1);
@@ -16,8 +16,10 @@ void addFace( struct face * theFaces , int n , struct cell * cL , struct cell * 
    theFaces[n].cm[0] = r;
    theFaces[n].cm[1] = phic;
    theFaces[n].cm[2] = z;
-   theFaces[n].L   = cL;
-   theFaces[n].R   = cR;
+   theFaces[n].jkL   = jkL;
+   theFaces[n].jkR   = jkR;
+   theFaces[n].iL   = iL;
+   theFaces[n].iR   = iR;
    theFaces[n].dxL = dxL;
    theFaces[n].dxR = dxR;
    theFaces[n].dphi= dp;
@@ -161,7 +163,7 @@ void buildfaces( struct domain * theDomain , int dim , int mode ){
                }else{
                   xm[1] = cR->piph-cR->dphi;
                }
-               addFace( theFaces , n , cL , cR , dxL , dxR , xp , xm , dim , LR );
+               addFace( theFaces , n , jk, jkp, i, ip , dxL , dxR , xp , xm , dim , LR );
                ++n;
             
                if( LR == 0 ){

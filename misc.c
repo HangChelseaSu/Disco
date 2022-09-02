@@ -425,8 +425,8 @@ void phi_flux( struct domain * theDomain , double dt ){
 }
 
 void buildfaces( struct domain * , int , int );
-void riemann_trans( struct face * , double , int , double, double, double,
-                   double, double *, double *);
+void riemann_trans( struct face * , struct cell **, double , int ,
+                    double, double, double, double, double *, double *);
 
 void trans_flux( struct domain * theDomain , double dt , int dim ){
 
@@ -524,7 +524,8 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
             {
                 double fdAdt_hydro[NUM_Q];
                 double fdAdt_visc[NUM_Q];
-                riemann_trans(theFaces + f, dt, dim, rp, rm, zp, zm,
+                riemann_trans(theFaces + f, theDomain->theCells, dt, dim,
+                                rp, rm, zp, zm,
                               fdAdt_hydro, fdAdt_visc);
 
                 for(q=0; q<NUM_Q; q++)
@@ -535,13 +536,6 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
             }
         }
     }
-
-   /*
-   int f;
-   for( f=0 ; f<Nf ; ++f ){
-      riemann_trans( theFaces + f , dt , dim );
-   }
-   */
 }
 
 

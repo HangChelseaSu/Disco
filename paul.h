@@ -294,8 +294,10 @@ struct edge{
 };
 
 struct face{
-   struct cell * L;
-   struct cell * R;
+   int jkL;
+   int jkR;
+   int iL;
+   int iR;
    double dxL;
    double dxR;
    double cm[3];

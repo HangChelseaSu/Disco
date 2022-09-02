@@ -58,9 +58,9 @@ void set_B_fields( struct domain * theDomain ){
           double Phi = 0.0;
           if( NUM_Q > BRR ) Phi = prim[BRR]*f->dA;
           if( f->LRtype == 0 ){
-             f->L->Phi[2] = Phi;
+             theCells[f->jkL][f->iL].Phi[2] = Phi;
           }else{
-             f->R->Phi[1] = Phi;
+             theCells[f->jkR][f->iR].Phi[1] = Phi;
           }
        }
    }
@@ -76,9 +76,9 @@ void set_B_fields( struct domain * theDomain ){
          if( NUM_Q > BZZ ) Phi = prim[BZZ]*f->dA;
 
          if( f->LRtype == 0 ){ 
-            f->L->Phi[4] = Phi; 
+            theCells[f->jkL][f->iL].Phi[4] = Phi; 
          }else{
-            f->R->Phi[3] = Phi; 
+            theCells[f->jkR][f->iR].Phi[3] = Phi; 
          }    
       }
    }
@@ -134,8 +134,8 @@ void B_faces_to_cells( struct domain * theDomain , int type ){
       int n;
       for( n=0 ; n<Nf ; ++n ){
          struct face * f = theFaces_1 + n;
-         struct cell * cL = f->L;
-         struct cell * cR = f->R;
+         struct cell * cL = &(theCells[f->jkL][f->iL]);
+         struct cell * cR = &(theCells[f->jkR][f->iR]);
          double Phi;
          if( f->LRtype==0 ){
             Phi = cL->Phi[2];
@@ -231,8 +231,8 @@ void B_faces_to_cells( struct domain * theDomain , int type ){
          int Nfz = theDomain->fIndex_z[theDomain->N_ftracks_z];  
          for( n=0 ; n<Nfz ; ++n ){
             struct face * f = theFaces_2 + n;
-            struct cell * cL = f->L;
-            struct cell * cR = f->R;
+            struct cell * cL = &(theCells[f->jkL][f->iL]);
+            struct cell * cR = &(theCells[f->jkR][f->iR]);
             double Phi;
             if( f->LRtype==0 ){
                Phi = cL->Phi[4];
@@ -321,6 +321,7 @@ void update_B_fluxes( struct domain * theDomain , double dt ){
    struct face * theFaces = theDomain->theFaces_1;
    int * Nf = theDomain->fIndex_r;
    int Njk = theDomain->N_ftracks_r;
+   struct cell ** theCells = theDomain->theCells;
    int n;
    int jk;
    int n0 = 0;
@@ -336,18 +337,18 @@ void update_B_fluxes( struct domain * theDomain , double dt ){
              double E;
              double dl = f->dl;
              if( f->LRtype == 0 ){
-                E = f->L->E[1];
-                f->L->Phi[2] -= E*dl*dt;
-                f->L->Phi[0] += E*dl*dt;
+                E = theCells[f->jkL][f->iL].E[1];
+                theCells[f->jkL][f->iL].Phi[2] -= E*dl*dt;
+                theCells[f->jkL][f->iL].Phi[0] += E*dl*dt;
              }else{
-                E = f->R->E[0];
-                f->R->Phi[1] -= E*dl*dt;
-                f->R->Phi[0] -= E*dl*dt;
+                E = theCells[f->jkR][f->iR].E[0];
+                theCells[f->jkR][f->iR].Phi[1] -= E*dl*dt;
+                theCells[f->jkR][f->iR].Phi[0] -= E*dl*dt;
              }
              if( fp->LRtype == 0 ){
-                fp->L->Phi[2] += E*dl*dt;
+                theCells[fp->jkL][fp->iL].Phi[2] += E*dl*dt;
              }else{
-                fp->R->Phi[1] += E*dl*dt;
+                theCells[fp->jkR][fp->iR].Phi[1] += E*dl*dt;
              }
           }
           n0 = Nf[jk];
@@ -369,18 +370,18 @@ void update_B_fluxes( struct domain * theDomain , double dt ){
             double E;
             double dl = f->dl;
             if( f->LRtype == 0 ){ 
-               E = f->L->E[5];
-               f->L->Phi[4] += E*dl*dt;
-               f->L->Phi[0] -= E*dl*dt;
+               E = theCells[f->jkL][f->iL].E[5];
+               theCells[f->jkL][f->iL].Phi[4] += E*dl*dt;
+               theCells[f->jkL][f->iL].Phi[0] -= E*dl*dt;
             }else{
-               E = f->R->E[4];
-               f->R->Phi[3] += E*dl*dt;
-               f->R->Phi[0] += E*dl*dt;
+               E = theCells[f->jkR][f->iR].E[4];
+               theCells[f->jkR][f->iR].Phi[3] += E*dl*dt;
+               theCells[f->jkR][f->iR].Phi[0] += E*dl*dt;
             }    
             if( fp->LRtype == 0 ){ 
-               fp->L->Phi[4] -= E*dl*dt;
+               theCells[fp->jkL][fp->iL].Phi[4] -= E*dl*dt;
             }else{
-               fp->R->Phi[3] -= E*dl*dt;
+               theCells[fp->jkR][fp->iR].Phi[3] -= E*dl*dt;
             }    
          }    
          n0 = Nf[jk];
@@ -467,11 +468,11 @@ void avg_Efields( struct domain * theDomain ){
           struct cell * c1;
           struct cell * c2;
           if( f->LRtype == 0 ){
-             c1 = f->L;
-             c2 = f->R;
+             c1 = &(theCells[f->jkL][f->iL]);
+             c2 = &(theCells[f->jkR][f->iR]);
           }else{
-             c1 = f->R;
-             c2 = f->L;
+             c1 = &(theCells[f->jkR][f->iR]);
+             c2 = &(theCells[f->jkL][f->iL]);
           }
           double p1 = c1->piph;
           double p2 = c2->piph;
@@ -480,24 +481,24 @@ void avg_Efields( struct domain * theDomain ){
           if( f->LRtype == 0 ){
              double Eavg = ( dp2*c2->E[0] + dp1*c2->E[2] )/(dp1+dp2);
              double Bavg = ( dp2*c2->B[0] + dp1*c2->B[2] )/(dp1+dp2);
-             f->E = .5*(f->L->E[1] + Eavg);
-             f->B = .5*(f->L->B[1] + Bavg);
+             f->E = .5*(theCells[f->jkL][f->iL].E[1] + Eavg);
+             f->B = .5*(theCells[f->jkL][f->iL].B[1] + Bavg);
           }else{
              double Eavg = ( dp2*c2->E[1] + dp1*c2->E[3] )/(dp1+dp2);
              double Bavg = ( dp2*c2->B[1] + dp1*c2->B[3] )/(dp1+dp2);
-             f->E = .5*(f->R->E[0] + Eavg);
-             f->B = .5*(f->R->B[0] + Bavg);
+             f->E = .5*(theCells[f->jkR][f->iR].E[0] + Eavg);
+             f->B = .5*(theCells[f->jkR][f->iR].B[0] + Bavg);
           }
        }
 
        for( n=0 ; n<Nf ; ++n ){
           struct face * f = theFaces+n;
           if( f->LRtype==0 ){
-             f->L->E[1] = f->E;
-             f->L->B[1] = f->B;
+             theCells[f->jkL][f->iL].E[1] = f->E;
+             theCells[f->jkL][f->iL].B[1] = f->B;
           }else{
-             f->R->E[0] = f->E;
-             f->R->B[0] = f->B;
+             theCells[f->jkR][f->iR].E[0] = f->E;
+             theCells[f->jkR][f->iR].B[0] = f->B;
           }
           f->E = 0.0;
           f->B = 0.0;
@@ -515,11 +516,11 @@ void avg_Efields( struct domain * theDomain ){
          struct cell * c1;
          struct cell * c2;
          if( f->LRtype == 0 ){ 
-            c1 = f->L;
-            c2 = f->R;
+            c1 = &(theCells[f->jkL][f->iL]);
+            c2 = &(theCells[f->jkR][f->iR]);
          }else{
-            c1 = f->R;
-            c2 = f->L;
+            c1 = &(theCells[f->jkR][f->iR]);
+            c2 = &(theCells[f->jkL][f->iL]);
          }    
          double p1 = c1->piph;
          double p2 = c2->piph;
@@ -528,24 +529,24 @@ void avg_Efields( struct domain * theDomain ){
          if( f->LRtype == 0 ){ 
             double Eavg = ( dp2*c2->E[4] + dp1*c2->E[6] )/(dp1+dp2);
             double Bavg = ( dp2*c2->B[4] + dp1*c2->B[6] )/(dp1+dp2);
-            f->E = .5*(f->L->E[5] + Eavg);
-            f->B = .5*(f->L->B[5] + Bavg);
+            f->E = .5*(theCells[f->jkL][f->iL].E[5] + Eavg);
+            f->B = .5*(theCells[f->jkL][f->iL].B[5] + Bavg);
          }else{
             double Eavg = ( dp2*c2->E[5] + dp1*c2->E[7] )/(dp1+dp2);
             double Bavg = ( dp2*c2->B[5] + dp1*c2->B[7] )/(dp1+dp2);
-            f->E = .5*(f->R->E[4] + Eavg);
-            f->B = .5*(f->R->B[4] + Bavg);
+            f->E = .5*(theCells[f->jkR][f->iR].E[4] + Eavg);
+            f->B = .5*(theCells[f->jkR][f->iR].B[4] + Bavg);
          }    
       }
 
       for( n=0 ; n<Nf ; ++n ){
          struct face * f = theFaces+n;
          if( f->LRtype==0 ){
-            f->L->E[5] = f->E;
-            f->L->B[5] = f->B;
+            theCells[f->jkL][f->iL].E[5] = f->E;
+            theCells[f->jkL][f->iL].B[5] = f->B;
          }else{
-            f->R->E[4] = f->E;
-            f->R->B[4] = f->B;
+            theCells[f->jkR][f->iR].E[4] = f->E;
+            theCells[f->jkR][f->iR].B[4] = f->B;
          }    
          f->E = 0.0; 
          f->B = 0.0; 
@@ -715,6 +716,7 @@ void check_flipped( struct domain * theDomain , int dim ){
    struct face * theFaces;
    int * fI;
    int Nf_t;
+   struct cell ** theCells = theDomain->theCells;
 
    if( dim==0 ){
       theFaces = theDomain->theFaces_1;
@@ -738,14 +740,14 @@ void check_flipped( struct domain * theDomain , int dim ){
 
          double pp,pm;
          if( f->LRtype==0 ){
-            pm = f->L->piph;
+            pm = theCells[f->jkL][f->iL].piph;
          }else{
-            pm = f->R->piph;
+            pm = theCells[f->jkR][f->iR].piph;
          }
          if( fp->LRtype==0 ){
-            pp = fp->L->piph;
+            pp = theCells[fp->jkL][fp->iL].piph;
          }else{
-            pp = fp->R->piph;
+            pp = theCells[fp->jkR][fp->iR].piph;
          }
          double dp = get_signed_dp( pp , pm );
          if( dp<0. ){ fp->flip_flag=1; }//printf("FLIPPED YO\n");}
@@ -755,26 +757,27 @@ void check_flipped( struct domain * theDomain , int dim ){
 
 }
 
-void get_phi_pointer( struct face * f , double ** P , double ** RK_P , int dim ){
+void get_phi_pointer( struct face * f , struct cell **theCells,
+                    double ** P , double ** RK_P , int dim ){
 
    if( dim==0){
        if(NUM_FACES >= 3) {
           if( f->LRtype == 0 ){ 
-             *P    = &(f->L->Phi[2]);
-             *RK_P = &(f->L->RK_Phi[2]);
+             *P    = &(theCells[f->jkL][f->iL].Phi[2]);
+             *RK_P = &(theCells[f->jkL][f->iL].RK_Phi[2]);
           }else{
-             *P    = &(f->R->Phi[1]);
-             *RK_P = &(f->R->RK_Phi[1]);
+             *P    = &(theCells[f->jkR][f->iR].Phi[1]);
+             *RK_P = &(theCells[f->jkR][f->iR].RK_Phi[1]);
           }
        }
    }else {
        if(NUM_FACES >= 5) {
           if( f->LRtype == 0 ){ 
-             *P    = &(f->L->Phi[4]);
-             *RK_P = &(f->L->RK_Phi[4]);
+             *P    = &(theCells[f->jkL][f->iL].Phi[4]);
+             *RK_P = &(theCells[f->jkL][f->iL].RK_Phi[4]);
           }else{
-             *P    = &(f->R->Phi[3]);
-             *RK_P = &(f->R->RK_Phi[3]);
+             *P    = &(theCells[f->jkR][f->iR].Phi[3]);
+             *RK_P = &(theCells[f->jkR][f->iR].RK_Phi[3]);
           }  
        }
    }
@@ -786,6 +789,8 @@ void flip_fluxes( struct domain * theDomain , int dim ){
    struct face * theFaces;
    int * fI;
    int Nf_t;
+   struct cell ** theCells = theDomain->theCells;
+
    if( dim==0 ){
       theFaces = theDomain->theFaces_1;
       fI = theDomain->fIndex_r;
@@ -814,9 +819,9 @@ void flip_fluxes( struct domain * theDomain , int dim ){
             double *P = NULL;
             double *Pm, *Pp, *RK_P, *RK_Pm, *RK_Pp;
 
-            get_phi_pointer( f  , &P  , &RK_P  , dim );
-            get_phi_pointer( fm , &Pm , &RK_Pm , dim );
-            get_phi_pointer( fp , &Pp , &RK_Pp , dim );
+            get_phi_pointer( f  , theCells, &P  , &RK_P  , dim );
+            get_phi_pointer( fm , theCells, &Pm , &RK_Pm , dim );
+            get_phi_pointer( fp , theCells, &Pp , &RK_Pp , dim );
 
             double Phi = *P;
             double RK_Phi = *RK_P;

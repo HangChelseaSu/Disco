@@ -168,8 +168,8 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
     for(n = 0; n < Nf; n++)
     {
         struct face *f  = &(theFaces[n]);
-        (f->L)->tempDoub += f->dA;
-        (f->R)->tempDoub += f->dA;
+        theCells[f->jkL][f->iL].tempDoub += f->dA;
+        theCells[f->jkR][f->iR].tempDoub += f->dA;
     }
    
     //Add weighted slopes
@@ -177,8 +177,8 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
     {
         struct face * f  = &( theFaces[n] );
         double phi = f->cm[1];
-        struct cell * cL = f->L;
-        struct cell * cR = f->R;
+        struct cell * cL = &(theCells[f->jkL][f->iL]);
+        struct cell * cR = &(theCells[f->jkR][f->iR]);
         double dxL = f->dxL;
         double dxR = f->dxR;
         double phiL = cL->piph - .5*cL->dphi;
@@ -238,8 +238,8 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
     {
         struct face * f  = &( theFaces[n] );
         double phi = f->cm[1];
-        struct cell * cL = f->L;
-        struct cell * cR = f->R;
+        struct cell * cL = &(theCells[f->jkL][f->iL]);
+        struct cell * cR = &(theCells[f->jkR][f->iR]);
         double dxL = f->dxL;
         double dxR = f->dxR;
         double phiL = cL->piph - .5*cL->dphi;
