@@ -8,21 +8,21 @@
 
 void clean_pi( struct domain * theDomain ){
    
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
    int Npl = theDomain->Npl;
    double phi_max = theDomain->phi_max;
 
+   double **piph = theDomain->piph;
+
    int i,jk;
    for( jk=0 ; jk<Nr*Nz ; ++jk ){
       for( i=0 ; i<Np[jk] ; ++i ){
-         struct cell * c = &(theCells[jk][i]);
-         double phi = c->piph;
+         double phi = piph[jk][i];
          while( phi > phi_max ){ phi -= phi_max; }
          while( phi < 0.0     ){ phi += phi_max; }
-         c->piph = phi; 
+         piph[jk][i] = phi; 
       }    
    }
    int p;
@@ -46,7 +46,6 @@ void clean_pi( struct domain * theDomain ){
 
 double getmindt( struct domain * theDomain ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int NgRa = theDomain->NgRa;
@@ -57,6 +56,11 @@ double getmindt( struct domain * theDomain ){
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
 
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+   double **wiph = theDomain->wiph;
+   double **prim = theDomain->prim;
+
    double dt = theDomain->theParList.maxDT / theDomain->theParList.CFL;
    if(dt <= 0.0)
        dt = 1.0e100; //HUGE_VAL
@@ -66,19 +70,16 @@ double getmindt( struct domain * theDomain ){
       for( j=NgRa ; j<Nr-NgRb ; ++j ){
          int jk = j+Nr*k;
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            if(!(c->real))
-                continue;
-            double phip = c->piph;
-            double phim = phip - c->dphi;
+            double phip = piph[jk][i];
+            double phim = phip - dphi[jk][i];
             double xp[3] = {r_jph[j  ] , phip , z_kph[k  ]};
             double xm[3] = {r_jph[j-1] , phim , z_kph[k-1]};
             int im = i-1;
             if( i==0 ) im = Np[jk]-1; 
-            double wm = theCells[jk][im].wiph;
-            double wp = c->wiph;
+            double wm = wiph[jk][im];
+            double wp = wiph[jk][i];
             double w = .5*(wm+wp);
-            double dt_temp = mindt( c->prim , w , xp , xm );
+            double dt_temp = mindt( &(prim[jk][i*NUM_Q]) , w , xp , xm );
             if( dt > dt_temp ) dt = dt_temp;
          }
       }
@@ -107,13 +108,17 @@ void clear_w( struct domain * theDomain ){
 }*/
 
 void set_wcell( struct domain * theDomain ){
-   struct cell ** theCells = theDomain->theCells;
    int mesh_motion = theDomain->theParList.Mesh_Motion;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
+
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+   double **wiph = theDomain->wiph;
+   double **prim = theDomain->prim;
 
    int i,j,k;
    for( k=0 ; k<Nz ; ++k ){
@@ -122,24 +127,22 @@ void set_wcell( struct domain * theDomain ){
          int jk = j+Nr*k;
          double r = get_centroid(r_jph[j], r_jph[j-1], 1);
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * cL = &(theCells[jk][i]);  
             double w = 0.0;
             if( mesh_motion ){
-               double phip = cL->piph;
-               double phim = phip-cL->dphi;
+               double phip = piph[jk][i];
+               double phim = phip - dphi[jk][i];
                double x[3] = {r, 0.5*(phim+phip), z};
-               double wL = get_omega( cL->prim , x );
+               double wL = get_omega( &(prim[jk][i*NUM_Q]) , x );
 
                int ip = (i+1)%Np[jk];
-               struct cell * cR = &(theCells[jk][ip]);
-               phip = cR->piph;
-               phim = phip-cR->dphi;
+               phip = piph[jk][ip];
+               phim = phip - dphi[jk][ip];
                x[1] = 0.5*(phim+phip);
-               double wR = get_omega( cR->prim , x );
+               double wR = get_omega( &(prim[jk][ip*NUM_Q]) , x );
 
                w = .5*(wL + wR); 
             }
-            cL->wiph = w;
+            wiph[jk][i] = w;
          }
       }    
    }
@@ -149,11 +152,11 @@ void set_wcell( struct domain * theDomain ){
             int jk = j+Nr*k;
             double w = 0.0;
             for( i=0 ; i<Np[jk] ; ++i ){
-               w += theCells[jk][i].wiph; 
+               w += wiph[jk][i]; 
             }    
             w /= (double)Np[jk];
             for( i=0 ; i<Np[jk] ; ++i ){
-               theCells[jk][i].wiph = w; 
+               wiph[jk][i] = w; 
             }    
          }    
       } 
@@ -165,10 +168,10 @@ void set_wcell( struct domain * theDomain ){
             int jk = j+Nr*k;
             double r = get_centroid(r_jph[j], r_jph[j-1], 1);
             for( i=0 ; i<Np[jk] ; ++i ){
-               double phip = theCells[jk][i].piph;
-               double phim = phip-theCells[jk][i].dphi;
+               double phip = piph[jk][i];
+               double phim = phip-dphi[jk][i];
                double x[3] = {r, 0.5*(phim+phip), z};
-               theCells[jk][i].wiph = mesh_om(x); 
+               wiph[jk][i] = mesh_om(x); 
             }    
          }    
       } 
@@ -232,62 +235,70 @@ void regrid( struct domain * theDomain ){
 
 
 void adjust_RK_cons( struct domain * theDomain , double RK ){
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
 
+   double **cons = theDomain->cons;
+   double **RKcons = theDomain->RKcons;
+   double **Phi = theDomain->Phi;
+   double **RK_Phi = theDomain->RK_Phi;
+
    int i,jk,q;
    for( jk=0 ; jk<Nr*Nz ; ++jk ){
       for( i=0 ; i<Np[jk] ; ++i ){
-         struct cell * c = &(theCells[jk][i]);
+         int iq = NUM_Q*i;
          for( q=0 ; q<NUM_Q ; ++q ){
-            c->cons[q] = (1.-RK)*c->cons[q] + RK*c->RKcons[q];
+            cons[jk][iq+q] = (1.-RK)*cons[jk][iq+q] + RK*RKcons[jk][iq+q];
          }
+         int ip = NUM_FACES*i;
          for( q=0 ; q<NUM_FACES ; ++q ){
-            c->Phi[q] = (1.-RK)*c->Phi[q] + RK*c->RK_Phi[q];
+            Phi[jk][ip+q] = (1.-RK)*Phi[jk][ip+q] + RK*RK_Phi[jk][ip+q];
          }
       }
    }
 }
 
 void move_cells( struct domain * theDomain , double dt){
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
+
+   double **piph = theDomain->piph;
+   double **wiph = theDomain->wiph;
+
    int i,jk;
    for( jk=0 ; jk<Nr*Nz ; ++jk ){
       for( i=0 ; i<Np[jk] ; ++i ){
-         struct cell * c = &(theCells[jk][i]);
-         c->piph += c->wiph*dt;
+         piph[jk][i] += wiph[jk][i]*dt;
       }
    }
 }
 
 
 void calc_dp( struct domain * theDomain ){
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
+   
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
 
    int i,jk;
    for( jk=0 ; jk<Nr*Nz ; ++jk ){
       for( i=0 ; i<Np[jk] ; ++i ){
          int im = i-1;
          if( i == 0 ) im = Np[jk]-1;
-         double phim = theCells[jk][im].piph;
-         double phip = theCells[jk][i ].piph;
+         double phim = piph[jk][im];
+         double phip = piph[jk][i ];
          double dphi = get_dp(phip,phim);
-         theCells[jk][i].dphi = dphi;
+         dphi[jk][i] = dphi;
       }
    }
 }
 
 void calc_prim( struct domain * theDomain ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int NgRa = theDomain->NgRa;
@@ -297,6 +308,11 @@ void calc_prim( struct domain * theDomain ){
    int * Np = theDomain->Np;
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
+
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+   double **prim = theDomain->prim;
+   double **cons = theDomain->cons;
 
    int i,j,k;
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
@@ -309,14 +325,14 @@ void calc_prim( struct domain * theDomain ){
          double rp = r_jph[j];
          double r = get_centroid(rp, rm, 1);
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phip = c->piph;
-            double phim = phip-c->dphi;
+            double phip = piph[jk][i];
+            double phim = phip - dphi[jk][i];
             double xp[3] = {rp, phip, zp};
             double xm[3] = {rm, phim, zm};
             double dV = get_dV( xp , xm );
             double x[3] = {r, 0.5*(phim+phip), z};
-            cons2prim( c->cons , c->prim , x , dV, xp, xm );
+            cons2prim( &(cons[jk][i*NUM_Q]) , &(prim[jk][i*NUM_Q]) ,
+                        x , dV, xp, xm );
          }
       }
    }
@@ -324,7 +340,6 @@ void calc_prim( struct domain * theDomain ){
 
 void calc_cons( struct domain * theDomain ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int NgRa = theDomain->NgRa;
@@ -334,6 +349,11 @@ void calc_cons( struct domain * theDomain ){
    int * Np = theDomain->Np;
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
+
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+   double **prim = theDomain->prim;
+   double **cons = theDomain->cons;
 
    int i,j,k;
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
@@ -348,14 +368,14 @@ void calc_cons( struct domain * theDomain ){
 
          int jk = j+Nr*k;
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phip = c->piph;
-            double phim = phip-c->dphi;
+            double phip = piph[jk][i];
+            double phim = phip - dphi[jk][i];
             double xp[3] = {rp, phip, zp};
             double xm[3] = {rm, phim, zm};
             double dV = get_dV( xp , xm );
             double x[3] = {r, 0.5*(phim+phip), z};
-            prim2cons( c->prim , c->cons , x , dV , xp, xm);
+            prim2cons( &(prim[jk][i*NUM_Q] , &(cons[jk][i*NUM_Q]) ,
+                        x , dV , xp, xm);
          }
       }
    }
@@ -569,7 +589,6 @@ void damping( double * , double * , double * , double * , double, double);
 
 void add_source( struct domain * theDomain , double dt ){
 
-   struct cell ** theCells = theDomain->theCells;
    struct planet * thePlanets = theDomain->thePlanets;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
@@ -585,14 +604,21 @@ void add_source( struct domain * theDomain , double dt ){
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
 
+   double **prim = theDomain->prim;
+   double **cons = theDomain->cons;
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+   double **gradr = theDomain->gradr;
+   double **gradp = theDomain->gradp;
+   double **gradz = theDomain->gradz;
+
    int i,j,k,p;
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
       for( j=NgRa ; j<Nr-NgRb ; ++j ){
          int jk = j+Nr*k;
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phip = c->piph;
-            double phim = c->piph - c->dphi;
+            double phip = piph[jk][i];
+            double phim = piph[jk][i] - dphi[jk][i];
             double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
             double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
             double dV = get_dV(xp,xm);
@@ -603,26 +629,30 @@ void add_source( struct domain * theDomain , double dt ){
             double sdVdt_sink[NUM_Q] = {0};
             double sdVdt_cool[NUM_Q] = {0};
             double sdVdt_damp[NUM_Q] = {0};
+
+            int iq = i*NUM_Q;
             
-            source( c->prim , sdVdt_hydro, xp , xm , dV*dt  );
+            source( &(prim[jk][iq]) , sdVdt_hydro, xp , xm , dV*dt  );
             
             for( p=0 ; p<Npl ; ++p ){
-               planet_src( thePlanets+p, c->prim, sdVdt_grav, xp, xm, dV, dt,
+               planet_src( thePlanets+p, &(prim[jk][iq]), sdVdt_grav, xp, xm,
+                        dV, dt,
                           theDomain->pl_gas_track + p*NUM_PL_INTEGRALS);
             }
             if(visc_flag)
-                visc_source( c->prim, c->gradr, c->gradp, c->gradz, sdVdt_visc,
+                visc_source( &(prim[jk][iq]), &(gradr[jk][iq]),
+                            &(gradp[jk][iq]), &(gradz[jk][iq]), sdVdt_visc,
                             xp, xm, dV*dt);
-            omega_src( c->prim , sdVdt_hydro , xp , xm , dV*dt );
-            sink_src( c->prim , sdVdt_sink , xp , xm , dV, dt,
+            omega_src( &(prim[jk][iq]) , sdVdt_hydro , xp , xm , dV*dt );
+            sink_src( &(prim[jk][iq]) , sdVdt_sink , xp , xm , dV, dt,
                       theDomain->pl_gas_track);
-            cooling( c->prim , sdVdt_cool , xp , xm , dV, dt );
-            damping( c->prim , sdVdt_damp , xp , xm , dV, dt );
+            cooling( &(prim[jk][iq]) , sdVdt_cool , xp , xm , dV, dt );
+            damping( &(prim[jk][iq]) , sdVdt_damp , xp , xm , dV, dt );
 
             int q;
             for(q=0; q<NUM_Q; q++)
             {
-                c->cons[q] += sdVdt_hydro[q] + sdVdt_grav[q] + sdVdt_visc[q]
+                cons[jk][iq+q] += sdVdt_hydro[q] + sdVdt_grav[q] + sdVdt_visc[q]
                               + sdVdt_sink[q] + sdVdt_cool[q] + sdVdt_damp[q];
                 int iq = NUM_Q*jk + q;
                 theDomain->theTools.S[iq] += sdVdt_hydro[q];

@@ -39,35 +39,48 @@ void generate_mpi_cell( MPI_Datatype * cell_mpi ){
 
 }
 
-void copy_cell_to_lite( struct cell * c , struct cell_lite * cl ){
+void copy_cell_to_lite( struct domain *theDomain, int jk, int i,
+                        struct cell_lite * cl ){
+
+   double *prim = &(theDomain->prim[jk][NUM_Q*i]);
+   double *cons = &(theDomain->cons[jk][NUM_Q*i]);
+   double *RKcons = &(theDomain->RKcons[jk][NUM_Q*i]);
+   double *Phi = &(theDomain->Phi[jk][NUM_FACES*i]);
+   double *RKPhi = &(theDomain->RKPhi[jk][NUM_FACES*i]);
   
-   memcpy( cl->prim   , c->prim   , NUM_Q*sizeof(double) ); 
-   memcpy( cl->cons   , c->cons   , NUM_Q*sizeof(double) ); 
-   memcpy( cl->RKcons , c->RKcons , NUM_Q*sizeof(double) );
-   memcpy( cl->Phi    , c->Phi    , NUM_FACES*sizeof(double) );
-   memcpy( cl->RK_Phi , c->RK_Phi , NUM_FACES*sizeof(double) );
-   cl->piph   = c->piph;
-   cl->dphi   = c->dphi;
-   cl->wiph   = c->wiph; 
+   memcpy( cl->prim   , prim   , NUM_Q*sizeof(double) ); 
+   memcpy( cl->cons   , cons   , NUM_Q*sizeof(double) ); 
+   memcpy( cl->RKcons , RKcons , NUM_Q*sizeof(double) );
+   memcpy( cl->Phi    , Phi    , NUM_FACES*sizeof(double) );
+   memcpy( cl->RK_Phi , RK_Phi , NUM_FACES*sizeof(double) );
+   cl->piph   = theDomain->piph[jk][i];
+   cl->dphi   = theDomain->dphi[jk][i];
+   cl->wiph   = theDomain->wiph[jk][i]; 
 
 }
 
-void copy_lite_to_cell( struct cell_lite * cl , struct cell * c ){ 
+void copy_lite_to_cell( struct cell_lite * cl , struct domain * theDomain,
+                        int jk, int i){ 
 
-   memcpy( c->prim   , cl->prim   , NUM_Q*sizeof(double) ); 
-   memcpy( c->cons   , cl->cons   , NUM_Q*sizeof(double) ); 
-   memcpy( c->RKcons , cl->RKcons , NUM_Q*sizeof(double) );
-   memcpy( c->Phi    , cl->Phi    , NUM_FACES*sizeof(double) );
-   memcpy( c->RK_Phi , cl->RK_Phi , NUM_FACES*sizeof(double) );
-   c->piph   = cl->piph;
-   c->dphi   = cl->dphi;
-   c->wiph   = cl->wiph;
+   double *prim = &(theDomain->prim[jk][NUM_Q*i]);
+   double *cons = &(theDomain->cons[jk][NUM_Q*i]);
+   double *RKcons = &(theDomain->RKcons[jk][NUM_Q*i]);
+   double *Phi = &(theDomain->Phi[jk][NUM_FACES*i]);
+   double *RKPhi = &(theDomain->RKPhi[jk][NUM_FACES*i]);
+
+   memcpy( prim   , cl->prim   , NUM_Q*sizeof(double) ); 
+   memcpy( cons   , cl->cons   , NUM_Q*sizeof(double) ); 
+   memcpy( RKcons , cl->RKcons , NUM_Q*sizeof(double) );
+   memcpy( Phi    , cl->Phi    , NUM_FACES*sizeof(double) );
+   memcpy( RK_Phi , cl->RK_Phi , NUM_FACES*sizeof(double) );
+   theDomain->piph[jk][i]   = cl->piph;
+   theDomain->dphi[jk][i]   = cl->dphi;
+   theDomain->wiph[jk][i]   = cl->wiph;
 
 }
 
 void generate_sendbuffer( struct domain * theDomain , int rnum , int znum , int dim , int * nijk , int * indexL , int * indexR , struct cell_lite * pl , struct cell_lite * pr , int dn1 , int dn2 , int mode ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Periodic;
    if( dim == 0 )
        Periodic = theDomain->theParList.R_Periodic;
@@ -89,11 +102,10 @@ void generate_sendbuffer( struct domain * theDomain , int rnum , int znum , int 
 
          int jk = nijk[0]+Nr*nijk[1];
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
             if( mode==1 ){
-               copy_cell_to_lite( c , pl+iL );
+               copy_cell_to_lite( theDomain, jk, i , pl+iL );
             }else if( mode==2 && ( dim_rank[dim] != 0 || Periodic ) ){
-               copy_lite_to_cell( pl+iL , c );
+               copy_lite_to_cell( pl+iL , theDomain, jk, i );
             }
             ++iL;
          }
@@ -102,11 +114,10 @@ void generate_sendbuffer( struct domain * theDomain , int rnum , int znum , int 
 
          jk = nijk[0]+Nr*nijk[1];
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
             if( mode==1 ){
-               copy_cell_to_lite( c , pr+iR );
+               copy_cell_to_lite( theDomain, jk, i , pr+iR );
             }else if( mode==2 && ( dim_rank[dim] != dim_size[dim]-1 || Periodic ) ){
-               copy_lite_to_cell( pr+iR , c );
+               copy_lite_to_cell( pr+iR , theDomain, jk, i );
             }
             ++iR;
          }
@@ -119,9 +130,24 @@ void generate_sendbuffer( struct domain * theDomain , int rnum , int znum , int 
    *indexR = iR;
 }
 
+void resize_cell_data(struct domain *theDomain, int jk, int Np)
+{
+    if(Np == theDomain->Np[jk])
+        return;
+
+    int p;
+    for(p=0; p<theDomain->ndata; p++)
+    {
+        double **field = theDomain->data[p];
+        int size = theDomain->data_len[p];
+        field[jk] = (double *)realloc(field[jk], Np * size * sizeof(double));
+    }
+
+    theDomain->Np[jk] = Np;
+}
+
 void generate_intbuffer( struct domain * theDomain , int rnum , int znum , int dim , int * nijk , int * indexL , int * indexR , int * Npl , int * Npr , int dn1 , int dn2 , int mode ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Periodic;
    if( dim == 0 )
        Periodic = theDomain->theParList.R_Periodic;
@@ -144,9 +170,9 @@ void generate_intbuffer( struct domain * theDomain , int rnum , int znum , int d
          int jk = nijk[0]+Nr*nijk[1];
          if( mode==1 ){
             Npl[ iL ] = Np[jk];
-         }else if( mode==2 && ( dim_rank[dim] != 0 || Periodic ) ){ 
-            Np[jk] = Npl[ iL ];
-            theCells[jk] = (struct cell *) realloc( theCells[jk] , Np[jk]*sizeof(struct cell) );
+         }else if( mode==2 
+                 && ( dim_rank[dim] != 0 || Periodic ) ){ 
+            resize_cell_data(theDomain, jk, Npl[iL]);
          }    
          ++iL;
 
@@ -155,9 +181,9 @@ void generate_intbuffer( struct domain * theDomain , int rnum , int znum , int d
          jk = nijk[0]+Nr*nijk[1];
          if( mode==1 ){
             Npr[ iR ] = Np[jk];
-         }else if( mode==2 && ( dim_rank[dim] != dim_size[dim]-1 || Periodic ) ){
-            Np[jk] = Npr[ iR ];
-            theCells[jk] = (struct cell *) realloc( theCells[jk] , Np[jk]*sizeof(struct cell) );
+         }else if( mode==2 
+                 && ( dim_rank[dim] != dim_size[dim]-1 || Periodic ) ){
+            resize_cell_data(theDomain, jk, Npr[iR]);
          }    
          ++iR;
 

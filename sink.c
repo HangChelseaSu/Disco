@@ -2,6 +2,7 @@
 #include "omega.h"
 #include "geometry.h"
 #include "planet.h"
+#include "hydro.h"
 
 static int sinkType = 0;
 static int sinkNumber = 0;
@@ -49,7 +50,6 @@ static double dampLenUpper = 0.0;
 static double dampLenLower = 0.0;
 
 void initial( double * , double * );
-void prim2cons( double * , double * , double * , double );
 
 void setSinkParams(struct domain *theDomain)
 {

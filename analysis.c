@@ -221,7 +221,6 @@ void add_diagnostics( struct domain * theDomain , double dt ){
    int * Np = theDomain->Np;
    int Nq = theDomain->num_tools;
    struct diagnostic_avg * theTools = &(theDomain->theTools);
-   struct cell ** theCells = theDomain->theCells;
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
 
@@ -242,16 +241,17 @@ void add_diagnostics( struct domain * theDomain , double dt ){
             int jk = k*Nr + j;
             for(i=0; i<Np[jk]; i++)
             {
-                struct cell * c = theCells[jk]+i;
-                double phip = c->piph;
-                double phim = phip - c->dphi;
+                double phip = theDomain->piph[jk][i];
+                double phim = phip - theDomain->dphi[jk][i];
                 double xp[3] = {r_jph[j  ] , phip , z_kph[k  ]};  
                 double xm[3] = {r_jph[j-1] , phim , z_kph[k-1]};
                 double xc[3];
                 get_centroid_arr(xp, xm, xc);  
                 double dV = get_dV(xp,xm);
                 double Qrz[Nq];
-                get_diagnostics( xc , c->prim , Qrz , theDomain );
+                int iq = NUM_Q*i;
+                get_diagnostics( xc , &(theDomain->prim[jk][iq]),
+                                Qrz , theDomain );
                 for( q=0 ; q<Nq ; ++q ) 
                     temp_sum[ jk*Nq + q ] += Qrz[q]*dV;
                 temp_vol[jk] += dV;
@@ -289,7 +289,6 @@ void run_inst_diagnostics( struct domain * theDomain ,
    theSlowTools->Qrz = (double *)malloc(Nr*Nz*Nq*sizeof(double));
    memset( theSlowTools->Qrz, 0 , Nr*Nz*Nq*sizeof(double) );
    
-   struct cell ** theCells = theDomain->theCells;
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
 
@@ -306,16 +305,17 @@ void run_inst_diagnostics( struct domain * theDomain ,
             int jk = k*Nr + j;
             for(i=0; i<Np[jk]; i++)
             {
-                struct cell * c = theCells[jk]+i;
-                double phip = c->piph;
-                double phim = phip - c->dphi;
+                double phip = theDomain->piph[jk][i];
+                double phim = phip - theDomain->dphi[jk][i];
                 double xp[3] = {r_jph[j  ] , phip , z_kph[k  ]};  
                 double xm[3] = {r_jph[j-1] , phim , z_kph[k-1]};
                 double xc[3];
                 get_centroid_arr(xp, xm, xc);  
                 double dV = get_dV(xp,xm);
                 double Qrz[Nq];
-                get_inst_diagnostics( xc , c->prim , Qrz , theDomain );
+                int iq = NUM_Q*i;
+                get_inst_diagnostics( xc , &(theDomain->prim[jk][iq]) ,
+                                    Qrz , theDomain );
                 for( q=0 ; q<Nq ; ++q ) 
                     theSlowTools->Qrz[ jk*Nq + q ] += Qrz[q]*dV;
             }

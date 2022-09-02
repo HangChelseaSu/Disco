@@ -199,7 +199,6 @@ void setupCells( struct domain * theDomain ){
    calc_dp( theDomain );
 
    int i,j,k;
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
@@ -210,21 +209,26 @@ void setupCells( struct domain * theDomain ){
    int Npl = theDomain->Npl;
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
+   
+   double **prim = theDomain->prim;
+   double **cons = theDomain->cons;
+   double **gradr = theDomain->gradr;
+   double **gradp = theDomain->gradp;
+   double **gradz = theDomain->gradz;
+   double **wiph = theDomain->wiph;
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+
    int atmos = theDomain->theParList.include_atmos;
 
    //Null setup for all cells
    for(k=0; k<Nz; k++){
       for(j=0; j<Nr; j++){
-         int jk = j+Nr*k;
-         for(i=0; i<Np[jk]; i++){
-            struct cell * c = &(theCells[jk][i]);
-            c->wiph = 0.0; 
-            c->real = 0;
-
-            memset(c->gradr, 0, NUM_Q*sizeof(double));
-            memset(c->gradp, 0, NUM_Q*sizeof(double));
-            memset(c->gradz, 0, NUM_Q*sizeof(double));
-         }
+         int jk = Nr*k + j;
+         memset(wiph, 0, Np[jk] * sizeof(double));
+         memset(gradr, 0, Np[jk] * NUM_Q * sizeof(double));
+         memset(gradp, 0, Np[jk] * NUM_Q * sizeof(double));
+         memset(gradz, 0, Np[jk] * NUM_Q * sizeof(double));
       }
    }
 
@@ -235,32 +239,33 @@ void setupCells( struct domain * theDomain ){
          double r = get_centroid( r_jph[j], r_jph[j-1], 1);
          int jk = j+Nr*k;
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phip = c->piph;
-            double phim = phip-c->dphi;
-            c->wiph = 0.0; 
+            double phip = piph[jk][i];
+            double phim = phip - dphi[jk][i];
             double xp[3] = {r_jph[j  ],phip,z_kph[k  ]};
             double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
             double dV = get_dV( xp , xm );
-            double phi = c->piph-.5*c->dphi;
+            double phi = piph[jk][i] - 0.5*dphi[jk][i];
             double x[3] = {r, phi, z};
+
+            int iq = NUM_Q*i;
 
             if( !restart_flag )
             {
-               initial( c->prim , x );
-               subtract_omega( c->prim ); 
+
+               initial( &(prim[jk][iq]) , x );
+               subtract_omega( &(prim[jk][iq]) ); 
                if( atmos ){
                   int p;
                   for( p=0 ; p<Npl ; ++p ){
                      double gam = theDomain->theParList.Adiabatic_Index;
-                     adjust_gas( theDomain->thePlanets+p , x , c->prim , gam );
+                     adjust_gas( theDomain->thePlanets+p , x ,
+                                &(prim[jk][iq]) , gam );
                   }
                }
             }
             if(noiseType != 0)
-                addNoise(c->prim, x);
-            prim2cons( c->prim , c->cons , x , dV, xp, xm);
-            c->real = 1;
+                addNoise(&(prim[jk][iq]), x);
+            prim2cons( &(prim[jk][iq]) , &(cons[jk][iq]) , x , dV, xp, xm);
          }    
       }    
    }
@@ -282,15 +287,15 @@ void setupCells( struct domain * theDomain ){
          double r = get_centroid( r_jph[j], r_jph[j-1], 1);
          int jk = j+Nr*k;
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phip = c->piph;
-            double phim = phip-c->dphi;
+            double phip = piph[jk][i];
+            double phim = phip - dphi[jk][i];
             double xp[3] = {r_jph[j  ],phip,z_kph[k  ]};
             double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
             double dV = get_dV( xp , xm );
-            double phi = c->piph-.5*c->dphi;
+            double phi = piph[jk][i] - 0.5*dphi[jk][i];
             double x[3] = {r, phi, z};
-            cons2prim( c->cons , c->prim , x , dV, xp, xm);
+            cons2prim( &(cons[jk][i*NUM_Q]) , &(prim[jk][i*NUM_Q]) ,
+                        x , dV, xp, xm);
          }
       }
    }
@@ -323,9 +328,43 @@ void freeDomain( struct domain * theDomain ){
    int Nz = theDomain->Nz;
    int jk;
    for( jk=0 ; jk<Nr*Nz ; ++jk ){
-      free( theDomain->theCells[jk] );
+      free( theDomain->prim[jk] );
+      free( theDomain->cons[jk] );
+      free( theDomain->RKcons[jk] );
+      free( theDomain->gradr[jk] );
+      free( theDomain->gradp[jk] );
+      free( theDomain->gradz[jk] );
+      free( theDomain->piph[jk] );
+      free( theDomain->dphi[jk] );
+      free( theDomain->wiph[jk] );
+      free( theDomain->E[jk] );
+      free( theDomain->B[jk] );
+      free( theDomain->E_phi[jk] );
+      free( theDomain->Phi[jk] );
+      free( theDomain->RK_Phi[jk] );
+      free( theDomain->tempDoub[jk] );
    }
-   free( theDomain->theCells );
+   free( theDomain->prim );
+   free( theDomain->cons );
+   free( theDomain->RKcons );
+   free( theDomain->gradr );
+   free( theDomain->gradp );
+   free( theDomain->gradz );
+   free( theDomain->piph );
+   free( theDomain->dphi );
+   free( theDomain->wiph );
+   free( theDomain->E );
+   free( theDomain->B );
+   free( theDomain->E_phi );
+   free( theDomain->Phi );
+   free( theDomain->RK_Phi );
+   free( theDomain->tempDoub );
+
+   free(theDomain->data);
+   free(theDomain->data_len);
+
+   
+
    free( theDomain->Np );
    theDomain->r_jph--;
    free( theDomain->r_jph );

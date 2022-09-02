@@ -203,7 +203,29 @@ struct diagnostic_inst {
 
 struct domain{
 
-   struct cell ** theCells;
+   //struct cell ** theCells;
+
+   // Cell data
+   double **prim;
+   double **cons;
+   double **RKcons;
+   double **gradr;
+   double **gradp;
+   double **gradz;
+   double **piph;
+   double **dphi;
+   double **wiph;
+   double **E;
+   double **B;
+   double **E_phi;
+   double **Phi;
+   double **RK_Phi;
+   double **tempDoub;
+
+   int N_data;
+   double ***data;
+   int *data_len;
+
    struct face * theFaces_1;
    struct face * theFaces_2;
    struct planet * thePlanets;
@@ -258,6 +280,7 @@ struct domain{
 
 };
 
+/*
 struct cell{
 
    double prim[NUM_Q];
@@ -279,6 +302,7 @@ struct cell{
 
    int real;
 };
+*/
 
 struct edge{
    struct cell * LU;

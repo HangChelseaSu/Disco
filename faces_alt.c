@@ -37,7 +37,6 @@ void addFace( struct face * theFaces , int n , int jkL, int jkR, int iL, int iR,
 
 void buildfaces( struct domain * theDomain , int dim , int mode ){
   
-   struct cell ** theCells = theDomain->theCells;
    struct face * theFaces;
    int * ntj;
    if( dim==1 ){
@@ -56,6 +55,9 @@ void buildfaces( struct domain * theDomain , int dim , int mode ){
    double Pmax = theDomain->phi_max;
    int i,j,k; 
 
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+
    int I0[Nr*Nz];
 
    for( k=0 ; k<Nz ; ++k ){
@@ -64,10 +66,9 @@ void buildfaces( struct domain * theDomain , int dim , int mode ){
          int found=0;
          int quad_prev=0;
          for( i=0 ; i<Np[jk] && !found ; ++i ){
-            struct cell * c = theCells[jk]+i;
             double convert = 2.*M_PI/Pmax;
-            double sn = sin(c->piph*convert);
-            double cs = cos(c->piph*convert);
+            double sn = sin(piph[jk][i]*convert);
+            double cs = cos(piph[jk][i]*convert);
             if( sn>0. && cs>0. && quad_prev ){
                quad_prev = 0;
                found = 1;
@@ -138,15 +139,20 @@ void buildfaces( struct domain * theDomain , int dim , int mode ){
  
                struct cell * cL = &(theCells[jk ][i] );
                struct cell * cR = &(theCells[jkp][ip]);
+
+               double piphL = piph[jk][i];
+               double piphR = piph[jkp][ip];
+               double dphiL = dphi[jk][i];
+               double dphiR = dphi[jkp][ip];
  
-               double dphi = cL->piph - cR->piph;
+               double dphi = piphL - piphR;
                while( dphi > .5*Pmax ) dphi -= Pmax;
                while( dphi <-.5*Pmax ) dphi += Pmax;
  
                int LR = 0;
                if( dphi > 0. ) LR = 1;
 
-               dphi = cL->piph-cL->dphi - cR->piph+cR->dphi;
+               dphi = piphL-dphiL - piphR+dphiR;
                while( dphi > .5*Pmax ) dphi -= Pmax;
                while( dphi <-.5*Pmax ) dphi += Pmax;
 
@@ -154,14 +160,14 @@ void buildfaces( struct domain * theDomain , int dim , int mode ){
                if( dphi < 0. ) LR_back = 1;
 
                if( LR == 0 ){
-                  xp[1] = cL->piph;
+                  xp[1] = piphL;
                }else{
-                  xp[1] = cR->piph;
+                  xp[1] = piphR;
                }
                if( LR_back == 0 ){
-                  xm[1] = cL->piph-cL->dphi;
+                  xm[1] = piphL-dphiL;
                }else{
-                  xm[1] = cR->piph-cR->dphi;
+                  xm[1] = piphR-dphiR;
                }
                addFace( theFaces , n , jk, jkp, i, ip , dxL , dxR , xp , xm , dim , LR );
                ++n;
