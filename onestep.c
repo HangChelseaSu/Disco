@@ -46,6 +46,9 @@ void checkNaNs(struct domain *theDomain, char label[])
     int Nr = theDomain->Nr;
     int *Np = theDomain->Np;
 
+    double **prim = theDomain->prim;
+    double **cons = theDomain->cons;
+
     int i, j, k, q;
     int count_p = 0;
     int count_c = 0;
@@ -55,18 +58,17 @@ void checkNaNs(struct domain *theDomain, char label[])
             int jk = j + Nr*k;
             for(i=0; i<Np[jk]; i++)
             {
-                struct cell *c = &(theDomain->theCells[jk][i]);
-
                 //int flag = 0;
+                int iq = NUM_Q*i;
                 for(q=0; q<NUM_Q; q++)
                 {
-                    if(c->prim[q] != c->prim[q])
+                    if(prim[jk][iq+q] != c->prim[jk][iq+q])
                     {
                         count_p++;
                         //flag = 1;
 
                     }
-                    if(c->cons[q] != c->cons[q])
+                    if(cons[jk][iq+q] != cons[jk][iq+q])
                     {
                         count_c++;
                         //flag = 1;

@@ -118,12 +118,15 @@ void report( struct domain * theDomain )
         int NgZa = theDomain->NgZa;
         int NgZb = theDomain->NgZb;
 
-        struct cell ** theCells = theDomain->theCells;
-
         int jmin = NgRa;
         int jmax = Nr-NgRb;
         int kmin = NgZa;
         int kmax = Nz-NgZb;
+
+        double **prim = theDomain->prim;
+        double **cons = theDomain->cons;
+        double **piph = theDomain->piph;
+        double **dphi = theDomain->dphi;
 
         int j, k, i, q;
         for(k = kmin; k < kmax; k++)
@@ -133,13 +136,12 @@ void report( struct domain * theDomain )
                 int jk = j + Nr*k;
                 for(i = 0; i < Np[jk]; i++)
                 {
-                    struct cell * c = &(theCells[jk][i]);
-                
+                    int iq = NUM_Q*i;
                     for(q=0; q<NUM_Q; q++)
-                        cons_tot[q] += c->cons[q];
+                        cons_tot[q] += cons[jk][iq+q];
                     
-                    double phip = c->piph;
-                    double phim = phip-c->dphi;
+                    double phip = piph[jk][i];
+                    double phim = phip - dphi[jk][i];
                     double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
                     double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
 
@@ -149,7 +151,8 @@ void report( struct domain * theDomain )
 
                     double Q[N_dist_int];
 
-                    get_distributed_integral_reports(x, c->prim, Q, theDomain);
+                    get_distributed_integral_reports(x, &(prim[jk][iq]),
+                                                     Q, theDomain);
 
                     for(q=0; q<N_dist_int; q++)
                         Q_dist[N_dist_aux+q] += Q[q] * dV;

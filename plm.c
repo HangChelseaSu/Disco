@@ -15,7 +15,6 @@ double minmod( double a , double b , double c ){
 
 void plm_phi( struct domain * theDomain ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
@@ -23,6 +22,11 @@ void plm_phi( struct domain * theDomain ){
 #if ENABLE_CART_INTERP
    int Cartesian_Interp = theDomain->theParList.Cartesian_Interp;
 #endif
+
+   double **dphi = theDomain->dphi;
+   double **prim = theDomain->prim;
+   double **gradp = theDomain->gradp;
+
    int i,j,k,q;
 
 
@@ -43,20 +47,26 @@ void plm_phi( struct domain * theDomain ){
             struct cell * c  = &(theCells[jk][i]);
             struct cell * cL = &(theCells[jk][im]);
             struct cell * cR = &(theCells[jk][ip]);
-            double dpL = cL->dphi;
-            double dpC = c->dphi;
-            double dpR = cR->dphi;
+            double dpL = dphi[jk][im];
+            double dpC = dphi[jk][i];
+            double dpR = dphi[jk][ip];
+
+            double *primL = &(prim[jk][NUM_Q*im]);
+            double *primC = &(prim[jk][NUM_Q*i]);
+            double *primR = &(prim[jk][NUM_Q*ip]);
+            double *gradpC = &(prim[jk][NUM_Q*i]);
+
             for( q=0 ; q<NUM_Q ; ++q ){
-               double pL = cL->prim[q];
-               double pC = c->prim[q];
-               double pR = cR->prim[q];
+               double pL = primL[q];
+               double pC = primC[q];
+               double pR = primR[q];
                double sL = pC - pL;
                sL /= .5*( dpC + dpL );
                double sR = pR - pC;
                sR /= .5*( dpR + dpC );
                double sC = pR - pL;
                sC /= .5*( dpL + dpR ) + dpC;
-               c->gradp[q] = minmod( PLM*sL , sC , PLM*sR );
+               gradpC[q] = minmod( PLM*sL , sC , PLM*sR );
             }
 #if ENABLE_CART_INTERP
             if(w > 0.0)
@@ -69,9 +79,9 @@ void plm_phi( struct domain * theDomain ){
                double cartPrimR[NUM_Q];
                double cartGrad[NUM_Q];
                double grad[NUM_Q];
-               geom_rebase_to_cart(cL->prim, xL, cartPrimL);
-               geom_rebase_to_cart(c->prim,  xC, cartPrimC);
-               geom_rebase_to_cart(cR->prim, xR, cartPrimR);
+               geom_rebase_to_cart(primL, xL, cartPrimL);
+               geom_rebase_to_cart(primC, xC, cartPrimC);
+               geom_rebase_to_cart(primR, xR, cartPrimR);
                for( q=0 ; q<NUM_Q ; ++q ){
                   double pL = cartPrimL[q];
                   double pC = cartPrimC[q];
@@ -93,9 +103,9 @@ void plm_phi( struct domain * theDomain ){
                   }
                   cartGrad[q] = minmod( PLM*sL , sC , PLM*sR );
                }
-               geom_gradCart_to_grad(cartGrad, c->prim, xC, grad, 0);
+               geom_gradCart_to_grad(cartGrad, primC, xC, grad, 0);
                for( q=0 ; q<NUM_Q ; ++q )
-                  c->gradp[q] = (1-w) * c->gradp[q] + w * grad[q];
+                  gradpC[q] = (1-w) * gradpC[q] + w * grad[q];
             }
 #endif
          }
@@ -118,6 +128,13 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
    double * z_kph = theDomain->z_kph;
    int Cartesian_Interp = theDomain->theParList.Cartesian_Interp;
 #endif
+
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+   double **prim = theDomain->prim;
+   double **gradp = theDomain->gradp;
+   double **grad = (dim == 1) ? theDomain->gradr : theDomain->gradz;
+   double **tempDoub = theDomain->tempDoub;
    
    int i,j,k,q;
 
@@ -125,12 +142,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
    for( j=0 ; j<Nr ; ++j ){
       for( k=0 ; k<Nz ; ++k ){
          int jk = j+Nr*k;
-         for( i=0 ; i<Np[jk] ; ++i ){
-             if(dim == 1)
-                memset( theCells[jk][i].gradr , 0 , NUM_Q*sizeof(double) );
-             else
-                memset( theCells[jk][i].gradz , 0 , NUM_Q*sizeof(double) );
-         }
+         memset(grad[jk], 0, NUM_Q*Np[jk]*sizeof(double));
       }
    }
 #if ENABLE_CART_INTERP
@@ -144,7 +156,8 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
             double x[3] = {r, 0.0, z};
             double w = getCartInterpWeight(x);
             for( i=0 ; i<Np[jk] ; ++i ){
-                theCells[jk][i].gradr[UPP] = -w*theCells[jk][i].prim[UPP] / r;
+                int iq = NUM_Q*i;
+                grad[jk][iq+UPP] = -w * prim[jk][iq+UPP] / r;
              }
           }
        }
@@ -161,15 +174,14 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         for(k = 0; k < Nz; k++)
         {
             int jk = j+Nr*k;
-            for(i = 0; i < Np[jk]; i++)
-                theCells[jk][i].tempDoub = 0.0;
+            memset(tempDoub[jk], 0, Np[jk]*sizeof(double));
         }
     int n;
     for(n = 0; n < Nf; n++)
     {
         struct face *f  = &(theFaces[n]);
-        theCells[f->jkL][f->iL].tempDoub += f->dA;
-        theCells[f->jkR][f->iR].tempDoub += f->dA;
+        tempDoub[f->jkL][f->iL] += f->dA;
+        tempDoub[f->jkR][f->iR] += f->dA;
     }
    
     //Add weighted slopes
@@ -177,21 +189,32 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
     {
         struct face * f  = &( theFaces[n] );
         double phi = f->cm[1];
-        struct cell * cL = &(theCells[f->jkL][f->iL]);
-        struct cell * cR = &(theCells[f->jkR][f->iR]);
+        int jkL = f->jkL;
+        int iL = f->iL;
+        int jkR = f->jkR;
+        int iR = f->iR;
         double dxL = f->dxL;
         double dxR = f->dxR;
-        double phiL = cL->piph - .5*cL->dphi;
-        double phiR = cR->piph - .5*cR->dphi;
+        double phiL = piph[jkL][iL] - 0.5*dphi[jkL][iL];
+        double phiR = piph[jkR][iR] - 0.5*dphi[jkR][iR];
         double dpL = get_signed_dp(phi,phiL);
         double dpR = get_signed_dp(phi,phiR);
         double dA  = f->dA;
 
-        double dA_fL = dA / cL->tempDoub;
-        double dA_fR = dA / cR->tempDoub;
+        double dA_fL = dA / tempDoub[jkL][iL];
+        double dA_fR = dA / tempDoub[jkR][iR];
 
-        double *gradL = dim==1 ? cL->gradr : cL->gradz;
-        double *gradR = dim==1 ? cR->gradr : cR->gradz;
+        int iqL = iL*NUM_Q;
+        int iqR = iR*NUM_Q;
+
+        double *primL = &(prim[jkL][iqL]);
+        double *primR = &(prim[jkR][iqR]);
+        
+        double *gradpL = &(gradp[jkL][iqL]);
+        double *gradpR = &(gradp[jkR][iqR]);
+
+        double *gradL = &(grad[jkL][iqL]);
+        double *gradR = &(grad[jkR][iqR]);
 
 #if ENABLE_CART_INTERP
         double w = 0.0;
@@ -201,14 +224,14 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         if(w > 0.0)
         {
             double gradCIL[NUM_Q], gradCIR[NUM_Q];
-            geom_cart_interp_grad_trans(cL->prim, cR->prim,
-                                        cL->gradp, cR->gradp,
+            geom_cart_interp_grad_trans(primL, primR,
+                                        gradpL, gradpR,
                                         dpL, dpR, f->cm, -dxL, dxR,
                                         gradCIL, gradCIR, dim);
             for(q=0; q<NUM_Q; q++)
             {
-                double WL = cL->prim[q] + dpL*cL->gradp[q];
-                double WR = cR->prim[q] + dpR*cR->gradp[q];
+                double WL = primL[q] + dpL*gradpL[q];
+                double WR = primR[q] + dpR*gradpR[q];
                 double S = (WR-WL)/(dxR+dxL);
 
                 gradL[q] += ((1-w) * S + w * gradCIL[q]) * dA_fL;
@@ -220,8 +243,8 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
 #endif
             for( q=0 ; q<NUM_Q ; ++q )
             {
-                double WL = cL->prim[q] + dpL*cL->gradp[q];
-                double WR = cR->prim[q] + dpR*cR->gradp[q];
+                double WL = primL[q] + dpL*gradpL[q];
+                double WR = primR[q] + dpR*gradpR[q];
                 double S = (WR-WL)/(dxR+dxL);
             
                 gradL[q] += S*dA_fL;
@@ -238,17 +261,28 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
     {
         struct face * f  = &( theFaces[n] );
         double phi = f->cm[1];
-        struct cell * cL = &(theCells[f->jkL][f->iL]);
-        struct cell * cR = &(theCells[f->jkR][f->iR]);
+        int jkL = f->jkL;
+        int iL = f->iL;
+        int jkR = f->jkR;
+        int iR = f->iR;
         double dxL = f->dxL;
         double dxR = f->dxR;
-        double phiL = cL->piph - .5*cL->dphi;
-        double phiR = cR->piph - .5*cR->dphi;
+        double phiL = piph[jkL][iL] - 0.5*dphi[jkL][iL];
+        double phiR = piph[jkR][iR] - 0.5*dphi[jkR][iR];
         double dpL = get_signed_dp(phi,phiL);
         double dpR = get_signed_dp(phi,phiR);
-      
-        double *gradL = dim==1 ? cL->gradr : cL->gradz;
-        double *gradR = dim==1 ? cR->gradr : cR->gradz;
+     
+        int iqL = NUM_Q*iL;
+        int iqR = NUM_Q*iR;
+
+        double *primL = &(prim[jkL][iqL]);
+        double *primR = &(prim[jkR][iqR]);
+        
+        double *gradpL = &(gradp[jkL][iqL]);
+        double *gradpR = &(gradp[jkR][iqR]);
+        
+        double *gradL = &(grad[jkL][iqL]);
+        double *gradR = &(grad[jkR][iqR]);
       
 #if ENABLE_CART_INTERP
         double w = 0.0;
@@ -257,15 +291,15 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         if(w > 0.0)
         {
             double gradCIL[NUM_Q], gradCIR[NUM_Q];
-            geom_cart_interp_grad_trans(cL->prim, cR->prim,
-                                        cL->gradp, cR->gradp,
+            geom_cart_interp_grad_trans(primL, primR,
+                                        gradpL, gradpR,
                                         dpL, dpR, f->cm, -dxL, dxR,
                                         gradCIL, gradCIR, dim);
 
             for(q=0; q<NUM_Q; q++)
             {
-                double WL = cL->prim[q] + dpL*cL->gradp[q];
-                double WR = cR->prim[q] + dpR*cR->gradp[q];
+                double WL = primL[q] + dpL*gradpL[q];
+                double WR = primR[q] + dpR*gradpR[q];
                 double S = (WR-WL)/(dxR+dxL);
                 double SL = gradL[q];
                 double SR = gradR[q];
@@ -274,8 +308,8 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
 
                 if(dim == 1 && q == UPP)
                 {
-                    double SL0 = -w*cL->prim[UPP] / (f->cm[0] - dxL);
-                    double SR0 = -w*cR->prim[UPP] / (f->cm[0] + dxL);
+                    double SL0 = -w*primL[UPP] / (f->cm[0] - dxL);
+                    double SR0 = -w*primR[UPP] / (f->cm[0] + dxR);
 
                     SL -= SL0;
                     SR -= SR0;
@@ -310,8 +344,8 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
 #endif
             for( q=0 ; q<NUM_Q ; ++q )
             {
-                double WL = cL->prim[q] + dpL*cL->gradp[q];
-                double WR = cR->prim[q] + dpR*cR->gradp[q];
+                double WL = primL[q] + dpL*gradpL[q];
+                double WR = primR[q] + dpR*gradpR[q];
 
                 double S = (WR-WL)/(dxR+dxL);
                 double SL = gradL[q];
@@ -351,7 +385,6 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
 void plm_geom_boundary(struct domain *theDomain, int jmin, int jmax, 
                         int kmin, int kmax, int dim, int LR)
 {
-    struct cell ** theCells = theDomain->theCells;
     int Nr = theDomain->Nr;
     int * Np = theDomain->Np;
     double * r_jph = theDomain->r_jph;
@@ -359,6 +392,11 @@ void plm_geom_boundary(struct domain *theDomain, int jmin, int jmax,
     double PLM = theDomain->theParList.PLM;
 
     int i,j,k;
+
+    double **grad = (dim == 1) ? theDomain->gradr : theDomain->gradz;
+    double **piph = theDomain->piph;
+    double **dphi = theDomain->dphi;
+    double **prim = theDomain->prim;
 
     double xp[3], xm[3];
     for(k=kmin; k<=kmax; k++)
@@ -373,13 +411,13 @@ void plm_geom_boundary(struct domain *theDomain, int jmin, int jmax,
            for(i=0; i < Np[jk]; i++)
            {
                struct cell * c = &(theCells[jk][i]);
-               xp[1] = c->piph;
-               xm[1] = c->piph - c->dphi;
+               xp[1] = piph[jk][i];
+               xm[1] = piph[jk][i] - dphi[jk][i];
 
-               if(dim == 1)
-                   geom_grad(c->prim, c->gradr, xp, xm, PLM, dim, LR); 
-               else
-                   geom_grad(c->prim, c->gradz, xp, xm, PLM, dim, LR); 
+               int iq = NUM_Q*i;
+
+               geom_grad(&(prim[jk][iq]), &(grad[jk][iq]),
+                         xp, xm, PLM, dim, LR); 
            }
        }
     }

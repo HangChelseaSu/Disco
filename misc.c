@@ -3,6 +3,7 @@
 #include "hydro.h"
 #include "omega.h"
 #include "planet.h"
+#include "riemann.h"
 
 #include <string.h>
 
@@ -381,12 +382,8 @@ void calc_cons( struct domain * theDomain ){
    }
 }
 
-void riemann_phi( struct cell * , struct cell * , double * , const double *,
-                 const double *, double );
-
 void phi_flux( struct domain * theDomain , double dt ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int NgRa = theDomain->NgRa;
@@ -415,6 +412,9 @@ void phi_flux( struct domain * theDomain , double dt ){
        kmax = Nz-NgZb;
    }
 
+   double **E = theDomain->E;
+   double **B = theDomain->B;
+
 
    int i,j,k;
    for( k=kmin ; k<kmax ; ++k ){
@@ -428,7 +428,15 @@ void phi_flux( struct domain * theDomain , double dt ){
          double r = get_centroid(rp, rm, 1);
          
          int jk = j+Nr*k;
-         struct cell * cp = theCells[jk];
+
+         double *prim = theDomain->prim[jk];
+         double *cons = theDomain->cons[jk];
+         double *piph = theDomain->piph[jk];
+         double *dphi = theDomain->dphi[jk];
+         double *wiph = theDomain->wiph[jk];
+         double *gradr = theDomain->gradr[jk];
+         double *gradp = theDomain->gradp[jk];
+         double *gradz = theDomain->gradz[jk];
 
          for( i=0 ; i<Np[jk] ; ++i ){
             int ip = i<Np[jk]-1 ? i+1 : 0;
@@ -437,7 +445,25 @@ void phi_flux( struct domain * theDomain , double dt ){
             double xm[3] = {rm, phi, zm};
             double dA = get_dA(xp,xm,0); 
             double x[3] = {r, phi, z};
-            riemann_phi( &(cp[i]) , &(cp[ip]) , x , xp, xm, dA*dt );
+
+            int iL = i;
+            int iR = ip;
+            int iqL = NUM_Q*iL;
+            int iqR = NUM_Q*iR;
+            int ieL = NUM_EDGES*iL;
+            int ieR = NUM_EDGES*iR;
+
+            double *EL = (E == NULL) ? NULL : &(E[jk][ieL]);
+            double *ER = (E == NULL) ? NULL : &(E[jk][ieR]);
+            double *BL = (B == NULL) ? NULL : &(B[jk][ieL]);
+            double *BR = (B == NULL) ? NULL : &(B[jk][ieR]);
+
+            riemann_phi( &(prim[iqL]), &(prim[iqR]),
+                        &(cons[iqL]), &(cons[iqR]),
+                        &(gradr[iqL]), &(gradp[iqL]), &(gradz[iqL]),
+                        &(gradr[iqR]), &(gradp[iqR]), &(gradz[iqR]),
+                        piph[iL], dphi[iL], piph[iR], dphi[iR], wiph[iL],
+                        x, xp, xm, dA*dt, EL, BL, ER, BR );
          }
       }
    }
@@ -666,7 +692,7 @@ void add_source( struct domain * theDomain , double dt ){
       }    
    }   
 }
-
+/*
 void longandshort( struct domain * theDomain , double * L , double * S , int * iL , int * iS , struct cell * sweep , int j , int k ){
 
    int Nr = theDomain->Nr;
@@ -808,6 +834,7 @@ void AMR( struct domain * theDomain ){
       AMRsweep( theDomain , theCells+jk , jk );
    }
 }
+*/
 
 void print_welcome()
 {
@@ -834,7 +861,6 @@ void print_welcome()
 
 void dump_grid(struct domain *theDomain, char filename[])
 {
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int NgRa = theDomain->NgRa;
@@ -845,6 +871,14 @@ void dump_grid(struct domain *theDomain, char filename[])
 
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
+
+   double **prim = theDomain->prim;
+   double **cons = theDomain->cons;
+   double **piph = theDomain->piph;
+   double **dphi = theDomain->dphi;
+   double **gradr = theDomain->gradr;
+   double **gradp = theDomain->gradp;
+   double **gradz = theDomain->gradz;
 
    int i,j,k, q;
 
@@ -857,27 +891,28 @@ void dump_grid(struct domain *theDomain, char filename[])
       for( j=NgRa ; j<Nr-NgRb ; ++j ){
          int jk = j+Nr*k;
          for( i=0 ; i<Np[jk] ; ++i ){
-            struct cell * c = &(theCells[jk][i]);
-            double phip = c->piph;
-            double phim = c->piph - c->dphi;
+            double phip = piph[jk][i];
+            double phim = piph[jk][i] - dphi[jk][i];
             double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
             double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
             double x[3];
             get_centroid_arr(xp, xm, x);
+
+            int iq = NUM_Q*i;
             fprintf(f, "%d %d %d %.12le %.12le %.12le",
                     k, j, i, x[0], x[1], x[2]);
             for(q=0; q<NUM_Q; q++)
-                fprintf(f, " %.12le", c->prim[q]);
+                fprintf(f, " %.12le", prim[jk][iq+q]);
             for(q=0; q<NUM_Q; q++)
-                fprintf(f, " %.12le", c->cons[q]);
+                fprintf(f, " %.12le", cons[jk][iq+q]);
             for(q=0; q<NUM_Q; q++)
-                fprintf(f, " %.12le", c->RKcons[q]);
+                fprintf(f, " %.12le", RKcons[jk][iq+q]);
             for(q=0; q<NUM_Q; q++)
-                fprintf(f, " %.12le", c->gradr[q]);
+                fprintf(f, " %.12le", gradr[jk][iq+q]);
             for(q=0; q<NUM_Q; q++)
-                fprintf(f, " %.12le", c->gradp[q]);
+                fprintf(f, " %.12le", gradp[jk][iq+q]);
             for(q=0; q<NUM_Q; q++)
-                fprintf(f, " %.12le", c->gradz[q]);
+                fprintf(f, " %.12le", gradz[jk][iq+q]);
             fprintf(f, "\n");
          }    
       }    

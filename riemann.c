@@ -35,17 +35,15 @@ void setRiemannParams( struct domain * theDomain ){
 void get_Ustar_HLLD( double , const double * , const double * , 
                     double * , double * , const double * , const double * );
 
-void solve_riemann( const double * , const double * ,
-                    double *, double * , 
-                    const double * , const double * , const double *,
-                    const double * , const double * , const double *,
-                    const double * , const double * , const double *,
-                    const double *, double , double , int ,
-                    double * , double * , double * , double * ,
-                    double *, double *);
 
-void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
-                const double *xp, const double *xm, double dAdt ){
+void riemann_phi(   const double *primCL, const double *primCR,
+                    double *consL, double *consR,
+            const double *gradrL, const double *gradpL, const double *gradzL,
+            const double *gradrR, const double *gradpR, const double *gradzR,
+            double piphL, double dphiL, double piphR, double dphiR, double wf,
+            const double *x, const double *xp, const double *xm, double dAdt,
+            double *EL, double *BL, double *ER, double *BR)
+{
 
    double primL[NUM_Q];
    double primR[NUM_Q];
@@ -53,9 +51,9 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
 
    int q;
    for( q=0 ; q<NUM_Q ; ++q ){
-      primL[q] = cL->prim[q] + .5*cL->gradp[q]*cL->dphi;
-      primR[q] = cR->prim[q] - .5*cR->gradp[q]*cR->dphi;
-      gradp[q] = (cR->prim[q] - cL->prim[q]) / (0.5*(cR->dphi + cL->dphi));
+      primL[q] = primCL[q] + 0.5*gradpL[q] * dphiL;
+      primR[q] = primCR[q] - 0.5*gradpR[q] * dphiR;
+      gradp[q] = (primCR[q] - primCL[q]) / (0.5*(dphiR + dphiL));
    }
 
    double xc[3] = {x[0], x[1], x[2]};
@@ -67,18 +65,17 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
        
        if(weight > 0.0)
        {
-           double xL[3] = {x[0], cL->piph - 0.5*cL->dphi, x[2]};
-           double xR[3] = {x[0], cR->piph - 0.5*cR->dphi, x[2]};
+           double xL[3] = {x[0], piphL - 0.5*dphiL, x[2]};
+           double xR[3] = {x[0], piphR - 0.5*dphiR, x[2]};
            xc[0] = 0.5*(xp[0] + xm[0]);
            double dr = xc[0] - x[0];
-           geom_interpolate(cL->prim, cL->gradr, cL->gradp, cL->gradz,
-                            xL,  dr, 0.5*cL->dphi, 0.0, primL, weight);
-           geom_interpolate(cR->prim, cR->gradr, cR->gradp, cR->gradz,
-                            xR,  dr, -0.5*cR->dphi, 0.0, primR, weight);
+           geom_interpolate(primCL, gradrL, gradpL, gradzL,
+                            xL,  dr, 0.5*dphiL, 0.0, primL, weight);
+           geom_interpolate(primR, gradrR, gradpR, gradzR,
+                            xR,  dr, -0.5*dphiR, 0.0, primR, weight);
        }
    }
 #endif
-
 
    double n[3] = {0.0,1.0,0.0};
    double hn = get_scale_factor(xc, 0);
@@ -90,10 +87,10 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
    }
 
    double Er,Ez,Br,Bz;
-   solve_riemann(primL , primR , cL->cons , cR->cons ,
-                 cL->gradr, gradp, cL->gradz,
-                 cR->gradr, gradp, cR->gradz,
-                 xc , n , xp, xm, hn*cL->wiph , dAdt , 0 ,
+   solve_riemann(primL , primR , consL , consR ,
+                 gradrL, gradp, gradzL,
+                 gradrR, gradp, gradzR,
+                 xc , n , xp, xm, hn*wf , dAdt , 0 ,
                  &Ez , &Br , &Er , &Bz , NULL, NULL);
    /*
    solve_riemann(primL , primR , cL->cons , cR->cons ,
@@ -103,43 +100,43 @@ void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
     */
 
    if( NUM_EDGES == 4 ){
-      cL->E[0] = .5*Ez;
-      cL->E[1] = .5*Ez;
+      EL[0] = .5*Ez;
+      EL[1] = .5*Ez;
 
-      cR->E[2] = .5*Ez;
-      cR->E[3] = .5*Ez;
+      ER[2] = .5*Ez;
+      ER[3] = .5*Ez;
 
-      cL->B[0] = .5*Br;
-      cL->B[1] = .5*Br;
+      BL[0] = .5*Br;
+      BL[1] = .5*Br;
 
-      cR->B[2] = .5*Br;
-      cR->B[3] = .5*Br;
+      BR[2] = .5*Br;
+      BR[3] = .5*Br;
    }
    if( NUM_EDGES == 8 ){
 
-      cL->E[0] = .5*Ez;
-      cL->E[1] = .5*Ez;
+      EL[0] = .5*Ez;
+      EL[1] = .5*Ez;
 
-      cR->E[2] = .5*Ez;
-      cR->E[3] = .5*Ez;
+      ER[2] = .5*Ez;
+      ER[3] = .5*Ez;
 
-      cL->B[0] = .5*Br;
-      cL->B[1] = .5*Br;
+      BL[0] = .5*Br;
+      BL[1] = .5*Br;
 
-      cR->B[2] = .5*Br;
-      cR->B[3] = .5*Br;
+      BR[2] = .5*Br;
+      BR[3] = .5*Br;
 
-      cL->E[4] = .5*Er;
-      cL->E[5] = .5*Er;
+      EL[4] = .5*Er;
+      EL[5] = .5*Er;
 
-      cR->E[6] = .5*Er;
-      cR->E[7] = .5*Er;
+      ER[6] = .5*Er;
+      ER[7] = .5*Er;
 
-      cL->B[4] = .5*Bz;
-      cL->B[5] = .5*Bz;
+      BL[4] = .5*Bz;
+      BL[5] = .5*Bz;
 
-      cR->B[6] = .5*Bz;
-      cR->B[7] = .5*Bz;
+      BR[6] = .5*Bz;
+      BR[7] = .5*Bz;
    }
 }
 
@@ -251,8 +248,8 @@ void riemann_trans( struct face * F , struct cell **theCells, double dt ,
                     &Erz , &Brz , &Ephi, NULL,
                     fdAdt_hydro, fdAdt_visc);
  
-   double fracL = F->dphi / cL->dphi;
-   double fracR = F->dphi / cR->dphi;
+   double fracL = F->dphi / dphiL;
+   double fracR = F->dphi / dphiR;
 
    if( NUM_EDGES >= 4 && dim==1 ){ 
       cL->E[1] += .5*Erz*fracL;

@@ -30,11 +30,70 @@ void setupDomain( struct domain * theDomain ){
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
-   theDomain->theCells = (struct cell **) malloc( Nr*Nz*sizeof(struct cell *) );
-   int jk;
-   for( jk=0 ; jk<Nr*Nz ; ++jk ){
-      theDomain->theCells[jk] = (struct cell *) malloc( Np[jk]*sizeof(struct cell) );
+
+   // Allocate all the grid data!
+
+   // Total number of fields
+   int N_data = 15;
+
+   // Master arrays
+   theDomain->N_data = N_data;
+   theDomain->data = (double ***)malloc(N_data * sizeof(double **));
+   theDomain->data_len = (int *)malloc(N_data * sizeof(int));
+
+   // Set the internal lengths of each grid field.
+   theDomain->data_len[0] = NUM_Q;          //prim
+   theDomain->data_len[1] = NUM_Q;          //cons
+   theDomain->data_len[2] = NUM_Q;          //RKcons
+   theDomain->data_len[3] = NUM_Q;          //gradr
+   theDomain->data_len[4] = NUM_Q;          //gradp
+   theDomain->data_len[5] = NUM_Q;          //gradz
+   theDomain->data_len[6] = 1;              //piph
+   theDomain->data_len[7] = 1;              //dphi
+   theDomain->data_len[8] = 1;              //wiph
+   theDomain->data_len[9] = NUM_EDGES;      //E
+   theDomain->data_len[10] = NUM_EDGES;     //B
+   theDomain->data_len[11] = NUM_AZ_EDGES;  //E_phi
+   theDomain->data_len[12] = NUM_FACES;     //Phi
+   theDomain->data_len[13] = NUM_FACES;     //RK_Phi
+   theDomain->data_len[14] = q;             //tempDoub
+   
+   // Allocate each of the data fields!
+   int field;
+   for(field = 0; field < N_data; field++)
+   {
+       int size = theDomin->data_len[field];
+
+       if(size = 0)
+       {
+           theDomain->data[field] = NULL;
+           continue;
+       }
+
+       theDomain->data[field] = (double **)malloc(Nr*Nz*sizeof(double *));
+
+       int jk;
+       for(jk=0; jk < Nr*Nz; jk++)
+           theDomain->data[field][jk] = (double *)malloc(Np[jk] * size
+                                                            * sizeof(double));
    }
+
+   // Set up the named aliases
+   theDomain->prim = theDomain->data[0];
+   theDomain->cons = theDomain->data[1];
+   theDomain->RKcons = theDomain->data[2];
+   theDomain->gradr = theDomain->data[3];
+   theDomain->gradp = theDomain->data[4];
+   theDomain->gradz = theDomain->data[5];
+   theDomain->piph = theDomain->data[6];
+   theDomain->dphi = theDomain->data[7];
+   theDomain->wiph = theDomain->data[8];
+   theDomain->E = theDomain->data[9];
+   theDomain->B = theDomain->data[10];
+   theDomain->E_phi = theDomain->data[11];
+   theDomain->Phi = theDomain->data[12];
+   theDomain->RK_Phi = theDomain->data[13];
+   theDomain->tempDoub = theDomain->data[14];
 
    setGravParams( theDomain );
    setPlanetParams( theDomain );
@@ -127,8 +186,8 @@ void setupDomain( struct domain * theDomain ){
             {
                 double phi = p0+dp*(double)i;
                 if( phi > Pmax ) phi -= Pmax;
-                    theDomain->theCells[jk][i].piph = phi;
-                    theDomain->theCells[jk][i].dphi = dp;
+                    theDomain->piph[jk][i] = phi;
+                    theDomain->dphi[jk][i] = dp;
             }
         }
         //Discard randoms from outer (global) annuli
