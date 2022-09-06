@@ -6,20 +6,18 @@ void onestep( struct domain * , double , double , int , int , double );
 
 void timestep( struct domain * theDomain , double dt ){
    
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
    int stepper = theDomain->theParList.Timestep;
 
-   int i,jk;
+   int jk;
 
    for( jk=0 ; jk<Nr*Nz ; ++jk ){
-      for( i=0 ; i<Np[jk] ; ++i ){
-         struct cell * c = &(theCells[jk][i]);
-         memcpy( c->RKcons , c->cons , NUM_Q*sizeof(double) );
-         memcpy( c->RK_Phi , c->Phi  , NUM_FACES*sizeof(double) );
-      }
+      memcpy(theDomain->RKcons[jk], theDomain->cons[jk],
+              Np[jk]*NUM_Q*sizeof(double));
+      memcpy(theDomain->RK_Phi[jk], theDomain->Phi[jk],
+              Np[jk]*NUM_FACES*sizeof(double));
    }
 
    copy_RK_diag(theDomain);

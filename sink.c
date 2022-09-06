@@ -420,8 +420,8 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
     double cons0[NUM_Q];
     double cons1[NUM_Q];
     initial(prims0, x);
-    prim2cons(prims0, cons0, x, dV);
-    prim2cons(prim, cons1, x, dV);
+    prim2cons(prims0, cons0, x, dV, xp, xm);
+    prim2cons(prim, cons1, x, dV, xp, xm);
     cons[DDD] += (cons1[DDD] - cons0[DDD])*dampFactor;
     cons[SRR] += (cons1[SRR] - cons0[SRR])*dampFactor;
     cons[LLL] += (cons1[LLL] - cons0[LLL])*dampFactor;

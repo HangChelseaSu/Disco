@@ -56,15 +56,15 @@ void setupDomain( struct domain * theDomain ){
    theDomain->data_len[11] = NUM_AZ_EDGES;  //E_phi
    theDomain->data_len[12] = NUM_FACES;     //Phi
    theDomain->data_len[13] = NUM_FACES;     //RK_Phi
-   theDomain->data_len[14] = q;             //tempDoub
+   theDomain->data_len[14] = 1;             //tempDoub
    
    // Allocate each of the data fields!
    int field;
    for(field = 0; field < N_data; field++)
    {
-       int size = theDomin->data_len[field];
+       int size = theDomain->data_len[field];
 
-       if(size = 0)
+       if(size == 0)
        {
            theDomain->data[field] = NULL;
            continue;
@@ -179,7 +179,7 @@ void setupDomain( struct domain * theDomain ){
         //DO the work
         for( j=0 ; j<Nr ; ++j )
         {
-            jk = k*Nr + j;
+            int jk = k*Nr + j;
             double p0 = Pmax*(double)rand()/(double)RAND_MAX;
             double dp = Pmax/(double)Np[jk];
             for( i=0 ; i<Np[jk] ; ++i )
@@ -284,12 +284,14 @@ void setupCells( struct domain * theDomain ){
    for(k=0; k<Nz; k++){
       for(j=0; j<Nr; j++){
          int jk = Nr*k + j;
-         memset(wiph, 0, Np[jk] * sizeof(double));
-         memset(gradr, 0, Np[jk] * NUM_Q * sizeof(double));
-         memset(gradp, 0, Np[jk] * NUM_Q * sizeof(double));
-         memset(gradz, 0, Np[jk] * NUM_Q * sizeof(double));
+         memset(wiph[jk], 0, Np[jk] * sizeof(double));
+         memset(gradr[jk], 0, Np[jk] * NUM_Q * sizeof(double));
+         memset(gradp[jk], 0, Np[jk] * NUM_Q * sizeof(double));
+         memset(gradz[jk], 0, Np[jk] * NUM_Q * sizeof(double));
       }
    }
+
+   printf("initializing prim\n");
 
    //Setup real cells.
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
@@ -329,6 +331,7 @@ void setupCells( struct domain * theDomain ){
       }    
    }
 
+#if NUM_FACES > 0
    if(!restart_flag && set_B_flag() && theDomain->theParList.CT)
    {
       // Communicate piph values to ghost zones.
@@ -339,6 +342,9 @@ void setupCells( struct domain * theDomain ){
 
       set_B_fields(theDomain);
    }
+#endif
+
+   printf("initializing cons\n");
 
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
       double z = get_centroid( z_kph[k], z_kph[k-1], 2);
@@ -386,43 +392,36 @@ void freeDomain( struct domain * theDomain ){
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int jk;
-   for( jk=0 ; jk<Nr*Nz ; ++jk ){
-      free( theDomain->prim[jk] );
-      free( theDomain->cons[jk] );
-      free( theDomain->RKcons[jk] );
-      free( theDomain->gradr[jk] );
-      free( theDomain->gradp[jk] );
-      free( theDomain->gradz[jk] );
-      free( theDomain->piph[jk] );
-      free( theDomain->dphi[jk] );
-      free( theDomain->wiph[jk] );
-      free( theDomain->E[jk] );
-      free( theDomain->B[jk] );
-      free( theDomain->E_phi[jk] );
-      free( theDomain->Phi[jk] );
-      free( theDomain->RK_Phi[jk] );
-      free( theDomain->tempDoub[jk] );
-   }
-   free( theDomain->prim );
-   free( theDomain->cons );
-   free( theDomain->RKcons );
-   free( theDomain->gradr );
-   free( theDomain->gradp );
-   free( theDomain->gradz );
-   free( theDomain->piph );
-   free( theDomain->dphi );
-   free( theDomain->wiph );
-   free( theDomain->E );
-   free( theDomain->B );
-   free( theDomain->E_phi );
-   free( theDomain->Phi );
-   free( theDomain->RK_Phi );
-   free( theDomain->tempDoub );
+   int field;
+    for(field = 0; field < theDomain->N_data; field++)
+    {
+        if(theDomain->data[field] != NULL)
+        {
+            for( jk=0 ; jk<Nr*Nz ; ++jk )
+                if(theDomain->data[field][jk] != NULL)
+                    free(theDomain->data[field][jk]);
 
-   free(theDomain->data);
-   free(theDomain->data_len);
+            free(theDomain->data[field]);
+        }
+    }
+    theDomain->prim = NULL;
+    theDomain->cons = NULL;
+    theDomain->RKcons = NULL;
+    theDomain->gradr = NULL;
+    theDomain->gradp = NULL;
+    theDomain->gradz = NULL;
+    theDomain->piph = NULL;
+    theDomain->dphi = NULL;
+    theDomain->wiph = NULL;
+    theDomain->E = NULL;
+    theDomain->B = NULL;
+    theDomain->E_phi = NULL;
+    theDomain->Phi = NULL;
+    theDomain->RK_Phi = NULL;
+    theDomain->tempDoub = NULL;
 
-   
+    free(theDomain->data);
+    free(theDomain->data_len);
 
    free( theDomain->Np );
    theDomain->r_jph--;

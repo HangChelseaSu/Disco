@@ -1,7 +1,10 @@
 
+
 #include "paul.h"
 #include "geometry.h"
 #include "hydro.h"
+
+#if NUM_FACES > 0
 
 void initial( double * , double * ); 
 void setup_faces( struct domain * , int );
@@ -13,12 +16,15 @@ void calc_prim(struct domain *);
 void set_B_fields( struct domain * theDomain ){
 
    int i,j,k;
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
    double * r_jph = theDomain->r_jph;
    double * z_kph = theDomain->z_kph;
+
+    double **piph = theDomain->piph;
+    double **dphi = theDomain->dphi;
+    double **Phi = theDomain->Phi;
 
    if(NUM_FACES > 0)
    {
@@ -28,18 +34,15 @@ void set_B_fields( struct domain * theDomain ){
              double r = get_centroid(r_jph[j], r_jph[j-1], 1);
              int jk = j+Nr*k;
              for( i=0 ; i<Np[jk] ; ++i ){
-                struct cell * c = &(theCells[jk][i]);
-                double phip = c->piph;
-                double phim = phip-c->dphi;
+                double phip = piph[jk][i];
+                double phim = phip - dphi[jk][i];
                 double xp[3] = { r_jph[j]   , phip , z_kph[k]   };
                 double xm[3] = { r_jph[j-1] , phim , z_kph[k-1] };
                 double x[3] = { r , phip , z};
                 double prim[NUM_Q];
                 initial( prim , x ); 
                 double dA = get_dA( xp , xm , 0 );
-                double Phi = 0.0;
-                if( NUM_Q > BPP ) Phi = prim[BPP]*dA;
-                    c->Phi[0] = Phi;
+                Phi[jk][i*NUM_FACES+0] = NUM_Q > BPP ? prim[BPP]*dA : 0.0;
              }    
           }    
        }
@@ -55,12 +58,12 @@ void set_B_fields( struct domain * theDomain ){
           struct face * f = theDomain->theFaces_1 + n;
           double prim[NUM_Q];
           initial( prim , f->cm );
-          double Phi = 0.0;
-          if( NUM_Q > BRR ) Phi = prim[BRR]*f->dA;
+          double Phif = 0.0;
+          if( NUM_Q > BRR ) Phif = prim[BRR]*f->dA;
           if( f->LRtype == 0 ){
-             theCells[f->jkL][f->iL].Phi[2] = Phi;
+             Phi[f->jkL][f->iL*NUM_FACES + 2] = Phif;
           }else{
-             theCells[f->jkR][f->iR].Phi[1] = Phi;
+             Phi[f->jkR][f->iR*NUM_FACES + 1] = Phif;
           }
        }
    }
@@ -72,13 +75,13 @@ void set_B_fields( struct domain * theDomain ){
          struct face * f = theDomain->theFaces_2 + n; 
          double prim[NUM_Q];
          initial( prim , f->cm );
-         double Phi = 0.0; 
-         if( NUM_Q > BZZ ) Phi = prim[BZZ]*f->dA;
+         double Phif = 0.0; 
+         if( NUM_Q > BZZ ) Phif = prim[BZZ]*f->dA;
 
          if( f->LRtype == 0 ){ 
-            theCells[f->jkL][f->iL].Phi[4] = Phi; 
+            Phi[f->jkL][f->iL*NUM_FACES+4] = Phif; 
          }else{
-            theCells[f->jkR][f->iR].Phi[3] = Phi; 
+            Phi[f->jkR][f->iR*NUM_FACES+3] = Phif; 
          }    
       }
    }
@@ -94,7 +97,6 @@ void set_B_fields( struct domain * theDomain ){
 void B_faces_to_cells( struct domain * theDomain , int type ){
 
    if( NUM_Q > BZZ ){
-      struct cell ** theCells = theDomain->theCells;
       struct face * theFaces_1 = theDomain->theFaces_1;
       struct face * theFaces_2 = theDomain->theFaces_2;
    
@@ -109,6 +111,11 @@ void B_faces_to_cells( struct domain * theDomain , int type ){
       double * z_kph = theDomain->z_kph;
 
       int Nf = theDomain->fIndex_r[theDomain->N_ftracks_r];  
+
+      double **tempDoub = theDomain->tempDoub;
+      double **prim = theDomain->prim;
+      double **cons = theDomain->cons;
+      double **Phi = theDomain->Phi;
  
       int i,j,k;
 
@@ -116,16 +123,16 @@ void B_faces_to_cells( struct domain * theDomain , int type ){
          for( k=0 ; k<Nz ; ++k ){
             int jk = j+Nr*k;
             for( i=0 ; i<Np[jk] ; ++i ){
-               struct cell * c = &(theCells[jk][i]);
-               c->tempDoub = 0.0;
+               int iq = i*NUM_Q
+               tempDoub[jk][i] = 0.0;
                if( type==0 ){
-                  c->prim[BRR] = 0.0;
-                  c->prim[BPP] = 0.0;
-                  if( NUM_FACES==5 ) c->prim[BZZ] = 0.0;
+                  prim[jk][iq+BRR] = 0.0;
+                  prim[jk][iq+BPP] = 0.0;
+                  if( NUM_FACES==5 ) prim[jk][iq+BZZ] = 0.0;
                }else{
-                  c->cons[BRR] = 0.0;
-                  c->cons[BPP] = 0.0;
-                  if( NUM_FACES==5 ) c->cons[BZZ] = 0.0;
+                  cons[jk][iq+BRR] = 0.0;
+                  cons[jk][iq+BPP] = 0.0;
+                  if( NUM_FACES==5 ) cons[jk][iq+BZZ] = 0.0;
                }
             }
          }
@@ -134,23 +141,27 @@ void B_faces_to_cells( struct domain * theDomain , int type ){
       int n;
       for( n=0 ; n<Nf ; ++n ){
          struct face * f = theFaces_1 + n;
-         struct cell * cL = &(theCells[f->jkL][f->iL]);
-         struct cell * cR = &(theCells[f->jkR][f->iR]);
-         double Phi;
+         double Phif;
+
+         int iL = f->iL;
+         int iR = f->iR;
+         int jkL = f->jkL;
+         int jkR = f->jkR;
+
          if( f->LRtype==0 ){
-            Phi = cL->Phi[2];
+            Phif = Phi[jkL][iL*NUM_FACES+2];
          }else{
-            Phi = cR->Phi[1];
+            Phif = Phi[jkR][iR*NUM_FACES+1];
          }
-         cL->tempDoub += f->dA;
-         cR->tempDoub += f->dA;
+         tempDoub[jkL][iL] += f->dA;
+         tempDoub[jkR][iR] += f->dA;
 
          if( type==0 ){
-            cL->prim[BRR] += Phi;
-            cR->prim[BRR] += Phi;
+            prim[jkL][iL*NUM_Q+BRR] += Phif;
+            prim[jkR][iR*NUM_Q+BRR] += Phif;
          }else{
-            cL->cons[BRR] += Phi;
-            cR->cons[BRR] += Phi;
+            cons[jkL][iL*NUM_Q+BRR] += Phif;
+            cons[jkR][iR*NUM_Q+BRR] += Phif;
          }
       }
 
@@ -1158,4 +1169,4 @@ void make_edge_adjust( struct domain * theDomain , double dt ){
       }
    }
 }
-
+#endif

@@ -75,13 +75,23 @@ void writePatch( char * file , char * group , char * dset , void * data , hid_t 
    H5Fclose( h5fil );
 }
 
-int Cell2Doub( struct cell * c , double * Q , int mode ){
-   if( mode==0 ) return(NUM_Q+NUM_FACES+1); else{
-      int q;
-      for( q=0 ; q<NUM_Q ; ++q ) Q[q] = c->prim[q];
-      for( q=0 ; q<NUM_FACES ; ++q ) Q[NUM_Q+q] = c->Phi[q];
-      Q[NUM_Q+NUM_FACES] = c->piph;
-      return(0);
+int Cell2Doub( struct domain * theDomain , int jk, int i,
+                double * Q , int mode ){
+    if( mode==0 )
+        return(NUM_Q+NUM_FACES+1);
+    else
+    {
+        int q;
+      
+        for( q=0 ; q<NUM_Q ; ++q )
+            Q[q] = theDomain->prim[jk][NUM_Q*i+q];
+      
+        for( q=0 ; q<NUM_FACES ; ++q )
+            Q[NUM_Q+q] = theDomain->Phi[jk][NUM_FACES*i+q];
+      
+        Q[NUM_Q+NUM_FACES] = theDomain->piph[jk][i];
+      
+        return(0);
    }
 }
 
@@ -373,7 +383,6 @@ void cons2prim( double * , double * , double *, double );
 
 void output( struct domain * theDomain , char * filestart ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
@@ -430,7 +439,7 @@ void output( struct domain * theDomain , char * filestart ){
    MPI_Allreduce( MPI_IN_PLACE , &Ntot  , 1 , MPI_INT , MPI_SUM , theDomain->theComm );
 #endif
 
-   int Ndoub = Cell2Doub(NULL,NULL,0);
+   int Ndoub = Cell2Doub(NULL, 0, 0, NULL,0);
 
    hsize_t fdims1[1];
    hsize_t fdims2[2];
@@ -631,9 +640,8 @@ void output( struct domain * theDomain , char * filestart ){
          int Id = 0;
          int i;
          for( i=0 ; i<Np[j+Nr*k] ; ++i ){
-            struct cell * c = &(theCells[j+Nr*k][i]);
-            Cell2Doub( c , Qwrite+index*Ndoub , 1 );
-            double phi = c->piph-.5*c->dphi;
+            Cell2Doub( theDomain, jk, i , Qwrite+index*Ndoub , 1 );
+            double phi = theDomain->piph[jk][i]-.5*theDomain->dphi[jk][i];
             if( cos(phi0) < cos(phi) ){ phi0 = phi; Id = index; }
             ++index;
          }

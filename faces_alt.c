@@ -137,9 +137,6 @@ void buildfaces( struct domain * theDomain , int dim , int mode ){
             int f;
             for( f=0 ; f<Np[jk]+Np[jkp] ; ++f ){
  
-               struct cell * cL = &(theCells[jk ][i] );
-               struct cell * cR = &(theCells[jkp][ip]);
-
                double piphL = piph[jk][i];
                double piphR = piph[jkp][ip];
                double dphiL = dphi[jk][i];

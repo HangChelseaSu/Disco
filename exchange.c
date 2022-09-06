@@ -46,7 +46,7 @@ void copy_cell_to_lite( struct domain *theDomain, int jk, int i,
    double *cons = &(theDomain->cons[jk][NUM_Q*i]);
    double *RKcons = &(theDomain->RKcons[jk][NUM_Q*i]);
    double *Phi = &(theDomain->Phi[jk][NUM_FACES*i]);
-   double *RKPhi = &(theDomain->RKPhi[jk][NUM_FACES*i]);
+   double *RK_Phi = &(theDomain->RK_Phi[jk][NUM_FACES*i]);
   
    memcpy( cl->prim   , prim   , NUM_Q*sizeof(double) ); 
    memcpy( cl->cons   , cons   , NUM_Q*sizeof(double) ); 
@@ -66,7 +66,7 @@ void copy_lite_to_cell( struct cell_lite * cl , struct domain * theDomain,
    double *cons = &(theDomain->cons[jk][NUM_Q*i]);
    double *RKcons = &(theDomain->RKcons[jk][NUM_Q*i]);
    double *Phi = &(theDomain->Phi[jk][NUM_FACES*i]);
-   double *RKPhi = &(theDomain->RKPhi[jk][NUM_FACES*i]);
+   double *RK_Phi = &(theDomain->RK_Phi[jk][NUM_FACES*i]);
 
    memcpy( prim   , cl->prim   , NUM_Q*sizeof(double) ); 
    memcpy( cons   , cl->cons   , NUM_Q*sizeof(double) ); 
@@ -136,7 +136,7 @@ void resize_cell_data(struct domain *theDomain, int jk, int Np)
         return;
 
     int p;
-    for(p=0; p<theDomain->ndata; p++)
+    for(p=0; p<theDomain->N_data; p++)
     {
         double **field = theDomain->data[p];
         int size = theDomain->data_len[p];

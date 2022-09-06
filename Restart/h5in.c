@@ -72,11 +72,13 @@ void readPatch( char * file , char * group , char * dset , void * data , hid_t t
 }
 
 
-void Doub2Cell( double * Q , struct cell * c ){
+void Doub2Cell( double * Q , struct domain *theDomain, int jk, int i){
    int q;
-   for( q=0 ; q<NUM_Q ; ++q ) c->prim[q] = Q[q];
-   for( q=0 ; q<NUM_FACES ; ++q ) c->Phi[q] = Q[NUM_Q+q];
-   c->piph = Q[NUM_Q+NUM_FACES];
+   for( q=0 ; q<NUM_Q ; ++q )
+       theDomain->prim[jk][i*NUM_Q+q] = Q[q];
+   for( q=0 ; q<NUM_FACES ; ++q )
+       theDomain->Phi[jk][NUM_FACES*i+q] = Q[NUM_Q+q];
+   theDomain->piph[jk][i] = Q[NUM_Q+NUM_FACES];
 }
 
 int getN0( int , int , int );
@@ -203,9 +205,9 @@ void restart( struct domain * theDomain ){
    theDomain->r_jph = (double *) malloc( (Nr+1)*sizeof(double) );
    theDomain->z_kph = (double *) malloc( (Nz+1)*sizeof(double) );
 
-   theDomain->theCells = (struct cell **) malloc( Nr*Nz*sizeof( struct cell * ) );
+   //theDomain->theCells = (struct cell **) malloc( Nr*Nz*sizeof( struct cell * ) );
 
-   struct cell ** theCells = theDomain->theCells;
+   //struct cell ** theCells = theDomain->theCells;
 
    //The following must happen in serial because different processors
    //will try to read from the same file.  In principle we can write
@@ -271,11 +273,13 @@ void restart( struct domain * theDomain ){
             glo_size2[1] = Nq;
             double TrackData[Np[jk]*Nq];
             readPatch( filename , group2 ,"Cells", TrackData , H5T_NATIVE_DOUBLE , 2 , start2 , loc_size2 , glo_size2 );
+            /*
             theDomain->theCells[jk] = (struct cell *) malloc( Np[jk]*sizeof(struct cell) );
             for( i=0 ; i<Np[jk] ; ++i ){
                struct cell * c = theCells[jk]+i;
                Doub2Cell( TrackData + i*Nq , c );
             }
+            */
          }
       }
 

@@ -147,6 +147,7 @@ void set_wcell( struct domain * theDomain ){
          }
       }    
    }
+
    if( mesh_motion == 3 ){
       for( k=0 ; k<Nz ; ++k ){
          for( j=0 ; j<Nr ; ++j ){
@@ -292,8 +293,7 @@ void calc_dp( struct domain * theDomain ){
          if( i == 0 ) im = Np[jk]-1;
          double phim = piph[jk][im];
          double phip = piph[jk][i ];
-         double dphi = get_dp(phip,phim);
-         dphi[jk][i] = dphi;
+         dphi[jk][i] = get_dp(phip,phim);
       }
    }
 }
@@ -375,7 +375,7 @@ void calc_cons( struct domain * theDomain ){
             double xm[3] = {rm, phim, zm};
             double dV = get_dV( xp , xm );
             double x[3] = {r, 0.5*(phim+phip), z};
-            prim2cons( &(prim[jk][i*NUM_Q] , &(cons[jk][i*NUM_Q]) ,
+            prim2cons( &(prim[jk][i*NUM_Q] ), &(cons[jk][i*NUM_Q]) ,
                         x , dV , xp, xm);
          }
       }
@@ -440,7 +440,7 @@ void phi_flux( struct domain * theDomain , double dt ){
 
          for( i=0 ; i<Np[jk] ; ++i ){
             int ip = i<Np[jk]-1 ? i+1 : 0;
-            double phi = cp[i].piph;
+            double phi = piph[i];
             double xp[3] = {rp, phi, zp};
             double xm[3] = {rm, phi, zm};
             double dA = get_dA(xp,xm,0); 
@@ -471,8 +471,6 @@ void phi_flux( struct domain * theDomain , double dt ){
 }
 
 void buildfaces( struct domain * , int , int );
-void riemann_trans( struct face * , struct cell **, double , int ,
-                    double, double, double, double, double *, double *);
 
 void trans_flux( struct domain * theDomain , double dt , int dim ){
 
@@ -544,6 +542,9 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
         fvisc_diag = theDomain->theTools.Fvisc_z;
     }
 
+    double **E = theDomain->E;
+    double **B = theDomain->B;
+    double **E_phi = theDomain->E_phi;
 
     int j, k, q;
     for(k=kmin; k<kmax; k++)
@@ -558,20 +559,69 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
         for(j=jmin; j<jmax; j++)
         {
             double rm, rp;
+            int jkL, jkR;
             if(dim == 1)
+            {
                 rm = theDomain->r_jph[j];
+                jkL = Nr*k + j;
+                jkR = Nr*k + j+1;
+            }
             else
+            {
                 rm = theDomain->r_jph[j-1];
+                jkL = Nr*k + j;
+                jkR = Nr*(k+1) + j;
+            }
             rp = theDomain->r_jph[j];
 
             int JK = j + Nfr*k;
+
+            double *primL = theDomain->prim[jkL];
+            double *consL = theDomain->cons[jkL];
+            double *gradrL = theDomain->gradr[jkL];
+            double *gradpL = theDomain->gradp[jkL];
+            double *gradzL = theDomain->gradz[jkL];
+            double *piphL = theDomain->piph[jkL];
+            double *dphiL = theDomain->dphi[jkL];
+            double *primR = theDomain->prim[jkR];
+            double *consR = theDomain->cons[jkR];
+            double *gradrR = theDomain->gradr[jkR];
+            double *gradpR = theDomain->gradp[jkR];
+            double *gradzR = theDomain->gradz[jkR];
+            double *piphR = theDomain->piph[jkR];
+            double *dphiR = theDomain->dphi[jkR];
+
+            double *ELa = (E == NULL) ? NULL : E[jkL];
+            double *BLa = (B == NULL) ? NULL : B[jkL];
+            double *EphiLa = (E_phi == NULL) ? NULL : E_phi[jkL];
+            double *ERa = (E == NULL) ? NULL : E[jkR];
+            double *BRa = (B == NULL) ? NULL : B[jkR];
+            double *EphiRa = (E_phi == NULL) ? NULL : E_phi[jkR];
+
             int f;
             for(f=fI[JK]; f<fI[JK+1]; f++)
             {
                 double fdAdt_hydro[NUM_Q];
                 double fdAdt_visc[NUM_Q];
-                riemann_trans(theFaces + f, theDomain->theCells, dt, dim,
-                                rp, rm, zp, zm,
+                int iL = (theFaces + f)->iL;
+                int iR = (theFaces + f)->iR;
+                int iqL = iL * NUM_Q;
+                int iqR = iR * NUM_Q;
+
+                double *EL = (ELa == NULL) ? NULL : ELa + iL*NUM_EDGES;
+                double *BL = (BLa == NULL) ? NULL : BLa + iL*NUM_EDGES;
+                double *EphiL = (EphiLa == NULL) ? NULL : EphiLa + iL*NUM_EDGES;
+                double *ER = (ERa == NULL) ? NULL : ERa + iR*NUM_EDGES;
+                double *BR = (BRa == NULL) ? NULL : BRa + iR*NUM_EDGES;
+                double *EphiR = (EphiRa == NULL) ? NULL : EphiRa + iR*NUM_EDGES;
+
+                riemann_trans(theFaces + f, primL+iqL, primR+iqR,
+                                consL+iqL, consR+iqR,
+                                gradrL+iqL, gradpL+iqL, gradzL+iqL,
+                                gradrR+iqR, gradpR+iqR, gradzR+iqR,
+                                piphL[iL], dphiL[iL], piphR[iR], dphiR[iR],
+                                dt, dim, rp, rm, zp, zm,
+                                EL, BL, EphiL, ER, BR, EphiR,
                               fdAdt_hydro, fdAdt_visc);
 
                 for(q=0; q<NUM_Q; q++)
@@ -874,6 +924,7 @@ void dump_grid(struct domain *theDomain, char filename[])
 
    double **prim = theDomain->prim;
    double **cons = theDomain->cons;
+   double **RKcons = theDomain->RKcons;
    double **piph = theDomain->piph;
    double **dphi = theDomain->dphi;
    double **gradr = theDomain->gradr;

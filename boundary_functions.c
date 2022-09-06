@@ -343,7 +343,7 @@ void boundary_zerograd_zbot( struct domain *theDomain, int diode)
                     int i;
                     for(i=0; i<Np[jk]; i++)
                     {
-                        int iurr = NUM_Q*i + UZZ;
+                        int iuzz = NUM_Q*i + UZZ;
                         if(prim[jk][iuzz] > 0)
                             prim[jk][iuzz] = 0.0;
                     }
@@ -383,7 +383,7 @@ void boundary_zerograd_ztop( struct domain *theDomain, int diode)
                     int i;
                     for(i=0; i<Np[jk]; i++)
                     {
-                        int iurr = NUM_Q*i + UZZ;
+                        int iuzz = NUM_Q*i + UZZ;
                         if(prim[jk][iuzz] < 0)
                             prim[jk][iuzz] = 0.0;
                     }

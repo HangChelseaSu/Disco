@@ -9,6 +9,16 @@ void riemann_phi(   const double *primCL, const double *primCR,
             const double *x, const double *xp, const double *xm, double dAdt,
             double *EL, double *BL, double *ER, double *BR);
 
+void riemann_trans(struct face *F, const double *primCL, const double *primCR,
+            double *consL, double *consR,
+            const double *gradrL, const double *gradpL, const double *gradzL,
+            const double *gradrR, const double *gradpR, const double *gradzR,
+            double piphL, double dphiL, double piphR, double dphiR,
+            double dt, int dim, double rp, double rm, double zp, double zm,
+            double *EL, double *BL, double *EphiL,
+            double *ER, double *BR, double *EphiR,
+            double *fdAdt_hydro, double *fdAdt_visc);
+
 void solve_riemann(const double *primL, const double *primR,
                    double *consL, double *consR,
             const double *gradLr, const double *gradLp, const double *gradLz,

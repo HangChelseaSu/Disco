@@ -44,9 +44,6 @@ void plm_phi( struct domain * theDomain ){
          for( i=0 ; i<Np[jk] ; ++i ){
             int im = (i == 0) ? Np[jk]-1 : i-1;
             int ip = (i == Np[jk]-1) ? 0 : i+1;
-            struct cell * c  = &(theCells[jk][i]);
-            struct cell * cL = &(theCells[jk][im]);
-            struct cell * cR = &(theCells[jk][ip]);
             double dpL = dphi[jk][im];
             double dpC = dphi[jk][i];
             double dpR = dphi[jk][ip];
@@ -54,7 +51,7 @@ void plm_phi( struct domain * theDomain ){
             double *primL = &(prim[jk][NUM_Q*im]);
             double *primC = &(prim[jk][NUM_Q*i]);
             double *primR = &(prim[jk][NUM_Q*ip]);
-            double *gradpC = &(prim[jk][NUM_Q*i]);
+            double *gradpC = &(gradp[jk][NUM_Q*i]);
 
             for( q=0 ; q<NUM_Q ; ++q ){
                double pL = primL[q];
@@ -118,7 +115,6 @@ void plm_geom_boundary(struct domain *theDomain, int jmin, int jmax, int kmin,
 
 void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , int dim ){
 
-   struct cell ** theCells = theDomain->theCells;
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
@@ -136,7 +132,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
    double **grad = (dim == 1) ? theDomain->gradr : theDomain->gradz;
    double **tempDoub = theDomain->tempDoub;
    
-   int i,j,k,q;
+   int j,k,q;
 
    //Clear gradients
    for( j=0 ; j<Nr ; ++j ){
@@ -410,7 +406,6 @@ void plm_geom_boundary(struct domain *theDomain, int jmin, int jmax,
            xm[0] = r_jph[j-1];
            for(i=0; i < Np[jk]; i++)
            {
-               struct cell * c = &(theCells[jk][i]);
                xp[1] = piph[jk][i];
                xm[1] = piph[jk][i] - dphi[jk][i];
 

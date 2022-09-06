@@ -62,7 +62,7 @@ void checkNaNs(struct domain *theDomain, char label[])
                 int iq = NUM_Q*i;
                 for(q=0; q<NUM_Q; q++)
                 {
-                    if(prim[jk][iq+q] != c->prim[jk][iq+q])
+                    if(prim[jk][iq+q] != prim[jk][iq+q])
                     {
                         count_p++;
                         //flag = 1;
@@ -161,6 +161,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
 
    if( first_step ){
       move_cells( theDomain , dt );
+#if NUM_FACES > 0
       if( bflag ){
          check_flipped( theDomain , 0 );
          flip_fluxes( theDomain , 0 );
@@ -169,6 +170,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
             flip_fluxes( theDomain , 1 );
          }
       }
+#endif
    }
 
    // Before we move the planets, update their internal diagnostics.
@@ -190,10 +192,12 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    calc_dp( theDomain );
 
    prof_tick(theDomain->prof, PROF_C2P);
-   
+  
+#if NUM_FACES > 0
    if( bflag && theDomain->theParList.CT ){
       B_faces_to_cells( theDomain , 1 );
    }
+#endif
    
    
    calc_prim( theDomain ); //ORDERING??? AFTER?

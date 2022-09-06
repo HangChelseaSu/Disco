@@ -47,12 +47,12 @@ void boundary_noslip_zbot( struct domain *theDomain);
 void boundary_noslip_ztop( struct domain *theDomain);
 
 //Low-level routines for boundary
-void set_cell_init(struct cell *c, const double *r_jph, const double *z_kph,
-                   int j, int k);
-void set_cell_init_q(struct cell *c, const double *r_jph, const double *z_kph, 
-                     int j, int k, int *qarr, int nq);
-void set_cells_copy(struct cell *c, int Np, const struct face *theFaces, 
-                    int n0, int n1, int LR);
-void set_cells_copy_distant(struct cell *c, int Np, struct cell *c1, int Np1);
+void set_cell_init(double *prim, double piph, double dphi,
+                    const double *r_jph, const double *z_kph, int j, int k);
+void set_cell_init_q(double *prim, double piph, double dphi,
+                     const double *r_jph, const double *z_kph, 
+                        int j, int k, int *qarr, int nq);
+void set_cells_copy_distant(double *prim, double *piph, double *dphi, int Np,
+                        double *prim1, double *piph1, double *dphi1, int Np1);
 
 #endif

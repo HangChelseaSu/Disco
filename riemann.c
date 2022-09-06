@@ -3,6 +3,7 @@ enum{_HLL_,_HLLC_,_HLLD_,_HLLC_DAMPCENTER_};
 #include "paul.h"
 #include "hydro.h"
 #include "geometry.h"
+#include "riemann.h"
 
 static int mesh_motion = 0;
 static int riemann_solver = 0;
@@ -90,7 +91,7 @@ void riemann_phi(   const double *primCL, const double *primCR,
    solve_riemann(primL , primR , consL , consR ,
                  gradrL, gradp, gradzL,
                  gradrR, gradp, gradzR,
-                 xc , n , xp, xm, hn*wf , dAdt , 0 ,
+                 x , n , xp, xm, hn*wf , dAdt , 0 ,
                  &Ez , &Br , &Er , &Bz , NULL, NULL);
    /*
    solve_riemann(primL , primR , cL->cons , cR->cons ,
@@ -140,12 +141,16 @@ void riemann_phi(   const double *primCL, const double *primCR,
    }
 }
 
-void riemann_trans( struct face * F , struct cell **theCells, double dt ,
-                    int dim , double rp, double rm, double zp, double zm,
-                    double *fdAdt_hydro, double *fdAdt_visc){
-
-   struct cell * cL = &(theCells[F->jkL][F->iL]);
-   struct cell * cR = &(theCells[F->jkR][F->iR]);
+void riemann_trans(struct face *F, const double *primCL, const double *primCR,
+            double *consL, double *consR,
+            const double *gradrL, const double *gradpL, const double *gradzL,
+            const double *gradrR, const double *gradpR, const double *gradzR,
+            double piphL, double dphiL, double piphR, double dphiR,
+            double dt, int dim, double rp, double rm, double zp, double zm,
+            double *EL, double *BL, double *EphiL,
+            double *ER, double *BR, double *EphiR,
+            double *fdAdt_hydro, double *fdAdt_visc)
+{
    double dAdt      = F->dA*dt;
    double dxL       = F->dxL;
    double dxR       = F->dxR;
@@ -159,20 +164,20 @@ void riemann_trans( struct face * F , struct cell **theCells, double dt ,
    double primR[NUM_Q];
    double grad[NUM_Q];
 
-   double phiL = cL->piph - .5*cL->dphi;
-   double phiR = cR->piph - .5*cR->dphi;
+   double phiL = piphL - .5*dphiL;
+   double phiR = piphR - .5*dphiR;
    double dpL = get_signed_dp(phi,phiL);
    double dpR = get_signed_dp(phi,phiR);
       
-   double *gradL = dim==1 ? cL->gradr : cL->gradz;
-   double *gradR = dim==1 ? cR->gradr : cR->gradz;
+   const double *gradL = dim==1 ? gradrL : gradzL;
+   const double *gradR = dim==1 ? gradrR : gradzR;
 
    int q;
    for( q=0 ; q<NUM_Q ; ++q ){
-      primL[q] = cL->prim[q] + gradL[q]*dxL + cL->gradp[q]*dpL;
-      primR[q] = cR->prim[q] - gradR[q]*dxR + cR->gradp[q]*dpR;
-      grad[q] = ((cR->prim[q] + cR->gradp[q]*dpR)
-                  - (cL->prim[q] + cL->gradp[q]*dpL)) / (dxL+dxR);
+      primL[q] = primCL[q] + gradL[q]*dxL + gradpL[q]*dpL;
+      primR[q] = primCR[q] - gradR[q]*dxR + gradpR[q]*dpR;
+      grad[q] = ((primCR[q] + gradpR[q]*dpR)
+                  - (primCL[q] + gradpL[q]*dpL)) / (dxL+dxR);
    }
     
    double x[3] = {F->cm[0], F->cm[1], F->cm[2]};
@@ -207,9 +212,9 @@ void riemann_trans( struct face * F , struct cell **theCells, double dt ,
                dzL = dxL;
                dzR = -dxR;
            }
-           geom_interpolate(cL->prim, cL->gradr, cL->gradp, cL->gradz,
+           geom_interpolate(primCL, gradrL, gradpL, gradzL,
                             xL, drL, dpL, dzL, primL, weight);
-           geom_interpolate(cR->prim, cR->gradr, cR->gradp, cR->gradz,
+           geom_interpolate(primCR, gradrR, gradpR, gradzR,
                             xR, drR, dpR, dzR, primR, weight);
        }
    }
@@ -234,16 +239,16 @@ void riemann_trans( struct face * F , struct cell **theCells, double dt ,
                  F->cm , n , 0.0 , dAdt , dim , &Erz , &Brz , &Ephi , NULL );
     */
    if(dim == 1)
-      solve_riemann(primL , primR , cL->cons , cR->cons ,
-                    grad, cL->gradp, cL->gradz,
-                    grad, cR->gradp, cR->gradz,
+      solve_riemann(primL , primR , consL , consR ,
+                    grad, gradpL, gradzL,
+                    grad, gradpR, gradzR,
                     x , n , xp, xm, 0.0 , dAdt , dim ,
                     &Erz , &Brz , &Ephi, NULL ,
                     fdAdt_hydro, fdAdt_visc);
    else
-      solve_riemann(primL , primR , cL->cons , cR->cons ,
-                    cL->gradr, cL->gradp, grad,
-                    cR->gradr, cR->gradp, grad,
+      solve_riemann(primL , primR , consL , consR ,
+                    gradrL, gradpL, grad,
+                    gradrR, gradpR, grad,
                     x , n , xp, xm, 0.0 , dAdt , dim ,
                     &Erz , &Brz , &Ephi, NULL,
                     fdAdt_hydro, fdAdt_visc);
@@ -252,42 +257,42 @@ void riemann_trans( struct face * F , struct cell **theCells, double dt ,
    double fracR = F->dphi / dphiR;
 
    if( NUM_EDGES >= 4 && dim==1 ){ 
-      cL->E[1] += .5*Erz*fracL;
-      cL->E[3] += .5*Erz*fracL;
+      EL[1] += .5*Erz*fracL;
+      EL[3] += .5*Erz*fracL;
 
-      cR->E[0] += .5*Erz*fracR;
-      cR->E[2] += .5*Erz*fracR;
+      ER[0] += .5*Erz*fracR;
+      ER[2] += .5*Erz*fracR;
 
-      cL->B[1] += .5*Brz*fracL;
-      cL->B[3] += .5*Brz*fracL;
+      BL[1] += .5*Brz*fracL;
+      BL[3] += .5*Brz*fracL;
 
-      cR->B[0] += .5*Brz*fracR;
-      cR->B[2] += .5*Brz*fracR;
+      BR[0] += .5*Brz*fracR;
+      BR[2] += .5*Brz*fracR;
    }
    if( NUM_AZ_EDGES == 4 && dim==1 ){
       if(F->LRtype==0)
-         cL->E_phi[1] = Ephi;
+         EphiL[1] = Ephi;
       else
-         cR->E_phi[0] = Ephi;
+         EphiR[0] = Ephi;
    }
    if( NUM_EDGES == 8 && dim==2){
-      cL->E[5] += .5*Erz*fracL;
-      cL->E[7] += .5*Erz*fracL;
+      EL[5] += .5*Erz*fracL;
+      EL[7] += .5*Erz*fracL;
 
-      cR->E[4] += .5*Erz*fracR;
-      cR->E[6] += .5*Erz*fracR;
+      ER[4] += .5*Erz*fracR;
+      ER[6] += .5*Erz*fracR;
 
-      cL->B[5] += .5*Brz*fracL;
-      cL->B[7] += .5*Brz*fracL;
+      BL[5] += .5*Brz*fracL;
+      BL[7] += .5*Brz*fracL;
 
-      cR->B[4] += .5*Brz*fracR;
-      cR->B[6] += .5*Brz*fracR;
+      BR[4] += .5*Brz*fracR;
+      BR[6] += .5*Brz*fracR;
    }
    if( NUM_AZ_EDGES == 4 && dim==2 ){
       if(F->LRtype==0)
-         cL->E_phi[3] = Ephi;
+         EphiL[3] = Ephi;
       else
-         cR->E_phi[2] = Ephi;
+         EphiR[2] = Ephi;
    }
 }
 
