@@ -3,6 +3,7 @@
 #include "geometry.h"
 #include "planet.h"
 #include "hydro.h"
+#include "sink.h"
 
 static int sinkType = 0;
 static int sinkNumber = 0;
@@ -100,8 +101,9 @@ void setSinkParams(struct domain *theDomain)
     dampLenLower = theDomain->theParList.dampLenLower;
 }
 
-void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
-              double dt, double *pl_gas_track)
+void sink_src(const double *prim, double *cons, const double *xp,
+                const double *xm, const double *xyz, double dV,
+                double dt, double *pl_gas_track)
 {
     if(nozzleType == 1)
     {
@@ -265,7 +267,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
           int pi2;
           for(pi2=0; pi2<Npl; pi2++)
           {
-              double Phi = planetaryPotential(thePlanets+pi2, r, phi, z);
+              double Phi = planetaryPotential(thePlanets+pi2, xyz);
               pl_gas_track[NUM_PL_INTEGRALS*pi2 + PL_SNK_UGAS] += dM * Phi;
           }
       }
@@ -275,7 +277,9 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
 
 
 
-void cooling(double *prim, double *cons, double *xp, double *xm, double dV, double dt )
+void cooling(const double *prim, double *cons,
+             const double *xp, const double *xm, const double *xyz,
+             double dV, double dt )
 {
   if(coolType == COOL_BETA || coolType == COOL_BETA_RELAX)
   {
@@ -294,7 +298,6 @@ void cooling(double *prim, double *cons, double *xp, double *xm, double dV, doub
     {
       double r = x[0];
       double phi = x[1];
-      double z = x[2];
 
       double cosg = cos(phi);
       double sing = sin(phi);
@@ -302,7 +305,8 @@ void cooling(double *prim, double *cons, double *xp, double *xm, double dV, doub
       double gy = r*sing;
 
       int pi;
-      double fr,fp,fz, cosp, sinp, px, py, dx, dy, mag;
+      double cosp, sinp, px, py, dx, dy, mag;
+      double Fxyz[3];
       for (pi=0; pi<Npl; pi++)
       {
         cosp = cos(thePlanets[pi].phi);
@@ -314,8 +318,8 @@ void cooling(double *prim, double *cons, double *xp, double *xm, double dV, doub
         dy = gy-py;
         mag = dx*dx + dy*dy;
         mag = sqrt(mag);
-        planetaryForce( thePlanets + pi, r, phi, z, &fr, &fp, &fz, 1);
-        omtot += sqrt(fr*fr + fp*fp + fz*fz)/mag;
+        planetaryForce( thePlanets + pi, xyz, Fxyz);
+        omtot += sqrt(Fxyz[0]*Fxyz[0] + Fxyz[1]*Fxyz[1] + Fxyz[2]*Fxyz[2])/mag;
       }
       omtot = sqrt(omtot);
 
@@ -330,7 +334,8 @@ void cooling(double *prim, double *cons, double *xp, double *xm, double dV, doub
 }
 
 
-void damping(double *prim, double *cons, double *xp, double *xm, double dV, double dt )
+void damping(const double *prim, double *cons, const double *xp,
+            const double *xm, const double *xyz, double dV, double dt )
 {
   if (DAMP_INNER + DAMP_OUTER + DAMP_LOWER + DAMP_UPPER > 0){
     double x[3];
@@ -340,7 +345,6 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
     if (DAMP_INNER==2 || DAMP_OUTER==2 || DAMP_LOWER==2 || DAMP_UPPER==2){
       double r = x[0];
       double phi = x[1];
-      double z = x[2];
 
       double cosg = cos(phi);
       double sing = sin(phi);
@@ -349,7 +353,8 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
 
       int pi;
       omtot = 0.0;
-      double fr,fp,fz, cosp, sinp, px, py, dx, dy, mag;
+      double cosp, sinp, px, py, dx, dy, mag;
+      double Fxyz[3];
       for (pi=0; pi<Npl; pi++)
       {
         cosp = cos(thePlanets[pi].phi);
@@ -361,8 +366,8 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
         dy = gy-py;
         mag = dx*dx + dy*dy;
         mag = sqrt(mag);
-        planetaryForce( thePlanets + pi, r, phi, z, &fr, &fp, &fz, 1);
-        omtot += sqrt(fr*fr + fp*fp + fz*fz)/mag;
+        planetaryForce( thePlanets + pi, xyz, Fxyz);
+        omtot += sqrt(Fxyz[0]*Fxyz[0] + Fxyz[1]*Fxyz[1] + Fxyz[2]*Fxyz[2])/mag;
       }
       omtot = sqrt(omtot);
     }

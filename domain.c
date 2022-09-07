@@ -111,24 +111,38 @@ void setupDomain( struct domain * theDomain ){
             rand();
 
     int i;
+
     for( k=0 ; k<Nz ; ++k )
     {
         //Discard randoms from inner (global) annuli
         for(j=theDomain->N0r_glob; j<theDomain->N0r; j++)
             rand();
 
+        double zm = theDomain->z_kph[k-1];
+        double zp = theDomain->z_kph[k];
+
         //DO the work
         for( j=0 ; j<Nr ; ++j )
         {
             jk = k*Nr + j;
+
+            double rm = theDomain->r_jph[j-1];
+            double rp = theDomain->r_jph[j];
+
             double p0 = Pmax*(double)rand()/(double)RAND_MAX;
             double dp = Pmax/(double)Np[jk];
             for( i=0 ; i<Np[jk] ; ++i )
             {
                 double phi = p0+dp*(double)i;
                 if( phi > Pmax ) phi -= Pmax;
-                    theDomain->theCells[jk][i].piph = phi;
-                    theDomain->theCells[jk][i].dphi = dp;
+                theDomain->theCells[jk][i].piph = phi;
+                theDomain->theCells[jk][i].dphi = dp;
+
+                double xp[3] = {rp, phi, zp};
+                double xm[3] = {rm, phi-dp, zm};
+                double x[3];
+                get_centroid_arr(xp, xm, x);
+                get_xyz(x, theDomain->theCells[jk][i].xyz);
             }
         }
         //Discard randoms from outer (global) annuli
