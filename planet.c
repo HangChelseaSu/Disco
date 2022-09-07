@@ -2,7 +2,6 @@
 #include "geometry.h"
 #include "planet.h"
 
-double PHI_ORDER = 2.0;
 static int grav2D = 0;
 static int polar_sources_r = 0;
 static int polar_sources_p = 0;
@@ -38,8 +37,7 @@ double phigrav( double M , double r , double eps , int type)
 {
     if(type == PLPOINTMASS)
     {
-        double n = PHI_ORDER;
-        return( M/pow( pow(r,n) + pow(eps,n) , 1./n ) ) ;
+        return( M / sqrt( r*r + eps*eps) ) ;
     }
     else if(type == PLPW)
     {
@@ -67,10 +65,18 @@ double phigrav( double M , double r , double eps , int type)
     {
         eps = eps*2.8;
         double u = r/eps;
+        double u2 = u*u;
+        double u3 = u2*u;
+        double u4 = u2*u2;
+        double u5 = u2*u3;
         double val;
-        if (u<0.5) val = 16.*u*u/3. - 48.*u*u*u*u/5. + 32.*u*u*u*u*u/5. - 14./5.;
-        else if (u < 1.0) val = 1./(15.*u) + 32.*u*u/3. - 16.*u*u*u + 48.*u*u*u*u/5. - 32.*pow(u, 5.0)/15. - 3.2;
-        else val = -1./u ;
+        if (u<0.5)
+            val = 16.*u2/3. - 48.*u4/5. + 32.*u5/5. - 14./5.;
+        else if (u < 1.0)
+            val = 1./(15.*u) + 32.*u2/3. - 16.*u3 + 48.*u4/5. - 32.*u5/15. - 3.2;
+        else
+            val = -1./u ;
+
         return -1*M*val/eps;
     }
     return 0.0;
@@ -80,8 +86,8 @@ double fgrav( double M , double r , double eps , int type)
 {
     if(type == PLPOINTMASS)
     {
-        double n = PHI_ORDER;
-        return( M*pow(r,n-1.)/pow( pow(r,n) + pow(eps,n) ,1.+1./n) );
+        double R = sqrt(r*r + eps*eps);
+        return( M*r / (R*R*R) );
     }
     else if(type == PLPW)
     {
@@ -109,11 +115,17 @@ double fgrav( double M , double r , double eps , int type)
     {
         eps = eps*2.8;
         double u = r/eps;
+        double u2 = u*u;
+        double u3 = u2*u;
+        double u4 = u2*u2;
         double val;
-        if (u<0.5) val = 32.*u/3. - 192.*u*u*u/5. + 32.*u*u*u*u;
-        else if (u < 1.0) val = -1./(15.*u*u) + 64.*u/3. - 48.*u*u + 192.*u*u*u/5. - 32*u*u*u*u/3.;
-        else val = 1./u/u;
-        return M*val/eps/eps;
+        if (u<0.5)
+            val = 32.*u/3. - 192.*u3/5. + 32.*u4;
+        else if (u < 1.0)
+            val = -1./(15.*u2) + 64.*u/3. - 48.*u2 + 192.*u3/5. - 32*u4/3.;
+        else
+            val = 1./u2;
+        return M*val/(eps*eps);
     }
     return 0.0;
     
