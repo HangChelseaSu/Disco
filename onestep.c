@@ -91,6 +91,8 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    int Nr = theDomain->Nr;
    int bflag = set_B_flag();
 
+   prof_tick(theDomain->prof, PROF_STEP_INIT);
+   
    if( first_step ) set_wcell( theDomain );
 
    adjust_RK_cons( theDomain , RK );
@@ -98,6 +100,8 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    adjustPlanetsRKkin( theDomain , RK );
    adjustPlanetsRKaux( theDomain , RK );
    initializePlanetTracking(theDomain);
+   
+   prof_tock(theDomain->prof, PROF_STEP_INIT);
 
    //Reconstruction
    prof_tick(theDomain->prof, PROF_RECON);
@@ -159,6 +163,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    add_source( theDomain , dt );
    prof_tock(theDomain->prof, PROF_SOURCE);
 
+   prof_tick(theDomain->prof, PROF_MOVE);
    if( first_step ){
       move_cells( theDomain , dt );
 #if NUM_FACES > 0
@@ -172,10 +177,12 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
       }
 #endif
    }
+   prof_tock(theDomain->prof, PROF_MOVE);
 
    // Before we move the planets, update their internal diagnostics.
    // The gas_track integrals *must* be reduced (summed) over MPI ranks
    // now for LIVE planet motion.
+   prof_tick(theDomain->prof, PROF_STEP_PL);
    if(!planet_motion_analytic())
       exchangePlanets(theDomain);
 
@@ -187,9 +194,12 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    else if(first_step ){
       movePlanets( theDomain->thePlanets , theDomain->t , dt );
    }
+   prof_tock(theDomain->prof, PROF_STEP_PL);
 
+   prof_tick(theDomain->prof, PROF_CLEAN);
    clean_pi( theDomain );
    calc_dp( theDomain );
+   prof_tock(theDomain->prof, PROF_CLEAN);
 
    prof_tick(theDomain->prof, PROF_C2P);
   
