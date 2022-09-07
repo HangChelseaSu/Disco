@@ -88,7 +88,11 @@ void generate_log( struct domain * theDomain ){
       fprintf(logfile, "timestep: %lf sec (%.2lf%%)\n",
               prof_secs[PROF_TIMESTEP], 
               prof_secs[PROF_TIMESTEP]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "    recon:     %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    step init:    %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_secs[PROF_STEP_INIT], 
+              prof_secs[PROF_STEP_INIT]*100.0/prof_secs[PROF_TIMESTEP],
+              prof_secs[PROF_STEP_INIT]*100.0/prof_secs[PROF_TOT]);
+      fprintf(logfile, "    recon:        %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_secs[PROF_RECON], 
               prof_secs[PROF_RECON]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_RECON]*100.0/prof_secs[PROF_TOT]);
@@ -107,7 +111,7 @@ void generate_log( struct domain * theDomain ){
               prof_secs[PROF_RECON_Z]*100.0/prof_secs[PROF_RECON],
               prof_secs[PROF_RECON_Z]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_RECON_Z]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "    flux:      %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    flux:         %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_secs[PROF_FLUX], 
               prof_secs[PROF_FLUX]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_FLUX]*100.0/prof_secs[PROF_TOT]);
@@ -126,63 +130,75 @@ void generate_log( struct domain * theDomain ){
               prof_secs[PROF_FLUX_Z]*100.0/prof_secs[PROF_FLUX],
               prof_secs[PROF_FLUX_Z]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_FLUX_Z]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "    ct:        %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    ct:           %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_secs[PROF_CT], 
               prof_secs[PROF_CT]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_CT]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "    source:    %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    source:       %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_secs[PROF_SOURCE], 
               prof_secs[PROF_SOURCE]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_SOURCE]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "    cons2prim: %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    move cells:   %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_secs[PROF_MOVE], 
+              prof_secs[PROF_MOVE]*100.0/prof_secs[PROF_TIMESTEP],
+              prof_secs[PROF_MOVE]*100.0/prof_secs[PROF_TOT]);
+      fprintf(logfile, "    move planets: %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_secs[PROF_STEP_PL], 
+              prof_secs[PROF_STEP_PL]*100.0/prof_secs[PROF_TIMESTEP],
+              prof_secs[PROF_STEP_PL]*100.0/prof_secs[PROF_TOT]);
+      fprintf(logfile, "    clean:        %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_secs[PROF_CLEAN], 
+              prof_secs[PROF_CLEAN]*100.0/prof_secs[PROF_TIMESTEP],
+              prof_secs[PROF_CLEAN]*100.0/prof_secs[PROF_TOT]);
+      fprintf(logfile, "    cons2prim:    %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_secs[PROF_C2P], 
               prof_secs[PROF_C2P]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_C2P]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "    exchange:  %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    exchange:     %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_secs[PROF_EXCHANGE], 
               prof_secs[PROF_EXCHANGE]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCHANGE]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        np count1: %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np count1:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_NP_COUNT1], 
               prof_secs[PROF_EXCH_NP_COUNT1]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_NP_COUNT1]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_NP_COUNT1]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        np comm1:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np comm1:   %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_NP_COMM1], 
               prof_secs[PROF_EXCH_NP_COMM1]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_NP_COMM1]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_NP_COMM1]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        np count2: %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np count2:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_NP_COUNT2], 
               prof_secs[PROF_EXCH_NP_COUNT2]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_NP_COUNT2]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_NP_COUNT2]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        np comm2:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np comm2:   %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_NP_COMM2], 
               prof_secs[PROF_EXCH_NP_COMM2]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_NP_COMM2]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_NP_COMM2]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        np fin:    %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np fin:     %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_NP_FIN], 
               prof_secs[PROF_EXCH_NP_FIN]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_NP_FIN]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_NP_FIN]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        prep:      %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        prep:       %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_PREP], 
               prof_secs[PROF_EXCH_PREP]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_PREP]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_PREP]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        comm:      %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        comm:       %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_COMM], 
               prof_secs[PROF_EXCH_COMM]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_COMM]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_COMM]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "        finish:    %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        finish:     %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_secs[PROF_EXCH_FIN], 
               prof_secs[PROF_EXCH_FIN]*100.0/prof_secs[PROF_EXCHANGE],
               prof_secs[PROF_EXCH_FIN]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_EXCH_FIN]*100.0/prof_secs[PROF_TOT]);
-      fprintf(logfile, "    boundary:  %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    boundary:     %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_secs[PROF_BOUND], 
               prof_secs[PROF_BOUND]*100.0/prof_secs[PROF_TIMESTEP],
               prof_secs[PROF_BOUND]*100.0/prof_secs[PROF_TOT]);
@@ -199,7 +215,11 @@ void generate_log( struct domain * theDomain ){
       fprintf(logfile, "timestep: %lf sec (%.2lf%%)\n",
               prof_time[PROF_TIMESTEP], 
               prof_time[PROF_TIMESTEP]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "    recon:     %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    step init:    %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_time[PROF_STEP_INIT], 
+              prof_time[PROF_STEP_INIT]*100.0/prof_time[PROF_TIMESTEP],
+              prof_time[PROF_STEP_INIT]*100.0/prof_time[PROF_TOT]);
+      fprintf(logfile, "    recon:        %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_time[PROF_RECON], 
               prof_time[PROF_RECON]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_RECON]*100.0/prof_time[PROF_TOT]);
@@ -218,7 +238,7 @@ void generate_log( struct domain * theDomain ){
               prof_time[PROF_RECON_Z]*100.0/prof_time[PROF_RECON],
               prof_time[PROF_RECON_Z]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_RECON_Z]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "    flux:      %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    flux:         %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_time[PROF_FLUX], 
               prof_time[PROF_FLUX]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_FLUX]*100.0/prof_time[PROF_TOT]);
@@ -237,63 +257,75 @@ void generate_log( struct domain * theDomain ){
               prof_time[PROF_FLUX_Z]*100.0/prof_time[PROF_FLUX],
               prof_time[PROF_FLUX_Z]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_FLUX_Z]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "    ct:        %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    ct:           %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_time[PROF_CT], 
               prof_time[PROF_CT]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_CT]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "    source:    %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    source:       %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_time[PROF_SOURCE], 
               prof_time[PROF_SOURCE]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_SOURCE]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "    cons2prim: %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    move cells:   %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_time[PROF_MOVE], 
+              prof_time[PROF_MOVE]*100.0/prof_time[PROF_TIMESTEP],
+              prof_time[PROF_MOVE]*100.0/prof_time[PROF_TOT]);
+      fprintf(logfile, "    move planets: %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_time[PROF_STEP_PL], 
+              prof_time[PROF_STEP_PL]*100.0/prof_time[PROF_TIMESTEP],
+              prof_time[PROF_STEP_PL]*100.0/prof_time[PROF_TOT]);
+      fprintf(logfile, "    clean:        %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+              prof_time[PROF_CLEAN], 
+              prof_time[PROF_CLEAN]*100.0/prof_time[PROF_TIMESTEP],
+              prof_time[PROF_CLEAN]*100.0/prof_time[PROF_TOT]);
+      fprintf(logfile, "    cons2prim:    %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_time[PROF_C2P], 
               prof_time[PROF_C2P]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_C2P]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "    exchange:  %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    exchange:     %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_time[PROF_EXCHANGE], 
               prof_time[PROF_EXCHANGE]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCHANGE]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        np count1: %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np count1:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_NP_COUNT1], 
               prof_time[PROF_EXCH_NP_COUNT1]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_NP_COUNT1]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_NP_COUNT1]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        np comm1:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np comm1:   %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_NP_COMM1], 
               prof_time[PROF_EXCH_NP_COMM1]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_NP_COMM1]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_NP_COMM1]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        np count2: %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np count2:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_NP_COUNT2], 
               prof_time[PROF_EXCH_NP_COUNT2]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_NP_COUNT2]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_NP_COUNT2]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        np comm2:  %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np comm2:   %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_NP_COMM2], 
               prof_time[PROF_EXCH_NP_COMM2]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_NP_COMM2]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_NP_COMM2]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        np fin:    %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        np fin:     %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_NP_FIN], 
               prof_time[PROF_EXCH_NP_FIN]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_NP_FIN]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_NP_FIN]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        prep:      %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        prep:       %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_PREP], 
               prof_time[PROF_EXCH_PREP]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_PREP]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_PREP]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        comm:      %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        comm:       %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_COMM], 
               prof_time[PROF_EXCH_COMM]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_COMM]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_COMM]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "        finish:    %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
+      fprintf(logfile, "        finish:     %lf sec (%.2lf%% exchange, %.2lf%% timestep, %.2lf%%)\n",
               prof_time[PROF_EXCH_FIN], 
               prof_time[PROF_EXCH_FIN]*100.0/prof_time[PROF_EXCHANGE],
               prof_time[PROF_EXCH_FIN]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_EXCH_FIN]*100.0/prof_time[PROF_TOT]);
-      fprintf(logfile, "    boundary:  %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
+      fprintf(logfile, "    boundary:     %lf sec (%.2lf%% of timestep) (%.2lf%%)\n",
               prof_time[PROF_BOUND], 
               prof_time[PROF_BOUND]*100.0/prof_time[PROF_TIMESTEP],
               prof_time[PROF_BOUND]*100.0/prof_time[PROF_TOT]);
