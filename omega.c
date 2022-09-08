@@ -155,10 +155,8 @@ double get_height_om( const double *x){
 
     double px, py, script_r;
     for (pi=0; pi<Npl; pi++){
-      cosp = cos(thePlanets[pi].phi);
-      sinp = sin(thePlanets[pi].phi);
-      px = thePlanets[pi].r*cosp;
-      py = thePlanets[pi].r*sinp;
+      px = thePlanets[pi].xyz[0];
+      py = thePlanets[pi].xyz[1];
       script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
       double f1 = fgrav( thePlanets[pi].M , script_r , thePlanets[pi].eps , thePlanets[pi].type);
       omtot2 += f1/(script_r + 0.0625*thePlanets[pi].eps);	//Technically, should not include any extra softening, but avoid dividing by zero
@@ -228,17 +226,16 @@ double get_nu(const double x[], const double prim[]){
   }
   //power law for overall potential (e.g. for binaries)
   if (viscChoice == 3){
-    double cosp, sinp, px, py, script_r;
+    double script_r;
     int pi;
     double gx = x[0]*cos(x[1]);
     double gy = x[0]*sin(x[1]);
     double powsum = 0.0;
     for (pi=0; pi<Npl; pi++){
-      cosp = cos(thePlanets[pi].phi);
-      sinp = sin(thePlanets[pi].phi);
-      px = thePlanets[pi].r*cosp;
-      py = thePlanets[pi].r*sinp;
-      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy) + pow(thePlanets[pi].eps, 2.0) );
+      double px = thePlanets[pi].xyz[0];
+      double py = thePlanets[pi].xyz[1];
+      double eps = thePlanets[pi].eps;
+      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy) + eps*eps);
       powsum += thePlanets[pi].M*pow(script_r, viscPar);
     }
     nu *= powsum;
