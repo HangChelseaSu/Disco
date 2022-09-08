@@ -246,8 +246,6 @@ void planet_src( struct planet * pl, const double * prim, double * cons,
    double phi = xm[1] + 0.5*dphi;
    double x[3] = {get_centroid(xp[0],xm[0],1), phi, 
                     get_centroid(xp[2],xm[2],2)};
-   double xcyl[3];
-   get_rpz(x, xcyl);
    
    double Fxyz[3], F[3];
    planetaryForce( pl, xyz, Fxyz);
