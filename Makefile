@@ -34,7 +34,7 @@ OPT_DEFS += -DCT_MODE=$(CT_MODE)
 
 DIR_DEFS = -DUSE_MPI=$(USE_MPI)
 
-DEBUG_FLAGS = -g -fno-omit-frame-pointer -rdynamic
+DEBUG_FLAGS = -g
 
 FLAGS = -Wall -O3 $(OPT_DEFS) $(DIR_DEFS) $(DEBUG_FLAGS)
 

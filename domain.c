@@ -34,7 +34,7 @@ void setupDomain( struct domain * theDomain ){
    // Allocate all the grid data!
 
    // Total number of fields
-   int N_data = 15;
+   int N_data = 16;
 
    // Master arrays
    theDomain->N_data = N_data;
@@ -51,12 +51,13 @@ void setupDomain( struct domain * theDomain ){
    theDomain->data_len[6] = 1;              //piph
    theDomain->data_len[7] = 1;              //dphi
    theDomain->data_len[8] = 1;              //wiph
-   theDomain->data_len[9] = NUM_EDGES;      //E
-   theDomain->data_len[10] = NUM_EDGES;     //B
-   theDomain->data_len[11] = NUM_AZ_EDGES;  //E_phi
-   theDomain->data_len[12] = NUM_FACES;     //Phi
-   theDomain->data_len[13] = NUM_FACES;     //RK_Phi
-   theDomain->data_len[14] = 1;             //tempDoub
+   theDomain->data_len[9] = 3;              //xyz
+   theDomain->data_len[10] = NUM_EDGES;      //E
+   theDomain->data_len[11] = NUM_EDGES;     //B
+   theDomain->data_len[12] = NUM_AZ_EDGES;  //E_phi
+   theDomain->data_len[13] = NUM_FACES;     //Phi
+   theDomain->data_len[14] = NUM_FACES;     //RK_Phi
+   theDomain->data_len[15] = 1;             //tempDoub
    
    // Allocate each of the data fields!
    int field;
@@ -88,12 +89,13 @@ void setupDomain( struct domain * theDomain ){
    theDomain->piph = theDomain->data[6];
    theDomain->dphi = theDomain->data[7];
    theDomain->wiph = theDomain->data[8];
-   theDomain->E = theDomain->data[9];
-   theDomain->B = theDomain->data[10];
-   theDomain->E_phi = theDomain->data[11];
-   theDomain->Phi = theDomain->data[12];
-   theDomain->RK_Phi = theDomain->data[13];
-   theDomain->tempDoub = theDomain->data[14];
+   theDomain->xyz = theDomain->data[9];
+   theDomain->E = theDomain->data[10];
+   theDomain->B = theDomain->data[11];
+   theDomain->E_phi = theDomain->data[12];
+   theDomain->Phi = theDomain->data[13];
+   theDomain->RK_Phi = theDomain->data[14];
+   theDomain->tempDoub = theDomain->data[15];
 
    setGravParams( theDomain );
    setPlanetParams( theDomain );
@@ -170,24 +172,40 @@ void setupDomain( struct domain * theDomain ){
             rand();
 
     int i;
+
     for( k=0 ; k<Nz ; ++k )
     {
         //Discard randoms from inner (global) annuli
         for(j=theDomain->N0r_glob; j<theDomain->N0r; j++)
             rand();
 
+        double zm = theDomain->z_kph[k-1];
+        double zp = theDomain->z_kph[k];
+
         //DO the work
         for( j=0 ; j<Nr ; ++j )
         {
             int jk = k*Nr + j;
+
+            double rm = theDomain->r_jph[j-1];
+            double rp = theDomain->r_jph[j];
+
             double p0 = Pmax*(double)rand()/(double)RAND_MAX;
             double dp = Pmax/(double)Np[jk];
             for( i=0 ; i<Np[jk] ; ++i )
             {
                 double phi = p0+dp*(double)i;
-                if( phi > Pmax ) phi -= Pmax;
-                    theDomain->piph[jk][i] = phi;
-                    theDomain->dphi[jk][i] = dp;
+                if( phi > Pmax )
+                    phi -= Pmax;
+                
+                theDomain->piph[jk][i] = phi;
+                theDomain->dphi[jk][i] = dp;
+
+                double xp[3] = {rp, phi, zp};
+                double xm[3] = {rm, phi-dp, zm};
+                double x[3];
+                get_centroid_arr(xp, xm, x);
+                get_xyz(x, theDomain->xyz[jk] + 3*i);
             }
         }
         //Discard randoms from outer (global) annuli
@@ -413,6 +431,7 @@ void freeDomain( struct domain * theDomain ){
     theDomain->piph = NULL;
     theDomain->dphi = NULL;
     theDomain->wiph = NULL;
+    theDomain->xyz = NULL;
     theDomain->E = NULL;
     theDomain->B = NULL;
     theDomain->E_phi = NULL;

@@ -46,6 +46,7 @@ void timestep( struct domain * theDomain , double dt ){
    }
 
    add_diagnostics( theDomain , dt );
+
    theDomain->count_steps += 1;
 
 }

@@ -4,6 +4,7 @@
 #include "omega.h"
 #include "planet.h"
 #include "riemann.h"
+#include "sink.h"
 
 #include <string.h>
 
@@ -274,6 +275,40 @@ void move_cells( struct domain * theDomain , double dt){
       for( i=0 ; i<Np[jk] ; ++i ){
          piph[jk][i] += wiph[jk][i]*dt;
       }
+   }
+}
+
+void set_cell_xyz(struct domain * theDomain)
+{
+    int Nr = theDomain->Nr;
+    int Nz = theDomain->Nz;
+    int * Np = theDomain->Np;
+    int i,j,k;
+   
+    for(k=0; k<Nz; k++)
+    {
+        double zm = theDomain->z_kph[k-1];
+        double zp = theDomain->z_kph[k];
+        
+        for(j=0; j<Nr; j++)
+        {
+            int jk = k*Nr + j;
+            double rm = theDomain->r_jph[j-1];
+            double rp = theDomain->r_jph[j];
+
+            double *piph = theDomain->piph[jk];
+            double *dphi = theDomain->dphi[jk];
+            double *xyz = theDomain->xyz[jk];
+
+            for( i=0 ; i<Np[jk] ; ++i )
+            {
+                double x[3];
+                double xp[3] = {rp, piph[i], zp};
+                double xm[3] = {rm, piph[i] - dphi[i], zm};
+                get_centroid_arr(xp, xm, x);
+                get_xyz(x, xyz + 3*i);
+            }
+        }
    }
 }
 
@@ -658,10 +693,6 @@ void setup_faces( struct domain * theDomain , int dim ){
 }
 
 void omega_src( double * , double * , double * , double * , double );
-void sink_src( double * , double * , double * , double * , double, double,
-                double *);
-void cooling( double * , double * , double * , double * , double, double);
-void damping( double * , double * , double * , double * , double, double);
 
 void add_source( struct domain * theDomain , double dt ){
 
@@ -692,12 +723,16 @@ void add_source( struct domain * theDomain , double dt ){
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
       for( j=NgRa ; j<Nr-NgRb ; ++j ){
          int jk = j+Nr*k;
+
+         double *xyz_a = theDomain->xyz[jk];
+
          for( i=0 ; i<Np[jk] ; ++i ){
             double phip = piph[jk][i];
             double phim = piph[jk][i] - dphi[jk][i];
             double xp[3] = {r_jph[j]  ,phip,z_kph[k]  };
             double xm[3] = {r_jph[j-1],phim,z_kph[k-1]};
             double dV = get_dV(xp,xm);
+            double *xyz = xyz_a + 3*i;
 
             double sdVdt_hydro[NUM_Q] = {0};
             double sdVdt_grav[NUM_Q] = {0};
@@ -712,7 +747,7 @@ void add_source( struct domain * theDomain , double dt ){
             
             for( p=0 ; p<Npl ; ++p ){
                planet_src( thePlanets+p, &(prim[jk][iq]), sdVdt_grav, xp, xm,
-                        dV, dt,
+                            xyz, dV, dt,
                           theDomain->pl_gas_track + p*NUM_PL_INTEGRALS);
             }
             if(visc_flag)
@@ -720,10 +755,10 @@ void add_source( struct domain * theDomain , double dt ){
                             &(gradp[jk][iq]), &(gradz[jk][iq]), sdVdt_visc,
                             xp, xm, dV*dt);
             omega_src( &(prim[jk][iq]) , sdVdt_hydro , xp , xm , dV*dt );
-            sink_src( &(prim[jk][iq]) , sdVdt_sink , xp , xm , dV, dt,
+            sink_src( &(prim[jk][iq]) , sdVdt_sink , xp , xm , xyz, dV, dt,
                       theDomain->pl_gas_track);
-            cooling( &(prim[jk][iq]) , sdVdt_cool , xp , xm , dV, dt );
-            damping( &(prim[jk][iq]) , sdVdt_damp , xp , xm , dV, dt );
+            cooling( &(prim[jk][iq]) , sdVdt_cool , xp , xm , xyz, dV, dt );
+            damping( &(prim[jk][iq]) , sdVdt_damp , xp , xm , xyz, dV, dt );
 
             int q;
             for(q=0; q<NUM_Q; q++)

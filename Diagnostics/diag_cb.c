@@ -1,5 +1,7 @@
 
 #include "../paul.h"
+#include "../geometry.h"
+#include "../planet.h"
 
 static double gamma_law = 0.0;
 
@@ -14,8 +16,6 @@ int num_diagnostics(void){
 int num_inst_diagnostics(void){
    return(0);
 }
-
-void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
 
 /* Generic Diagnostics for Euler*/
 
@@ -42,6 +42,7 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
 
     double cosp = cos(phi);
     double sinp = sin(phi);
+    double xyz[3] = {r*cosp, r*sinp, z};
 
     double vx = vr*cosp - vp*sinp;
     double vy = vr*sinp + vp*cosp;
@@ -50,11 +51,14 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
     Qrz[7] = rho * ((r*v2 - 1)*cosp - rdv*vx);	//e_x
     Qrz[8] = rho * ((r*v2 - 1)*sinp - rdv*vy);	//e_y
 
-    double Fr, Fp, Fz;
+    double Fxyz[3];
+    double Fp;
 
-    planetaryForce( theDomain->thePlanets + 0, r, phi, z, &Fr, &Fp, &Fz, 0);
+    planetaryForce( theDomain->thePlanets + 0, xyz, Fxyz);
+    Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
     Qrz[9] = rho * r * Fp;				//Torque density from pl 0
-    planetaryForce( theDomain->thePlanets + 1, r, phi, z, &Fr, &Fp, &Fz, 0);
+    planetaryForce( theDomain->thePlanets + 1, xyz, Fxyz);
+    Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
     Qrz[10] = rho * r * Fp;				//Torque density from pl 1
 
     double cos2p = (cosp - sinp) * (cosp + sinp);

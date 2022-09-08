@@ -216,6 +216,7 @@ struct domain{
    double **piph;
    double **dphi;
    double **wiph;
+   double **xyz;
    double **E;
    double **B;
    double **E_phi;
@@ -293,6 +294,7 @@ struct cell{
    double piph;
    double dphi;
    double wiph;
+   double xyz[3];
 
    double E[NUM_EDGES];
    double B[NUM_EDGES];
@@ -347,6 +349,8 @@ struct planet{
    double Uf;
 
    int type;
+
+   double xyz[3];
 };
 
 struct profiler{

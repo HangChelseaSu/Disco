@@ -79,13 +79,23 @@ void get_distributed_integral_reports(double *x, double *prim, double *Q,
     double vr = prim[URR];
     double vp = r*prim[UPP];
 
+    double cosp = cos(phi);
+    double sinp = sin(phi);
+    double cos2p = (cosp-sinp)*(cosp+sinp);
+    double sin2p = 2*cosp*sinp;
+
+    double xyz[3] = {r*cosp, r*sinp, z};
+
     if(r > 1.0)
     {
-        double Fr, Fp, Fz;
-        planetaryForce(theDomain->thePlanets+0, r, phi, z, &Fr, &Fp, &Fz, 0);
+        double Fxyz[3];
+        double Fp;
+        planetaryForce(theDomain->thePlanets+0, xyz, Fxyz);
+        Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
         Q[0] = prim[RHO] * r * Fp;
 
-        planetaryForce(theDomain->thePlanets+1, r, phi, z, &Fr, &Fp, &Fz, 0);
+        planetaryForce(theDomain->thePlanets+1, xyz, Fxyz);
+        Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
         Q[1] = prim[RHO] * r * Fp;
     }
     else
@@ -93,11 +103,6 @@ void get_distributed_integral_reports(double *x, double *prim, double *Q,
         Q[0] = 0.0;
         Q[1] = 0.0;
     }
-
-    double cosp = cos(phi);
-    double sinp = sin(phi);
-    double cos2p = (cosp-sinp)*(cosp+sinp);
-    double sin2p = 2*cosp*sinp;
 
     Q[2] = rho;
     Q[3] = rho * r*cosp;
