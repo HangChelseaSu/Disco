@@ -279,8 +279,9 @@ void planet_src( struct planet * pl, const double * prim, double * cons,
    //TODO: WAY TOO MANY sincos calls!
    double Fp_xyz[3];
    get_vec_xyz(x, F, Fp_xyz);
-   double cosp = cos(pl->phi);
-   double sinp = sin(pl->phi);
+   double irp = 1.0 / pl->r;
+   double cosp = pl->xyz[0] * irp;
+   double sinp = pl->xyz[1] * irp;
    double Fp[3] = {cosp*Fp_xyz[0] + sinp*Fp_xyz[1],
                    -sinp*Fp_xyz[0] + cosp*Fp_xyz[1], Fp_xyz[2]};
 

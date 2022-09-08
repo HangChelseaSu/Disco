@@ -170,7 +170,6 @@ void sink_src(const double *prim, double *cons, const double *xp,
       double x[3];
       get_centroid_arr(xp, xm, x);
       double r = x[0];
-      double phi = x[1];
       double z = x[2];
 
       double rho = prim[RHO];
@@ -180,10 +179,11 @@ void sink_src(const double *prim, double *cons, const double *xp,
       double press  = prim[PPP];
       double specenth = press*(1.0 + 1.0/(gamma_law - 1.0))/rho;
 
-      double cosg = cos(phi);
-      double sing = sin(phi);
-      double gx = r*cosg;
-      double gy = r*sing;
+      double ir = 1.0 / r;
+      double cosg = xyz[0] * ir;
+      double sing = xyz[1] * ir;
+      double gx = xyz[0];
+      double gy = xyz[1];
 
       double px, py, dx, dy, mag, eps, epsfactor;
       double rate, surfdiff;
@@ -193,11 +193,11 @@ void sink_src(const double *prim, double *cons, const double *xp,
       if ((sinkNumber>0) && (sinkNumber<numSinks)) numSinks = sinkNumber;
       for (pi=0; pi<numSinks; pi++){
 
-
-          double cosp = cos(thePlanets[pi].phi);
-          double sinp = sin(thePlanets[pi].phi);
-          px = thePlanets[pi].r*cosp;
-          py = thePlanets[pi].r*sinp;
+          double irp = 1.0 / thePlanets[pi].r;
+          double cosp = thePlanets[pi].xyz[0] * irp;
+          double sinp = thePlanets[pi].xyz[1] * irp;
+          px = thePlanets[pi].xyz[0];
+          py = thePlanets[pi].xyz[1];
 
           dx = gx-px;
           dy = gy-py;
@@ -320,23 +320,16 @@ void cooling(const double *prim, double *cons,
 
     if(coolType == COOL_BETA_RELAX || enCurrent > enTarget)
     {
-      double r = x[0];
-      double phi = x[1];
-
-      double cosg = cos(phi);
-      double sing = sin(phi);
-      double gx = r*cosg;
-      double gy = r*sing;
+      double gx = xyz[0];
+      double gy = xyz[1];
 
       int pi;
-      double cosp, sinp, px, py, dx, dy, mag;
+      double px, py, dx, dy, mag;
       double Fxyz[3];
       for (pi=0; pi<Npl; pi++)
       {
-        cosp = cos(thePlanets[pi].phi);
-        sinp = sin(thePlanets[pi].phi);
-        px = thePlanets[pi].r*cosp;
-        py = thePlanets[pi].r*sinp;
+        px = thePlanets[pi].xyz[0];
+        py = thePlanets[pi].xyz[1];
 
         dx = gx-px;
         dy = gy-py;
@@ -367,24 +360,17 @@ void damping(const double *prim, double *cons, const double *xp,
 
     double omtot = 1.0;
     if (DAMP_INNER==2 || DAMP_OUTER==2 || DAMP_LOWER==2 || DAMP_UPPER==2){
-      double r = x[0];
-      double phi = x[1];
-
-      double cosg = cos(phi);
-      double sing = sin(phi);
-      double gx = r*cosg;
-      double gy = r*sing;
+      double gx = xyz[0];
+      double gy = xyz[1];
 
       int pi;
       omtot = 0.0;
-      double cosp, sinp, px, py, dx, dy, mag;
+      double px, py, dx, dy, mag;
       double Fxyz[3];
       for (pi=0; pi<Npl; pi++)
       {
-        cosp = cos(thePlanets[pi].phi);
-        sinp = sin(thePlanets[pi].phi);
-        px = thePlanets[pi].r*cosp;
-        py = thePlanets[pi].r*sinp;
+        px = thePlanets[pi].xyz[0];
+        py = thePlanets[pi].xyz[1];
 
         dx = gx-px;
         dy = gy-py;
