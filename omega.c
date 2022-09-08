@@ -202,10 +202,8 @@ double get_cs2( const double *x ){
  
       for (pi = 0; pi<Npl; pi++)
       {
-        cosp = cos(thePlanets[pi].phi);
-        sinp = sin(thePlanets[pi].phi);
-        px = thePlanets[pi].r*cosp;
-        py = thePlanets[pi].r*sinp;
+        px = thePlanets[pi].xyz[0];
+        py = thePlanets[pi].xyz[1];
         pr = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
         phip += phigrav( thePlanets[pi].M , pr , thePlanets[pi].eps , thePlanets[pi].type );
       }

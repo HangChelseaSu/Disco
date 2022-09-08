@@ -101,6 +101,30 @@ void setSinkParams(struct domain *theDomain)
     dampLenLower = theDomain->theParList.dampLenLower;
 }
 
+double intpow(double x, int p)
+{
+    if(p < 0)
+    {
+        x = 1.0 / x;
+        p = -p;
+    }
+
+    unsigned int n = p;
+    
+    double y = 1.0;
+
+    while(n != 0)
+    {
+        if(n & 1u)
+            y *= x;
+
+        x *= x;
+        n >>= 1;
+    }
+
+    return y;
+}
+
 void sink_src(const double *prim, double *cons, const double *xp,
                 const double *xm, const double *xyz, double dV,
                 double dt, double *pl_gas_track)
@@ -187,18 +211,18 @@ void sink_src(const double *prim, double *cons, const double *xp,
           }
           else if(sinkType == 2){	//exponential
             eps = sinkPar3;
-            eps = pow(eps, sinkPar4);
+            eps = intpow(eps, (int)sinkPar4);
             epsfactor = sinkPar5;
             if(epsfactor <= 0.0) epsfactor = 1.0;
-            double magPow = pow(mag, sinkPar4);
+            double magPow = intpow(mag, (int)sinkPar4);
             f_acc = exp(-magPow/(eps*epsfactor));
           }
           else if(sinkType == 1){	//polynomial, compact support
             eps = sinkPar3;
-            double pwrM = sinkPar4;
-            double pwrN = sinkPar5;
-            f_acc = 1.0 - pow((mag/eps),pwrM);
-            f_acc = pow(f_acc, pwrN);
+            int pwrM = (int)sinkPar4;
+            int pwrN = (int)sinkPar5;
+            f_acc = 1.0 - intpow((mag/eps),pwrM);
+            f_acc = intpow(f_acc, pwrN);
             if (mag >= eps){
               f_acc = 0.0;
             }
@@ -383,7 +407,7 @@ void damping(const double *prim, double *cons, const double *xp,
       dampLen = dampLenInner;
       theta = (x[0]-rmin)/dampLen;
       if (theta > 1.0) dampFactor = 0.0;
-      else dampFactor = 1.0 - pow(1.0 - pow(theta,2.0), 2.0);
+      else dampFactor = 1.0 - intpow(1.0 - intpow(theta,2), 2);
       ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
       count = count + 1.0;
     }
@@ -393,7 +417,7 @@ void damping(const double *prim, double *cons, const double *xp,
       dampLen = dampLenOuter;
       theta = (rmax-x[0])/dampLen;
       if (theta > 1.0) dampFactor = 0.0;
-      else dampFactor = pow(1.0 - pow(theta,2.0), 2.0);
+      else dampFactor = intpow(1.0 - intpow(theta,2), 2);
       ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
       count = count + 1.0;
     }
@@ -404,7 +428,7 @@ void damping(const double *prim, double *cons, const double *xp,
         dampLen = dampLenUpper;
         theta = (zmax-x[2])/dampLen;
         if (theta > 1.0) dampFactor = 0.0;
-        else dampFactor = pow(1.0 - pow(theta,2.0), 2.0);
+        else dampFactor = intpow(1.0 - intpow(theta,2), 2);
         ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
         count = count + 1.0;
       }
@@ -414,7 +438,7 @@ void damping(const double *prim, double *cons, const double *xp,
         dampLen = dampLenLower;
         theta = (zmax-x[2])/dampLen;
         if (theta > 1.0) dampFactor = 0.0;
-        else dampFactor = 1.0-pow(1.0 - pow(theta,2.0), 2.0);
+        else dampFactor = 1.0-intpow(1.0 - intpow(theta,2), 2);
         ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
         count = count + 1.0;
       }
