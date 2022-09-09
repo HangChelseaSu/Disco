@@ -333,4 +333,15 @@ struct profiler{
     struct timespec elapsed_time[NUM_PROF];
 };
 
+struct face_strip
+{
+    int jL;
+    int jR;
+    int kL;
+    int kR;
+    int iL0;
+    int iR0;
+    int Nf;
+};
+
 #endif

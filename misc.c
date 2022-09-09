@@ -559,8 +559,13 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
                 riemann_trans(theFaces + f, dt, dim, rp, rm, zp, zm,
                               fdAdt_hydro, fdAdt_visc);
 
+                struct cell *cL = (theFaces + f)->L;
+                struct cell *cR = (theFaces + f)->R;
+
                 for(q=0; q<NUM_Q; q++)
-                {
+                {   
+                    cL->cons[q] -= fdAdt_hydro[q] + fdAdt_visc[q];
+                    cR->cons[q] += fdAdt_hydro[q] + fdAdt_visc[q];
                     fhydro_diag[NUM_Q*JK+q] += fdAdt_hydro[q];
                     fvisc_diag[NUM_Q*JK+q] += fdAdt_visc[q];
                 }
