@@ -529,6 +529,8 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
 
     int *fI;
     struct face * theFaces;
+    struct face_strip *theStrips;
+    int Nfs;
 
     double *fhydro_diag;
     double *fvisc_diag;
@@ -537,6 +539,7 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
     {
         fI = theDomain->fIndex_r;
         theFaces = theDomain->theFaces_1;
+        theStrips = theDomain->theFaceStripsR;
         Nfr = Nr-1;
         jmin = NgRa==0 ? 0 : NgRa-1;
         jmax = NgRb==0 ? Nr-1 : Nr-NgRb;
@@ -559,6 +562,7 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
     {
         fI = theDomain->fIndex_z;
         theFaces = theDomain->theFaces_2;
+        theStrips = theDomain->theFaceStripsZ;
         Nfr = Nr;
         if(bflag && CT)
         {
@@ -667,8 +671,234 @@ void trans_flux( struct domain * theDomain , double dt , int dim ){
             }
         }
     }
+
+  /* 
+    int n;
+    for(n=0; n < Nfs; n++)
+    {
+        const struct face_strip *fs = theStrips + n;
+
+        int jkL = (fs->kL)*Nr + fs->jL;
+        int jkR = (fs->kR)*Nr + fs->jR;
+
+        int iL = fs->iL0;
+        int iR = fs->iR0;
+
+        double *piphL = piph[jkL];
+        double *piphR = piph[jkR];
+        double *dphiL = dphi[jkL];
+        double *dphiR = dphi[jkR];
+
+        double dxL, dxR;
+        if(dim == 1)
+        {
+            double rL = get_centroid(theDomain->r_jph[fs->jL],
+                                     theDomain->r_jph[fs->jL-1], 1);
+            double rR = get_centroid(theDomain->r_jph[fs->jR],
+                                     theDomain->r_jph[fs->jR-1], 1);
+            dxL = fs->rm - rL;
+            dxR = rR - fs->rm;
+        }
+        else
+        {
+            double zL = get_centroid(theDomain->z_kph[fs->kL],
+                                     theDomain->z_kph[fs->kL-1], 2);
+            double zR = get_centroid(theDomain->z_kph[fs->kR],
+                                     theDomain->z_kph[fs->kR-1], 2);
+            dxL = fs->zm - zL;
+            dxR = zR - fs->zm;
+        }
+    
+        double *primL = theDomain->prim[jkL];
+        double *consL = theDomain->cons[jkL];
+        double *gradrL = theDomain->gradr[jkL];
+        double *gradpL = theDomain->gradp[jkL];
+        double *gradzL = theDomain->gradz[jkL];
+        double *piphL = theDomain->piph[jkL];
+        double *dphiL = theDomain->dphi[jkL];
+        double *primR = theDomain->prim[jkR];
+        double *consR = theDomain->cons[jkR];
+        double *gradrR = theDomain->gradr[jkR];
+        double *gradpR = theDomain->gradp[jkR];
+        double *gradzR = theDomain->gradz[jkR];
+        double *piphR = theDomain->piph[jkR];
+        double *dphiR = theDomain->dphi[jkR];
+
+        double *ELa = (E == NULL) ? NULL : E[jkL];
+        double *BLa = (B == NULL) ? NULL : B[jkL];
+        double *EphiLa = (E_phi == NULL) ? NULL : E_phi[jkL];
+        double *ERa = (E == NULL) ? NULL : E[jkR];
+        double *BRa = (B == NULL) ? NULL : B[jkR];
+        double *EphiRa = (E_phi == NULL) ? NULL : E_phi[jkR];
+
+        int f;
+        for(f=0; f < fs->Nf; f++)
+        {
+            double fdAdt_hydro[NUM_Q];
+            double fdAdt_visc[NUM_Q];
+            int iL = (theFaces + f)->iL;
+            int iR = (theFaces + f)->iR;
+            int iqL = iL * NUM_Q;
+            int iqR = iR * NUM_Q;
+
+            double *EL = (ELa == NULL) ? NULL : ELa + iL*NUM_EDGES;
+            double *BL = (BLa == NULL) ? NULL : BLa + iL*NUM_EDGES;
+            double *EphiL = (EphiLa == NULL) ? NULL : EphiLa + iL*NUM_EDGES;
+            double *ER = (ERa == NULL) ? NULL : ERa + iR*NUM_EDGES;
+            double *BR = (BRa == NULL) ? NULL : BRa + iR*NUM_EDGES;
+            double *EphiR = (EphiRa == NULL) ? NULL : EphiRa + iR*NUM_EDGES;
+
+            riemann_trans(theFaces + f, primL+iqL, primR+iqR,
+                            consL+iqL, consR+iqR,
+                            gradrL+iqL, gradpL+iqL, gradzL+iqL,
+                            gradrR+iqR, gradpR+iqR, gradzR+iqR,
+                            piphL[iL], dphiL[iL], piphR[iR], dphiR[iR],
+                            dt, dim, rp, rm, zp, zm,
+                            EL, BL, EphiL, ER, BR, EphiR,
+                          fdAdt_hydro, fdAdt_visc);
+
+            for(q=0; q<NUM_Q; q++)
+            {
+                fhydro_diag[NUM_Q*JK+q] += fdAdt_hydro[q];
+                fvisc_diag[NUM_Q*JK+q] += fdAdt_visc[q];
+            }
+        }
+    }
+*/
 }
 
+
+void setup_face_strips(struct domain *theDomain, int dim)
+{
+    int Nz = theDomain->Nz;
+    int Nr = theDomain->Nr;
+    int *Np = theDomain->Np;
+
+    double *r_jph = theDomain->r_jph;
+    double *z_kph = theDomain->z_kph;
+
+    struct face_strip *theStrips = (dim == 1) ? theDomain->theFaceStripsR
+                                    : theDomain->theFaceStripsZ;
+    int Nfs = (dim == 1) ? theDomain->N_fsR : theDomain->N_fsZ;
+
+    int kL;
+
+    int kLmax = (dim == 1) ? Nz : Nz-1;
+    int jLmax = (dim == 1) ? Nr-1 : Nr;
+
+    int idx = 0;
+
+    for(kL = 0; kL < kLmax; kL++)
+    {
+        int kR = (dim == 1) ? kL : kL+1;
+
+        int jL;
+        for(jL = 0; jL < jLmax; jL++)
+        {
+            int jR = (dim == 1) ? jL+1 : jL;
+
+            int jkL = kL*Nr + jL;
+            int jkR = kR*Nr + jR;
+            int jkf = (dim == 1) ? kL*(Nr-1) + jL : kL*Nr + jL;
+
+            int iL0 = 0;
+            double phip = theDomain->piph[jkL][iL0];
+            double phim = phip - theDomain->dphi[jkL][iL0];
+
+            int iR;
+            int iR0 = -1;
+
+            for(iR = 0; iR < Np[jkR]; iR++)
+            {
+                double phi = theDomain->piph[jkR][iR];
+                if(get_signed_dp(phip, phi) >= 0
+                        && get_signed_dp(phim, phi) <= 0.0)
+                {
+                    iR0 = iR;
+                    break;
+                }
+            }
+
+            if(iR0 < 0)
+            {
+                printf("DANGER! Bad face strip!\n");
+            }
+
+            struct face_strip *fs = theStrips + idx;
+
+            fs->kL = kL;
+            fs->kR = kR;
+            fs->jL = jL;
+            fs->jR = jR;
+            fs->fa = 0;
+            fs->fb = Np[jkL] + Np[jkR];
+            fs->rm = (dim == 1) ? r_jph[jL] : r_jph[jL-1];
+            fs->rp = r_jph[jL];
+            fs->zm = (dim == 1) ? z_kph[kL-1] : z_kph[kL];
+            fs->zp = z_kph[kL];
+
+            fs->iL0 = iL0;
+            fs->iR0 = iR0;
+            fs->jkf = jkf;
+
+            /*
+            printf("added strip %d %d %d %d %d %d %d\n    %lf %lf %lf %lf\n",
+                    fs->kL, fs->kR, fs->jL, fs->jR, fs->Nf, fs->iL0, fs->iR0,
+                    fs->zm, fs->zp, fs->rm, fs->rp); 
+                    */
+
+            idx++;
+        }
+    }
+    
+    int n;
+    for(n=0; n < Nfs; n++)
+    {
+        struct face_strip *fs = theStrips + n;
+
+        int jkL = (fs->kL)*Nr + fs->jL;
+        int jkR = (fs->kR)*Nr + fs->jR;
+
+        int iL = fs->iL0;
+        int iR = fs->iR0;
+
+        double *piphL = theDomain->piph[jkL];
+        double *piphR = theDomain->piph[jkR];
+        double *dphiL = theDomain->dphi[jkL];
+        double *dphiR = theDomain->dphi[jkR];
+        
+        int jkf = fs->jkf;
+
+        double *dA = (dim == 1) ? theDomain->dA_fr[jkf] : theDomain->dA_fz[jkf];
+        double *xf = (dim == 1) ? theDomain->x_fr[jkf] : theDomain->x_fz[jkf];
+        
+        int f;
+        for(f=fs->fa; f < fs->fb; f++)
+        {
+            double phipL = piphL[iL];
+            double phipR = piphR[iR];
+            double phimL = piphL[iL] - dphiL[iL]; 
+            double phimR = piphR[iR] - dphiR[iR];
+
+            double phip = (get_signed_dp(phipL, phipR) > 0) ? phipR : phipL;
+            double phim = (get_signed_dp(phimL, phimR) > 0) ? phimL : phimR;
+            double dphif = get_signed_dp(phip, phim);
+            if(dphif < 0)
+                dphif = 0;
+
+            double xp[3] = {fs->rp, phip, fs->zp};
+            double xm[3] = {fs->rm, phip-dphif, fs->zm};
+            
+            dA[f] = get_dA(xp, xm, dim);
+            get_centroid_arr(xp, xm, xf + 3*f);
+
+            if(get_signed_dp(piphL[iL], piphR[iR]) > 0)
+                iR = (iR < Np[jkR]-1) ? iR+1 : 0;
+            else
+                iL = (iL < Np[jkL]-1) ? iL+1 : 0;
+        }
+    }
+}
 
 void setup_faces( struct domain * theDomain , int dim ){
 
@@ -690,6 +920,7 @@ void setup_faces( struct domain * theDomain , int dim ){
    *theFaces = (struct face *) malloc( Nf*sizeof(struct face) );
    buildfaces( theDomain , dim , 1 );
 
+   setup_face_strips(theDomain, dim);
 }
 
 void omega_src( double * , double * , double * , double * , double );

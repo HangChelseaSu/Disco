@@ -113,7 +113,7 @@ void plm_phi( struct domain * theDomain ){
 void plm_geom_boundary(struct domain *theDomain, int jmin, int jmax, int kmin,
                         int kmax, int dim, int LR);
 
-void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , int dim ){
+void plm_trans( struct domain * theDomain , struct face* theFaces , int Nf , int dim ){
 
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
@@ -131,6 +131,26 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
    double **gradp = theDomain->gradp;
    double **grad = (dim == 1) ? theDomain->gradr : theDomain->gradz;
    double **tempDoub = theDomain->tempDoub;
+
+   const struct face_strip *theStrips;
+   int Nfs;
+   double **dAf;
+   double **xf;
+
+   if(dim == 1)
+   {
+       theStrips = theDomain->theFaceStripsR;
+       Nfs = theDomain->N_fsR;
+       dAf = theDomain->dA_fr;
+       xf = theDomain->x_fr;
+   }
+   else
+   {
+       theStrips = theDomain->theFaceStripsZ;
+       Nfs = theDomain->N_fsZ;
+       dAf = theDomain->dA_fz;
+       xf = theDomain->x_fz;
+   }
    
    int j,k,q;
 
@@ -172,15 +192,116 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
             int jk = j+Nr*k;
             memset(tempDoub[jk], 0, Np[jk]*sizeof(double));
         }
+    
     int n;
-    for(n = 0; n < Nf; n++)
+    for(n=0; n < Nfs; n++)
     {
-        struct face *f  = &(theFaces[n]);
-        tempDoub[f->jkL][f->iL] += f->dA;
-        tempDoub[f->jkR][f->iR] += f->dA;
+        const struct face_strip *fs = theStrips + n;
+
+        int jkL = (fs->kL)*Nr + fs->jL;
+        int jkR = (fs->kR)*Nr + fs->jR;
+
+        int iL = fs->iL0;
+        int iR = fs->iR0;
+
+        double *piphL = piph[jkL];
+        double *piphR = piph[jkR];
+        double *dA = dAf[fs->jkf];
+        
+        int f;
+        for(f=fs->fa; f < fs->fb; f++)
+        {
+            tempDoub[jkL][iL] += dA[f];
+            tempDoub[jkR][iR] += dA[f];
+
+            if(get_signed_dp(piphL[iL], piphR[iR]) > 0)
+                iR = (iR < Np[jkR]-1) ? iR+1 : 0;
+            else
+                iL = (iL < Np[jkL]-1) ? iL+1 : 0;
+        }
     }
    
     //Add weighted slopes
+    
+    for(n=0; n < Nfs; n++)
+    {
+        const struct face_strip *fs = theStrips + n;
+
+        int jkL = (fs->kL)*Nr + fs->jL;
+        int jkR = (fs->kR)*Nr + fs->jR;
+
+        int iL = fs->iL0;
+        int iR = fs->iR0;
+
+        double *piphL = piph[jkL];
+        double *piphR = piph[jkR];
+        double *dphiL = dphi[jkL];
+        double *dphiR = dphi[jkR];
+
+        double *dA = dAf[fs->jkf];
+        double *x = xf[fs->jkf];
+
+        double dxL, dxR;
+        if(dim == 1)
+        {
+            double rL = get_centroid(theDomain->r_jph[fs->jL],
+                                     theDomain->r_jph[fs->jL-1], 1);
+            double rR = get_centroid(theDomain->r_jph[fs->jR],
+                                     theDomain->r_jph[fs->jR-1], 1);
+            dxL = fs->rm - rL;
+            dxR = rR - fs->rm;
+        }
+        else
+        {
+            double zL = get_centroid(theDomain->z_kph[fs->kL],
+                                     theDomain->z_kph[fs->kL-1], 2);
+            double zR = get_centroid(theDomain->z_kph[fs->kR],
+                                     theDomain->z_kph[fs->kR-1], 2);
+            dxL = fs->zm - zL;
+            dxR = zR - fs->zm;
+        }
+
+        int f;
+        for(f=fs->fa; f < fs->fb; f++)
+        {
+            double phi = x[3*f+1];
+            double phiL = piphL[iL] - 0.5*dphiL[iL];
+            double phiR = piphR[iR] - 0.5*dphiR[iR];
+            double dpL = get_signed_dp(phi,phiL);
+            double dpR = get_signed_dp(phi,phiR);
+
+            double dA_fL = dA[f] / tempDoub[jkL][iL];
+            double dA_fR = dA[f] / tempDoub[jkR][iR];
+
+            int iqL = iL*NUM_Q;
+            int iqR = iR*NUM_Q;
+
+            double *primL = &(prim[jkL][iqL]);
+            double *primR = &(prim[jkR][iqR]);
+            
+            double *gradpL = &(gradp[jkL][iqL]);
+            double *gradpR = &(gradp[jkR][iqR]);
+
+            double *gradL = &(grad[jkL][iqL]);
+            double *gradR = &(grad[jkR][iqR]);
+            
+            for( q=0 ; q<NUM_Q ; ++q )
+            {
+                double WL = primL[q] + dpL*gradpL[q];
+                double WR = primR[q] + dpR*gradpR[q];
+                double S = (WR-WL)/(dxR+dxL);
+            
+                gradL[q] += S*dA_fL;
+                gradR[q] += S*dA_fR;
+            }
+
+            if(get_signed_dp(piphL[iL], piphR[iR]) > 0)
+                iR = (iR < Np[jkR]-1) ? iR+1 : 0;
+            else
+                iL = (iL < Np[jkL]-1) ? iL+1 : 0;
+        }
+    }
+    /*
     for(n=0; n<Nf; ++n)
     {
         struct face * f  = &( theFaces[n] );
@@ -250,9 +371,95 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         }
 #endif
     }
+    */
 
     //Slope Limiting
-    
+    for(n=0; n < Nfs; n++)
+    {
+        const struct face_strip *fs = theStrips + n;
+
+        int jkL = (fs->kL)*Nr + fs->jL;
+        int jkR = (fs->kR)*Nr + fs->jR;
+
+        int iL = fs->iL0;
+        int iR = fs->iR0;
+
+        double *piphL = piph[jkL];
+        double *piphR = piph[jkR];
+        double *dphiL = dphi[jkL];
+        double *dphiR = dphi[jkR];
+
+        double *x = xf[fs->jkf];
+
+        double dxL, dxR;
+        if(dim == 1)
+        {
+            double rL = get_centroid(theDomain->r_jph[fs->jL],
+                                     theDomain->r_jph[fs->jL-1], 1);
+            double rR = get_centroid(theDomain->r_jph[fs->jR],
+                                     theDomain->r_jph[fs->jR-1], 1);
+            dxL = fs->rm - rL;
+            dxR = rR - fs->rm;
+        }
+        else
+        {
+            double zL = get_centroid(theDomain->z_kph[fs->kL],
+                                     theDomain->z_kph[fs->kL-1], 2);
+            double zR = get_centroid(theDomain->z_kph[fs->kR],
+                                     theDomain->z_kph[fs->kR-1], 2);
+            dxL = fs->zm - zL;
+            dxR = zR - fs->zm;
+        }
+
+        int f;
+        for(f=fs->fa; f < fs->fb; f++)
+        {
+            double phi = x[3*f+1];
+            double phiL = piphL[iL] - 0.5*dphiL[iL];
+            double phiR = piphR[iR] - 0.5*dphiR[iR];
+            double dpL = get_signed_dp(phi,phiL);
+            double dpR = get_signed_dp(phi,phiR);
+
+            int iqL = iL*NUM_Q;
+            int iqR = iR*NUM_Q;
+
+            double *primL = &(prim[jkL][iqL]);
+            double *primR = &(prim[jkR][iqR]);
+            
+            double *gradpL = &(gradp[jkL][iqL]);
+            double *gradpR = &(gradp[jkR][iqR]);
+
+            double *gradL = &(grad[jkL][iqL]);
+            double *gradR = &(grad[jkR][iqR]);
+            
+            for( q=0 ; q<NUM_Q ; ++q )
+            {
+                double WL = primL[q] + dpL*gradpL[q];
+                double WR = primR[q] + dpR*gradpR[q];
+            
+                double S = (WR-WL)/(dxR+dxL);
+                double SL = gradL[q];
+                double SR = gradR[q];
+
+                if( S*SL < 0.0 )
+                    gradL[q] = 0.0; 
+                else if( fabs(PLM*S) < fabs(SL) )
+                    gradL[q] = PLM*S;
+
+                if( S*SR < 0.0 )
+                    gradR[q] = 0.0; 
+                else if( fabs(PLM*S) < fabs(SR) )
+                    gradR[q] = PLM*S;
+            }
+
+            if(get_signed_dp(piphL[iL], piphR[iR]) > 0)
+                iR = (iR < Np[jkR]-1) ? iR+1 : 0;
+            else
+                iL = (iL < Np[jkL]-1) ? iL+1 : 0;
+        }
+    }
+   
+    /*
     for( n=0 ; n<Nf ; ++n )
     {
         struct face * f  = &( theFaces[n] );
@@ -360,6 +567,7 @@ void plm_trans( struct domain * theDomain , struct face * theFaces , int Nf , in
         }
 #endif
     }
+*/
    
    // Geometric boundaries don't have ghost zones, so the gradients there need
    // to be fixed.  

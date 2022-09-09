@@ -224,12 +224,26 @@ struct domain{
    double **RK_Phi;
    double **tempDoub;
 
+   double **dA_fr;
+   double **dA_fz;
+   double **x_fr;
+   double **x_fz;
+
    int N_data;
-   double ***data;
    int *data_len;
+   double ***data;
+
+   int Nf_data;
+   int *f_data_len;
+   double ***fr_data;
+   double ***fz_data;
 
    struct face * theFaces_1;
    struct face * theFaces_2;
+   int N_fsR;
+   int N_fsZ;
+   struct face_strip * theFaceStripsR;
+   struct face_strip * theFaceStripsZ;
    struct planet * thePlanets;
    struct profiler *prof;
    int * Np;
@@ -335,6 +349,24 @@ struct face{
    double E,B;
    int LRtype;
    int flip_flag;
+};
+
+struct face_strip
+{
+    int kL;
+    int kR;
+    int jL;
+    int jR;
+    int iL0;
+    int iR0;
+    int fa;
+    int fb;
+    int jkf;
+
+    double rm;
+    double rp;
+    double zm;
+    double zp;
 };
 
 struct planet{

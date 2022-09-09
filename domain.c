@@ -97,6 +97,74 @@ void setupDomain( struct domain * theDomain ){
    theDomain->RK_Phi = theDomain->data[14];
    theDomain->tempDoub = theDomain->data[15];
 
+   //Allocate all the face data!
+
+   // Total number of fields
+   int Nf_data = 2;
+
+   // Master arrays
+   theDomain->Nf_data = Nf_data;
+   theDomain->f_data_len = (int *)malloc(Nf_data * sizeof(int));
+   theDomain->fr_data = (double ***)malloc(Nf_data * sizeof(double **));
+   theDomain->fz_data = (double ***)malloc(Nf_data * sizeof(double **));
+
+   // Set the internal lengths of each grid field.
+   theDomain->f_data_len[0] = 1;          //dA
+   theDomain->f_data_len[1] = 3;          //x
+   
+   // Allocate each of the data fields!
+   for(field = 0; field < Nf_data; field++)
+   {
+       int size = theDomain->f_data_len[field];
+
+       if(size == 0)
+       {
+           theDomain->fr_data[field] = NULL;
+           continue;
+       }
+
+       theDomain->fr_data[field] = (double **)malloc((Nr-1)*Nz
+               * sizeof(double *));
+
+       int jkf;
+       for(jkf=0; jkf < (Nr-1)*Nz; jkf++)
+       {
+           int jkL = jkf;
+           int jkR = jkf+1;
+           theDomain->fr_data[field][jkf] = (double *)malloc(
+                   (Np[jkL] + Np[jkR]) * size * sizeof(double));
+       }
+   }
+
+   for(field = 0; field < Nf_data; field++)
+   {
+       int size = theDomain->f_data_len[field];
+
+       if(size == 0)
+       {
+           theDomain->fz_data[field] = NULL;
+           continue;
+       }
+
+       theDomain->fz_data[field] = (double **)malloc(Nr*(Nz-1)
+               * sizeof(double *));
+
+       int jkf;
+       for(jkf=0; jkf < Nr*(Nz-1); jkf++)
+       {
+           int jkL = jkf;
+           int jkR = jkf+Nr;
+           theDomain->fz_data[field][jkf] = (double *)malloc(
+                   (Np[jkL] + Np[jkR]) * size * sizeof(double));
+       }
+   }
+
+   // Set up the named aliases
+   theDomain->dA_fr = theDomain->fr_data[0];
+   theDomain->x_fr = theDomain->fr_data[1];
+   theDomain->dA_fz = theDomain->fz_data[0];
+   theDomain->x_fz = theDomain->fz_data[1];
+
    setGravParams( theDomain );
    setPlanetParams( theDomain );
    int Npl = theDomain->Npl;
@@ -237,6 +305,20 @@ void setupDomain( struct domain * theDomain ){
    theDomain->theFaces_2 = NULL;
    theDomain->N_ftracks_r = get_num_rzFaces( Nr , Nz , 1 );
    theDomain->N_ftracks_z = get_num_rzFaces( Nr , Nz , 2 );
+   theDomain->N_fsR = get_num_rzFaces( Nr , Nz , 1 );
+   theDomain->N_fsZ = get_num_rzFaces( Nr , Nz , 2 );
+   if(theDomain->N_fsR > 0)
+        theDomain->theFaceStripsR = (struct face_strip *) malloc(
+                theDomain->N_fsR * sizeof(struct face_strip));
+   else
+       theDomain->theFaceStripsR = NULL;
+
+   if(theDomain->N_fsZ > 0)
+        theDomain->theFaceStripsZ = (struct face_strip *) malloc(
+                theDomain->N_fsZ * sizeof(struct face_strip));
+   else
+       theDomain->theFaceStripsZ = NULL;
+
 
    theDomain->fIndex_r = (int *) malloc( (theDomain->N_ftracks_r+1)*sizeof(int) );
    theDomain->fIndex_z = (int *) malloc( (theDomain->N_ftracks_z+1)*sizeof(int) );

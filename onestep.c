@@ -117,6 +117,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
       setup_faces( theDomain , 1 );
       int Nfr = theDomain->fIndex_r[theDomain->N_ftracks_r];
       plm_trans(theDomain, theDomain->theFaces_1, Nfr, 1);
+      //plm_trans(theDomain, theDomain->theFaceStripsR, theDomain->N_fsR, 1);
       prof_tock(theDomain->prof, PROF_RECON_R);
    }
    if( Nz > 1 ){
@@ -124,6 +125,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
       setup_faces( theDomain , 2 );
       int Nfz = theDomain->fIndex_z[theDomain->N_ftracks_z];
       plm_trans(theDomain, theDomain->theFaces_2, Nfz, 2);
+      //plm_trans(theDomain, theDomain->theFaceStripsZ, theDomain->N_fsZ, 2);
       prof_tock(theDomain->prof, PROF_RECON_Z);
    }
    prof_tock(theDomain->prof, PROF_RECON);
