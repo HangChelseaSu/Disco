@@ -309,8 +309,6 @@ void setupCells( struct domain * theDomain ){
       }
    }
 
-   printf("initializing prim\n");
-
    //Setup real cells.
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
       double z = get_centroid( z_kph[k], z_kph[k-1], 2);
@@ -361,8 +359,6 @@ void setupCells( struct domain * theDomain ){
       set_B_fields(theDomain);
    }
 #endif
-
-   printf("initializing cons\n");
 
    for( k=NgZa ; k<Nz-NgZb ; ++k ){
       double z = get_centroid( z_kph[k], z_kph[k-1], 2);
