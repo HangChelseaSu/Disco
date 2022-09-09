@@ -14,6 +14,7 @@ void set_wcell( struct domain * );
 void adjust_RK_cons( struct domain * , double );
 
 void move_cells( struct domain * , double );
+void set_cell_xyz(struct domain * theDomain);
 void calc_dp( struct domain * );
 void calc_prim( struct domain * );
 void calc_cons( struct domain * );
@@ -164,6 +165,8 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    prof_tick(theDomain->prof, PROF_MOVE);
    if( first_step ){
       move_cells( theDomain , dt );
+      calc_dp( theDomain );
+      set_cell_xyz(theDomain);
       if( bflag ){
          check_flipped( theDomain , 0 );
          flip_fluxes( theDomain , 0 );
@@ -186,15 +189,16 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
 
    if( !planet_motion_analytic()){
       movePlanetsLive(theDomain);
+      setPlanetsXYZ(theDomain);
    }
    else if(first_step ){
       movePlanets( theDomain->thePlanets , theDomain->t , dt );
+      setPlanetsXYZ(theDomain);
    }
    prof_tock(theDomain->prof, PROF_STEP_PL);
 
    prof_tick(theDomain->prof, PROF_CLEAN);
    clean_pi( theDomain );
-   calc_dp( theDomain );
    prof_tock(theDomain->prof, PROF_CLEAN);
 
    prof_tick(theDomain->prof, PROF_C2P);
@@ -202,7 +206,6 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    if( bflag && theDomain->theParList.CT ){
       B_faces_to_cells( theDomain , 1 );
    }
-   
    
    calc_prim( theDomain ); //ORDERING??? AFTER?
    
@@ -249,8 +252,6 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
       //AMR( theDomain );
    }
 
-
    if( theDomain->theFaces_1 ) free( theDomain->theFaces_1 );
    if( theDomain->theFaces_2 ) free( theDomain->theFaces_2 );
-
 }

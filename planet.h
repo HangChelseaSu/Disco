@@ -8,17 +8,17 @@ void setGravParams( struct domain * theDomain );
 double phigrav( double M , double r , double eps , int type);
 double fgrav( double M , double r , double eps , int type);
 void adjust_gas( struct planet * pl , double * x , double * prim , double gam);
-double planetaryPotential(struct planet *pl, double r, double phi, double z);
-void planetaryForce( struct planet * pl , double r , double phi , double z ,
-                    double * fr , double * fp , double * fz , int mode );
-void planet_src( struct planet * pl , double * prim , double * cons ,
-                double * xp , double * xm , double dV, double dt,
-                double *pl_gas_track);
+double planetaryPotential(struct planet *pl, const double *xyz);
+void planetaryForce( struct planet * pl , const double *xyz, double *Fxyz);
+void planet_src( struct planet * pl , const double * prim , double * cons ,
+                const double * xp , const double * xm , const double *xyz,
+                double dV, double dt, double *pl_gas_track);
 
 void planet_init_kin(struct planet *pl, double *pl_kin);
 
 void zeroAuxPlanets(struct domain *theDomain);
 void setupPlanets(struct domain *theDomain);
+void setPlanetsXYZ(struct domain *theDomain);
 void initializePlanetTracking(struct domain *theDomain);
 void updatePlanetsKinAux(struct domain *theDomain, double dt);
 void movePlanetsLive(struct domain *theDomain);
