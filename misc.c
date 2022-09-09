@@ -765,13 +765,13 @@ void add_source( struct domain * theDomain , double dt ){
             {
                 cons[jk][iq+q] += sdVdt_hydro[q] + sdVdt_grav[q] + sdVdt_visc[q]
                               + sdVdt_sink[q] + sdVdt_cool[q] + sdVdt_damp[q];
-                int iq = NUM_Q*jk + q;
-                theDomain->theTools.S[iq] += sdVdt_hydro[q];
-                theDomain->theTools.Sgrav[iq] += sdVdt_grav[q];
-                theDomain->theTools.Svisc[iq] += sdVdt_visc[q];
-                theDomain->theTools.Ssink[iq] += sdVdt_sink[q];
-                theDomain->theTools.Scool[iq] += sdVdt_cool[q];
-                theDomain->theTools.Sdamp[iq] += sdVdt_damp[q];
+                int iqt = NUM_Q*jk + q;
+                theDomain->theTools.S[iqt] += sdVdt_hydro[q];
+                theDomain->theTools.Sgrav[iqt] += sdVdt_grav[q];
+                theDomain->theTools.Svisc[iqt] += sdVdt_visc[q];
+                theDomain->theTools.Ssink[iqt] += sdVdt_sink[q];
+                theDomain->theTools.Scool[iqt] += sdVdt_cool[q];
+                theDomain->theTools.Sdamp[iqt] += sdVdt_damp[q];
             }
          }    
       }    
@@ -965,6 +965,8 @@ void dump_grid(struct domain *theDomain, char filename[])
    double **gradr = theDomain->gradr;
    double **gradp = theDomain->gradp;
    double **gradz = theDomain->gradz;
+   double **xyz = theDomain->xyz;
+   double **wiph = theDomain->wiph;
 
    int i,j,k, q;
 
@@ -999,6 +1001,9 @@ void dump_grid(struct domain *theDomain, char filename[])
                 fprintf(f, " %.12le", gradp[jk][iq+q]);
             for(q=0; q<NUM_Q; q++)
                 fprintf(f, " %.12le", gradz[jk][iq+q]);
+            fprintf(f, " %.12le", wiph[jk][i]);
+            for(q=0; q<3; q++)
+                fprintf(f, " %.12le", xyz[jk][3*i+q]);
             fprintf(f, "\n");
          }    
       }    

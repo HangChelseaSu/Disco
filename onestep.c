@@ -128,7 +128,7 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
    }
    prof_tock(theDomain->prof, PROF_RECON);
 
-   //dump_grid(theDomain, "grid");
+   //dump_grid(theDomain, "grid.recon");
 
    //Flux
    prof_tick(theDomain->prof, PROF_FLUX);
@@ -158,18 +158,21 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
       update_B_fluxes( theDomain , dt );
       prof_tock(theDomain->prof, PROF_CT);
    }
+   //dump_grid(theDomain, "grid.flux");
   
    //Soucres
    prof_tick(theDomain->prof, PROF_SOURCE);
    add_source( theDomain , dt );
    prof_tock(theDomain->prof, PROF_SOURCE);
 
+   //dump_grid(theDomain, "grid.sources");
+
    prof_tick(theDomain->prof, PROF_MOVE);
    if( first_step ){
       move_cells( theDomain , dt );
-#if NUM_FACES > 0
       calc_dp( theDomain );
       set_cell_xyz(theDomain);
+#if NUM_FACES > 0
       if( bflag ){
          check_flipped( theDomain , 0 );
          flip_fluxes( theDomain , 0 );
@@ -181,6 +184,8 @@ void onestep( struct domain * theDomain , double RK , double dt , int first_step
 #endif
    }
    prof_tock(theDomain->prof, PROF_MOVE);
+
+   //dump_grid(theDomain, "grid.move");
 
    // Before we move the planets, update their internal diagnostics.
    // The gas_track integrals *must* be reduced (summed) over MPI ranks
