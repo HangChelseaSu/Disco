@@ -169,7 +169,7 @@ double planetaryPotential(struct planet *pl, const double *xyz)
     double z = xyz[2];
 
     if(grav2D == 1)
-        z = 0.0;
+        z = zp;
     else if(grav2D == 2)
     {
         xp = xyz[0];
@@ -200,7 +200,7 @@ void planetaryForce( struct planet * pl , const double *xyz, double *Fxyz)
     double z = xyz[2];
 
     if(grav2D == 1)
-        z = zp
+        z = zp;
     else if(grav2D == 2)
     {
         xp = xyz[0];

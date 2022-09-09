@@ -12,6 +12,7 @@ struct cell_lite{
    double piph;
    double dphi;
    double wiph;
+   double xyz[3];
    double Phi[NUM_FACES];
    double RK_Phi[NUM_FACES];
 };
@@ -20,10 +21,10 @@ struct cell_lite{
 void generate_mpi_cell( MPI_Datatype * cell_mpi ){
 
    struct cell_lite test;
-   int count = 8;
-   int blocksize[]      = {NUM_Q,NUM_Q,NUM_Q,1,1,1,NUM_FACES,NUM_FACES};
-   MPI_Datatype types[] = {MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE};
-   MPI_Aint offsets[8];
+   int count = 9;
+   int blocksize[]      = {NUM_Q,NUM_Q,NUM_Q,1,1,1,3,NUM_FACES,NUM_FACES};
+   MPI_Datatype types[] = {MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE,MPI_DOUBLE};
+   MPI_Aint offsets[9];
 
    offsets[0] = (char *)&(test.prim)   - (char *)(&test);
    offsets[1] = (char *)&(test.cons)   - (char *)(&test);
@@ -31,8 +32,9 @@ void generate_mpi_cell( MPI_Datatype * cell_mpi ){
    offsets[3] = (char *)&(test.piph)   - (char *)(&test);
    offsets[4] = (char *)&(test.dphi)   - (char *)(&test);
    offsets[5] = (char *)&(test.wiph)   - (char *)(&test);
-   offsets[6] = (char *)&(test.Phi)    - (char *)(&test);
-   offsets[7] = (char *)&(test.RK_Phi) - (char *)(&test);
+   offsets[6] = (char *)&(test.xyz)    - (char *)(&test);
+   offsets[7] = (char *)&(test.Phi)    - (char *)(&test);
+   offsets[8] = (char *)&(test.RK_Phi) - (char *)(&test);
 
    MPI_Type_create_struct( count , blocksize , offsets , types , cell_mpi );
    MPI_Type_commit( cell_mpi );
@@ -46,6 +48,7 @@ void copy_cell_to_lite( struct cell * c , struct cell_lite * cl ){
    memcpy( cl->RKcons , c->RKcons , NUM_Q*sizeof(double) );
    memcpy( cl->Phi    , c->Phi    , NUM_FACES*sizeof(double) );
    memcpy( cl->RK_Phi , c->RK_Phi , NUM_FACES*sizeof(double) );
+   memcpy( cl->xyz    , c->xyz    , 3*sizeof(double) );
    cl->piph   = c->piph;
    cl->dphi   = c->dphi;
    cl->wiph   = c->wiph; 
@@ -59,6 +62,7 @@ void copy_lite_to_cell( struct cell_lite * cl , struct cell * c ){
    memcpy( c->RKcons , cl->RKcons , NUM_Q*sizeof(double) );
    memcpy( c->Phi    , cl->Phi    , NUM_FACES*sizeof(double) );
    memcpy( c->RK_Phi , cl->RK_Phi , NUM_FACES*sizeof(double) );
+   memcpy( c->xyz    , cl->xyz    , 3*sizeof(double) );
    c->piph   = cl->piph;
    c->dphi   = cl->dphi;
    c->wiph   = cl->wiph;
