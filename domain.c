@@ -7,18 +7,15 @@
 #include "analysis.h"
 #include "planet.h"
 #include "report.h"
-
-
+#include "riemann.h"
+#include "sink.h"
 
 void setICparams( struct domain * );
-void setRiemannParams( struct domain * );
-void setGravParams( struct domain * );
 void setHlldParams( struct domain * );
 void setRotFrameParams( struct domain * );
 void setMetricParams( struct domain * );
 void setFrameParams(struct domain * );
 void setNoiseParams( struct domain * );
-void setSinkParams( struct domain * );
 
 int get_num_rzFaces( int , int , int );
 

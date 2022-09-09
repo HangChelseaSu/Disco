@@ -200,7 +200,7 @@ void planetaryForce( struct planet * pl , const double *xyz, double *Fxyz)
     double z = xyz[2];
 
     if(grav2D == 1)
-        z = 0.0;
+        z = zp
     else if(grav2D == 2)
     {
         xp = xyz[0];
@@ -212,21 +212,14 @@ void planetaryForce( struct planet * pl , const double *xyz, double *Fxyz)
     double dy = xyz[1] - yp;
     double dz = z - zp;
     double script_r = sqrt(dx*dx + dy*dy + dz*dz);
-    double script_r_perp = sqrt(dx*dx + dy*dy);
 
     double f1 = -fgrav( pl->M , script_r , pl->eps , pl->type);
 
-    double irp = 1.0 / script_r_perp;
-    double cosp = dx * irp;
-    double sinp = dy * irp;
-
     double ir = 1.0 / script_r;
-    double sint = script_r_perp * ir;
-    double cost = dz * ir;
 
-    Fxyz[0] = f1 * sint * cosp;
-    Fxyz[1] = f1 * sint * sinp;
-    Fxyz[2] = f1 * cost;
+    Fxyz[0] = f1 * dx * ir;
+    Fxyz[1] = f1 * dy * ir;
+    Fxyz[2] = f1 * dz * ir;
 }
 
 void planet_src( struct planet * pl, const double * prim, double * cons,

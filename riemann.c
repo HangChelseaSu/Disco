@@ -3,6 +3,7 @@ enum{_HLL_,_HLLC_,_HLLD_,_HLLC_DAMPCENTER_};
 #include "paul.h"
 #include "hydro.h"
 #include "geometry.h"
+#include "riemann.h"
 
 static int mesh_motion = 0;
 static int riemann_solver = 0;
@@ -34,15 +35,6 @@ void setRiemannParams( struct domain * theDomain ){
 
 void get_Ustar_HLLD( double , const double * , const double * , 
                     double * , double * , const double * , const double * );
-
-void solve_riemann( const double * , const double * ,
-                    double *, double * , 
-                    const double * , const double * , const double *,
-                    const double * , const double * , const double *,
-                    const double * , const double * , const double *,
-                    const double *, double , double , int ,
-                    double * , double * , double * , double * ,
-                    double *, double *);
 
 void riemann_phi( struct cell * cL , struct cell * cR, double * x ,
                 const double *xp, const double *xm, double dAdt ){

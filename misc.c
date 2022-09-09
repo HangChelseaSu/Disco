@@ -4,6 +4,7 @@
 #include "omega.h"
 #include "planet.h"
 #include "sink.h"
+#include "riemann.h"
 
 #include <string.h>
 
@@ -393,8 +394,6 @@ void calc_cons( struct domain * theDomain ){
    }
 }
 
-void riemann_phi( struct cell * , struct cell * , double * , const double *,
-                 const double *, double );
 
 void phi_flux( struct domain * theDomain , double dt ){
 
@@ -457,8 +456,6 @@ void phi_flux( struct domain * theDomain , double dt ){
 }
 
 void buildfaces( struct domain * , int , int );
-void riemann_trans( struct face * , double , int , double, double, double,
-                   double, double *, double *);
 
 void trans_flux( struct domain * theDomain , double dt , int dim ){
 
