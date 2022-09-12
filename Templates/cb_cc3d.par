@@ -4,36 +4,36 @@ Restart			0	//Restart from input.h5
 
 //Time Range//
 T_Start			0.0 //1.0
-T_End		    10.0
+T_End		    0.1
 T_Times_2pi		1
 
 //Output Frequency//
 Num_Reports		1e2
 Num_Snapshots		0
-Num_Checkpoints		20
+Num_Checkpoints		2
 Use_Logtime		0
 
 //Grid Dimensions//
-Num_R			128
-Num_Z			1
+Num_R			64
+Num_Z			64
 aspect			1.0	//Cell Aspect Ratio, for calculating N_phi
 Max_Aspect_Short	1.5	
 Max_Aspect_Long		1.5	//Aspect Ratio AMR Refinement Criteria
 
 //Domain Parameters//
-R_Min			0.0
+R_Min			1.0
 R_Max			30.0
-Z_Min			-0.5 //-0.0625
-Z_Max			0.5  //0.0625
+Z_Min			0.25 //-0.0625
+Z_Max			0.75  //0.0625
 R_Periodic		0
 Z_Periodic		0
 Phi_Max			1.0
 P_Times_2pi		1
-Z_Times_pi      0
+Z_Times_pi      1
 Log_Zoning		2	//0=Uniform, 1=Log, 2=Hybrid
 Log_Radius		1.0	//Only for option 2 of Log_Zoning
 
-NoBC_Rmin       1   //0 = Regular boundary. Ghost zones added and
+NoBC_Rmin       0   //0 = Regular boundary. Ghost zones added and
 NoBC_Rmax       0   //    boundary condition applied.
 NoBC_Zmin       0   //1 = Coordinate boundary (like r=0 origin).
 NoBC_Zmax       0   //    No ghost zones or explicit BC applied.
@@ -41,7 +41,7 @@ NoBC_Zmax       0   //    No ghost zones or explicit BC applied.
 //Numerical Parameters
 CFL			0.5
 PLM			1.5
-Max_DT              0    //If > 0.0, the maximum allowed time step.
+Max_DT              0.0    //If > 0.0, the maximum allowed time step.
 Timestep            0   // 0=RK2, 1=FE
 Riemann_Solver		1	//0=HLL, 1=HLLC, 2=HLLD
 Mesh_Motion		    3	//0=Fixed, 1=By Cell, 2=Riemann, 3=Avg, 4=Exact
@@ -73,7 +73,7 @@ Mass_Ratio		1.0
 Eccentricity	0.0
 Drift_Rate		0.0 //-2.5e-4
 Drift_Exp		0.0
-Grav2D          1
+Grav2D          0
 Softening       0.05
 
 //Rotating Frame
@@ -87,12 +87,12 @@ Include_Atmos	0
 
 //Initial Condition Parameters
 Init_Par0       0       // int
-Init_Par1       1.0e-2  // sig0 - asymptotic density
+Init_Par1       1.0e-2  // sig0 - asymptotic surface density
 Init_Par2       1.0e-5  // d0 - density floor in cavity
 Init_Par3       2.5     // Rcav - location of cavity
 Init_Par4       0.0     // Rout - outer disk edge if > 0, else  infinite disk
 Init_Par5       1.0e-4  // v0 - velocity kick magnitude
-Init_Par6       0.0     // rho_atm
+Init_Par6       1.0e-10 // doub
 Init_Par7       0.0     // doub
 Init_Par8       0.0     // doub
 
@@ -102,7 +102,7 @@ Noise_Abs       0.0     // Amplitude of Absolute Noise
 Noise_Rel       0.0     // Amplitude of Relative Noise
 
 //Sink & Nozzle Parameters
-Sink_Type       1       //0: No Sink
+Sink_Type       0      //0: No Sink
 Sink_Number     0		//0: all planets have sinks. else: first N planets have sinks
 Sink_Par1       0.3     // Sink Rate
 Sink_Par2       1.0     // Torque Control (0: Naive, 1: Torque-free)
