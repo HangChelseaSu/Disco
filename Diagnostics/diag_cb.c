@@ -22,9 +22,11 @@ int num_inst_diagnostics(void){
 void get_diagnostics( double * x , double * prim , double * Qrz, 
                         struct domain * theDomain )
 {
-    double r = x[0];
-    double phi = x[1];
-    double z = x[2];
+    double rpz[3];
+    get_rpz(x, rpz);
+    double r = rpz[0];
+    double phi = rpz[1];
+    double z = rpz[2];
 
     double rho = prim[RHO];
     double vr = prim[URR];
