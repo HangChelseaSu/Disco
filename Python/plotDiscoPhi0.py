@@ -6,7 +6,7 @@ import discopy.plot as plot
 
 
 def plotCheckpoint(file, vars=None, logvars=None, noGhost=False, bounds=None,
-                   rmax=None, planets=False):
+                   rmax=None, planets=False, dpi=300):
 
     print("Loading {0:s}...".format(file))
 
@@ -58,7 +58,7 @@ def plotCheckpoint(file, vars=None, logvars=None, noGhost=False, bounds=None,
                     name, varnames[q])
 
                 print("   Saving {0:s}...".format(plotname))
-                fig.savefig(plotname, dpi=200)
+                fig.savefig(plotname, dpi=dpi)
                 plt.close(fig)
 
             if q in logvars:
@@ -73,7 +73,7 @@ def plotCheckpoint(file, vars=None, logvars=None, noGhost=False, bounds=None,
                     name, varnames[q])
 
                 print("   Saving {0:s}...".format(plotname))
-                fig.savefig(plotname, dpi=200)
+                fig.savefig(plotname, dpi=dpi)
                 plt.close(fig)
 
 
@@ -118,6 +118,8 @@ if __name__ == "__main__":
                         help="Set plot limits to RMAX.")
     parser.add_argument('--noghost', action='store_true',
                         help="Do not plot ghost zones.")
+    parser.add_argument('-d', '--dpi', type=int, default=300,
+                            help="DPI of final image")
 
     args = parser.parse_args()
 
@@ -127,6 +129,7 @@ if __name__ == "__main__":
     use_bounds = args.bounds
     planets = args.planets
     noghost = args.noghost
+    dpi = args.dpi
 
     files = args.checkpoints
 
@@ -136,4 +139,5 @@ if __name__ == "__main__":
 
     for f in files:
         plotCheckpoint(f, vars=vars, logvars=logvars, bounds=bounds,
-                       rmax=rmax, noGhost=noghost, planets=planets)
+                       rmax=rmax, noGhost=noghost, planets=planets,
+                       dpi=dpi)
