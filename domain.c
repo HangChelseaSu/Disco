@@ -115,16 +115,10 @@ void setupDomain( struct domain * theDomain ){
         for(j=theDomain->N0r_glob; j<theDomain->N0r; j++)
             rand();
 
-        double zm = theDomain->z_kph[k-1];
-        double zp = theDomain->z_kph[k];
-
         //DO the work
         for( j=0 ; j<Nr ; ++j )
         {
             jk = k*Nr + j;
-
-            double rm = theDomain->r_jph[j-1];
-            double rp = theDomain->r_jph[j];
 
             double p0 = Pmax*(double)rand()/(double)RAND_MAX;
             double dp = Pmax/(double)Np[jk];
@@ -134,12 +128,6 @@ void setupDomain( struct domain * theDomain ){
                 if( phi > Pmax ) phi -= Pmax;
                 theDomain->theCells[jk][i].piph = phi;
                 theDomain->theCells[jk][i].dphi = dp;
-
-                double xp[3] = {rp, phi, zp};
-                double xm[3] = {rm, phi-dp, zm};
-                double x[3];
-                get_centroid_arr(xp, xm, x);
-                get_xyz(x, theDomain->theCells[jk][i].xyz);
             }
         }
         //Discard randoms from outer (global) annuli
@@ -193,6 +181,7 @@ void setupDomain( struct domain * theDomain ){
 void initial( double * , double * ); 
 void restart( struct domain * ); 
 void calc_dp( struct domain * );
+void set_cell_xyz( struct domain * );
 void set_wcell( struct domain * );
 void adjust_gas( struct planet * , double * , double * , double );
 void set_B_fields( struct domain * );
@@ -208,6 +197,7 @@ void setupCells( struct domain * theDomain ){
    int noiseType = theDomain->theParList.noiseType;
 
    calc_dp( theDomain );
+   set_cell_xyz(theDomain);
 
    int i,j,k;
    struct cell ** theCells = theDomain->theCells;
