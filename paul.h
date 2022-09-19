@@ -256,7 +256,7 @@ struct domain{
 
    int final_step;
    int check_plz;
-
+   int startup;
 };
 
 struct cell{

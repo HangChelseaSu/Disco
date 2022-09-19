@@ -150,6 +150,7 @@ void setupDomain( struct domain * theDomain ){
    theDomain->count_steps = 0;
    theDomain->final_step  = 0;
    theDomain->check_plz   = 0;
+   theDomain->startup = 1;
 
    theDomain->nrpt=-1;
    theDomain->nsnp=-1;
@@ -416,6 +417,7 @@ void possiblyOutput( struct domain * theDomain , int override ){
    double Nsnp = theDomain->N_snp;
    double Nchk = theDomain->N_chk;
    int LogOut = theDomain->theParList.Out_LogTime;
+   int restart_flag = theDomain->theParList.restart_flag;
    int n0;
 
    n0 = (int)( t*Nrpt/t_fin );
@@ -433,8 +435,12 @@ void possiblyOutput( struct domain * theDomain , int override ){
       char filename[256];
       if( !override ){
          if( !theDomain->check_plz ){
-            if(theDomain->rank==0) printf("Creating Checkpoint #%04d...\n",n0);
-            sprintf(filename,"checkpoint_%04d",n0);
+            if(theDomain->rank==0)
+                printf("Creating Checkpoint #%04d...\n",n0);
+            if(theDomain->startup && restart_flag)
+               sprintf(filename,"checkpoint_restart_%04d",n0);
+            else
+               sprintf(filename,"checkpoint_%04d",n0);
          }else{
             if(theDomain->rank==0) printf("Creating Requested Checkpoint...\n");
             sprintf(filename,"checkpoint_latest");
