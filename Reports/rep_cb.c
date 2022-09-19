@@ -2,8 +2,11 @@
 #include "../geometry.h"
 #include "../planet.h"
 
+#define N_AUX_PER_PLANET 12
+
 static double gamma_law = 0.0;
 static int Npl = 0;
+
 
 /*
  * 
@@ -28,12 +31,12 @@ int num_shared_reports()
 
 int num_distributed_aux_reports()
 {
-    return 24;
+    return 2 * N_AUX_PER_PLANET;
 }
 
 int num_distributed_integral_reports()
 {
-    return 27;
+    return 29;
 }
 
 void get_shared_reports(double *Q, struct domain *theDomain)
@@ -51,18 +54,17 @@ void get_distributed_aux_reports(double *Q, struct domain *theDomain)
     double *pl_aux1 = theDomain->pl_aux;
     double *pl_aux2 = theDomain->pl_aux + NUM_PL_AUX;
 
-    int n_aux = 12;
-    int idx_aux[] = {PL_SNK_M, PL_GRV_JZ, PL_SNK_JZ, PL_GRV_PX, PL_GRV_PY,
-                     PL_SNK_PX, PL_SNK_PY, PL_GRV_K, PL_SNK_K,
-                     PL_SNK_MX, PL_SNK_MY, PL_SNK_SZ};
+    int idx_aux[N_AUX_PER_PLANET] = {
+                PL_SNK_M, PL_GRV_JZ, PL_SNK_JZ, PL_GRV_PX, PL_GRV_PY,
+                PL_SNK_PX, PL_SNK_PY, PL_GRV_K, PL_SNK_K,
+                PL_SNK_MX, PL_SNK_MY, PL_SNK_SZ};
 
     int q;
-    for(q=0; q<n_aux; q++)
+    for(q=0; q<N_AUX_PER_PLANET; q++)
     {
         Q[2*q + 0] = pl_aux1[idx_aux[q]];
         Q[2*q + 1] = pl_aux2[idx_aux[q]];
     }
-
 }
 
 void get_distributed_integral_reports(double *x, double *prim, double *Q,
@@ -86,32 +88,36 @@ void get_distributed_integral_reports(double *x, double *prim, double *Q,
 
     double xyz[3] = {r*cosp, r*sinp, z};
 
+    double Fxyz[3];
+    planetaryForce(theDomain->thePlanets+0, xyz, Fxyz);
+    double Fp1 = cosp * Fxyz[1] - sinp * Fxyz[0];
+
+    planetaryForce(theDomain->thePlanets+1, xyz, Fxyz);
+    double Fp2 = cosp * Fxyz[1] - sinp * Fxyz[0];
+
     if(r > 1.0)
     {
-        double Fxyz[3];
-        double Fp;
-        planetaryForce(theDomain->thePlanets+0, xyz, Fxyz);
-        Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
-        Q[0] = prim[RHO] * r * Fp;
-
-        planetaryForce(theDomain->thePlanets+1, xyz, Fxyz);
-        Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
-        Q[1] = prim[RHO] * r * Fp;
+        Q[0] = prim[RHO] * r * Fp1;
+        Q[1] = prim[RHO] * r * Fp2;
+        Q[2] = 0.0;
+        Q[3] = 0.0;
     }
     else
     {
         Q[0] = 0.0;
         Q[1] = 0.0;
+        Q[2] = prim[RHO] * r * Fp1;
+        Q[3] = prim[RHO] * r * Fp2;
     }
 
-    Q[2] = rho;
-    Q[3] = rho * r*cosp;
-    Q[4] = rho * r*sinp;
-    Q[5] = rho * r*r*cos2p;
-    Q[6] = rho * r*r*sin2p;
+    Q[4] = rho;
+    Q[5] = rho * r*cosp;
+    Q[6] = rho * r*sinp;
+    Q[7] = rho * r*r*cos2p;
+    Q[8] = rho * r*r*sin2p;
 
 
-    int a_start = 7;
+    int a_start = 9;
 
     int nvals = 4;
     int nsplit = 5;

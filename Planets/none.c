@@ -21,7 +21,7 @@ void initializePlanets( struct planet * thePlanets ){
    thePlanets[0].type  = PLPOINTMASS;
 }
 
-void movePlanets( struct planet * thePlanets , double dt ){
+void movePlanets( struct planet * thePlanets , double t , double dt ){
    //Silence is golden.
 }
 

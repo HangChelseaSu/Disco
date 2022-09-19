@@ -1,6 +1,7 @@
 
 #include "../paul.h"
 #include "../planet.h"
+#include "../geometry.h"
 
 static double gamma_law = 0.0;
 
@@ -22,8 +23,6 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
                         struct domain * theDomain )
 {
    double r = x[0];
-   double phi = x[1];
-   double z = x[2];
 
    double rho = prim[RHO];
    double vr = prim[URR];
@@ -34,13 +33,16 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
    Qrz[0] = rho;
    Qrz[1] = 2.*M_PI*r*rho*vr;
    Qrz[2] = 2.*M_PI*r*rho*vz;
-   double Fr,Fp,Fz;
-   Fp = 0.0;
+   double rFp = 0.0;
    if( theDomain->Npl > 1 ){
       struct planet * pl = theDomain->thePlanets+1;
-      planetaryForce( pl , r , phi , z , &Fr , &Fp , &Fz , 0 );
+      double xyz[3];
+      get_xyz(x, xyz);
+      double Fxyz[3];
+      planetaryForce( pl , xyz, Fxyz);
+      rFp = xyz[0] * Fxyz[1] - xyz[1] * Fxyz[0];
    }
-   Qrz[3] = 2.*M_PI*r*rho*(r*Fp);
+   Qrz[3] = 2.*M_PI*r*rho*(rFp);
    Qrz[4] = 2.*M_PI*r*rho*( r*r*omega*vr );
    Qrz[5] = omega;
    Qrz[6] = 2*M_PI*r * rho*r*r*omega;

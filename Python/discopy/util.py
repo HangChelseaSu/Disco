@@ -519,6 +519,14 @@ class CBDiscoReport(DiscoReport):
     def __init__(self, filename):
         super().__init__(filename)
 
+        if self.dist_int.shape[0] == 27:
+            shape = self.dist_int.shape
+            new_shape = (29,) + shape[1:]
+            new_dist_int = np.empty(new_shape)
+            new_dist_int[:2, ...] = self.dist_int[:2, ...]
+            new_dist_int[4:, ...] = self.dist_int[2:, ...]
+            new_dist_int[2:4, ...] = 0.0
+
     @property
     def dt(self):
         return self.t[1:] - self.t[:-1]
@@ -590,40 +598,44 @@ class CBDiscoReport(DiscoReport):
         return self.dist_int[0:2]
 
     @property
+    def Jdot_grv_int_Gas(self):
+        return self.dist_int[2:4]
+
+    @property
     def Psi0(self):
-        return self.dist_int[2]
-
-    @property
-    def Psi1R(self):
-        return self.dist_int[3]
-
-    @property
-    def Psi1I(self):
         return self.dist_int[4]
 
     @property
-    def Psi2R(self):
+    def Psi1R(self):
         return self.dist_int[5]
 
     @property
-    def Psi2I(self):
+    def Psi1I(self):
         return self.dist_int[6]
 
     @property
+    def Psi2R(self):
+        return self.dist_int[7]
+
+    @property
+    def Psi2I(self):
+        return self.dist_int[8]
+
+    @property
     def dV_cav(self):
-        return self.dist_int[7::4]
-
-    @property
-    def dM_cav(self):
-        return self.dist_int[8::4]
-
-    @property
-    def dMex_cav(self):
         return self.dist_int[9::4]
 
     @property
-    def dMey_cav(self):
+    def dM_cav(self):
         return self.dist_int[10::4]
+
+    @property
+    def dMex_cav(self):
+        return self.dist_int[11::4]
+
+    @property
+    def dMey_cav(self):
+        return self.dist_int[12::4]
 
 
 def interpolate_timeseries(t1, x1, t2):

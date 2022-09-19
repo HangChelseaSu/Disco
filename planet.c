@@ -234,22 +234,16 @@ void planet_src( struct planet * pl, const double * prim, double * cons,
    //double rp = xp[0];
    //double rm = xm[0];
    //double r = 0.5*(rp+rm);
-   
-   double dphi = get_dp(xp[1],xm[1]);
-   double phi = xm[1] + 0.5*dphi;
-   double x[3] = {get_centroid(xp[0],xm[0],1), phi, 
-                    get_centroid(xp[2],xm[2],2)};
-   double xcyl[3];
-   get_rpz(x, xcyl);
+  
+   double x[3];
+   get_centroid_arr(xp, xm, x);
    
    double Fxyz[3], F[3];
    planetaryForce( pl, xyz, Fxyz);
    get_vec_from_xyz(x, Fxyz, F);
 
-   double hr = get_scale_factor(x, 1);
-   double hp = get_scale_factor(x, 0);
-   double hz = get_scale_factor(x, 2);
 
+   // if we're doing polar stuff, F[] gets modified
    if(polar_sources_r || polar_sources_p || polar_sources_z)
    {
        double adjust[3];
@@ -260,32 +254,36 @@ void planet_src( struct planet * pl, const double * prim, double * cons,
            F[1] *= adjust[1];
        if(polar_sources_z)
            F[2] *= adjust[2];
+
+       // Modified F[], so re-calculate Fxyz
+       get_vec_xyz(x, F, Fxyz);
    }
+
+   //Put F in the covariant basis. In cylindrical coords, this multiplies
+   //F_phi by 'r'. This is the form needed for the source terms and for
+   //dotting against the velocities.
+   get_vec_covariant(x, F, F);
 
    double dVdt = dV*dt;
 
-   cons[SRR] += rho*hr*F[0]*dVdt;
-   cons[LLL] += rho*hp*F[1]*dVdt;
-   cons[SZZ] += rho*hz*F[2]*dVdt;
-   cons[TAU] += rho*( hr*F[0]*vr + hz*F[2]*vz + hp*F[1]*omega )*dVdt;
+   cons[SRR] += rho*F[0]*dVdt;
+   cons[LLL] += rho*F[1]*dVdt;
+   cons[SZZ] += rho*F[2]*dVdt;
+   cons[TAU] += rho*( F[0]*vr + F[1]*omega + F[2]*vz )*dVdt;
 
-   //TODO: WAY TOO MANY sincos calls!
-   double Fp_xyz[3];
-   get_vec_xyz(x, F, Fp_xyz);
    double irp = 1.0 / pl->r;
    double cosp = pl->xyz[0] * irp;
    double sinp = pl->xyz[1] * irp;
-   double Fp[3] = {cosp*Fp_xyz[0] + sinp*Fp_xyz[1],
-                   -sinp*Fp_xyz[0] + cosp*Fp_xyz[1], Fp_xyz[2]};
+   double Fp[3] = {cosp*Fxyz[0] + sinp*Fxyz[1],
+                  -sinp*Fxyz[0] + cosp*Fxyz[1], Fxyz[2]};
 
    double Phi = planetaryPotential(pl, xyz);
 
-   pl_gas_track[PL_GRV_PX] -= rho*Fp_xyz[0]*dVdt;
-   pl_gas_track[PL_GRV_PY] -= rho*Fp_xyz[1]*dVdt;
-   pl_gas_track[PL_GRV_PZ] -= rho*Fp_xyz[2]*dVdt;
+   pl_gas_track[PL_GRV_PX] -= rho*Fxyz[0]*dVdt;
+   pl_gas_track[PL_GRV_PY] -= rho*Fxyz[1]*dVdt;
+   pl_gas_track[PL_GRV_PZ] -= rho*Fxyz[2]*dVdt;
    pl_gas_track[PL_GRV_JZ] -= rho*(pl->r)*Fp[1]*dVdt;
-   pl_gas_track[PL_GRV_EGAS] -= rho*(hr*F[0]*vr + hz*F[2]*vz
-                                      + hp*F[1]*omega )*dVdt;
+   pl_gas_track[PL_GRV_EGAS] -= rho*(F[0]*vr + F[1]*omega + F[2]*vz)*dVdt;
    pl->Uf += rho*Phi*dV;
 }
 

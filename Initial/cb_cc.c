@@ -57,13 +57,14 @@ void initial(double *prim, double *x)
     if(threeD)
     {
         double z = rpz[2];
-        double H = Mach * r;
+        double H = r / Mach;
         double rho0 = Sig / (sqrt(2*M_PI) * H);
 
         double Phi0 = -1.0 / r;
         double Phi = -1.0 / sqrt(r*r + z*z);
 
         rho = rho0 * exp(-(Phi - Phi0) / cs2);
+        vr *= rho/rho0;
     }
     else
         rho = Sig;
