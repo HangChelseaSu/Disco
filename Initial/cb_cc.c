@@ -1,6 +1,7 @@
 
 #include "../paul.h"
 #include "../geometry.h"
+#include "../omega.h"
 
 static double gam = 0.0;
 static double Mach = 0.0;
@@ -11,8 +12,6 @@ static double Rout = 0.0;
 static double v0 = 0.0;
 static int threeD = 0;
 static double rho_atm = 0.0;
-
-double get_cs2(double *);
 
 void setICparams( struct domain * theDomain )
 {

@@ -12,8 +12,8 @@ int num_distributed_integral_reports();
 
 void get_shared_reports(double *Q, struct domain *theDomain);
 void get_distributed_aux_reports(double *Q, struct domain *theDomain);
-void get_distributed_integral_reports(double *x, double *prim, double *Q,
-                                      struct domain *theDomain);
+void get_distributed_integral_reports(const double *x, const double *prim,
+                                      double *Q, struct domain *theDomain);
 
 //These are in report.c
 void initializeReport(struct domain *theDomain);

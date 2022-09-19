@@ -19,7 +19,7 @@ int num_inst_diagnostics(void){
 
 /* Generic Diagnostics for Euler*/
 
-void get_diagnostics( double * x , double * prim , double * Qrz, 
+void get_diagnostics(const double *x, const double *prim, double *Qrz, 
                         struct domain * theDomain )
 {
     double rpz[3];
@@ -29,10 +29,16 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
     double z = rpz[2];
 
     double rho = prim[RHO];
-    double vr = prim[URR];
-    double omega = prim[UPP];
     double Pp = prim[PPP];
-    double vp = r*omega;
+
+    double V[3] = {prim[URR], prim[UPP], prim[UZZ]};
+    get_vec_covariant(x, V, V);
+    double Vrpz[3];
+    get_vec_rpz(x, V, Vrpz);
+    double vr = Vrpz[0];
+    double vp = Vrpz[1];
+    double vz = Vrpz[2];
+
 
     Qrz[0] = rho;           // Sigma
     Qrz[1] = rho*vr;        // Mdot
@@ -48,10 +54,11 @@ void get_diagnostics( double * x , double * prim , double * Qrz,
 
     double vx = vr*cosp - vp*sinp;
     double vy = vr*sinp + vp*cosp;
-    double v2 =  vr*vr + vp*vp;
-    double rdv = r * vr;
-    Qrz[7] = rho * ((r*v2 - 1)*cosp - rdv*vx);	//e_x
-    Qrz[8] = rho * ((r*v2 - 1)*sinp - rdv*vy);	//e_y
+    double v2 =  vr*vr + vp*vp + vz*vz;
+    double rdv = r * vr + z * vz;
+    double sinTh = r / sqrt(r*r + z*z);
+    Qrz[7] = rho * ((r*v2 - sinTh)*cosp - rdv*vx);	//e_x
+    Qrz[8] = rho * ((r*v2 - sinTh)*sinp - rdv*vy);	//e_y
 
     double Fxyz[3];
     double Fp;

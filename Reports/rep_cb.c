@@ -67,8 +67,8 @@ void get_distributed_aux_reports(double *Q, struct domain *theDomain)
     }
 }
 
-void get_distributed_integral_reports(double *x, double *prim, double *Q,
-                                      struct domain *theDomain)
+void get_distributed_integral_reports(const double *x, const double *prim,
+                                      double *Q, struct domain *theDomain)
 {
     double rpz[3];
     get_rpz(x, rpz);
@@ -78,8 +78,14 @@ void get_distributed_integral_reports(double *x, double *prim, double *Q,
     double z = rpz[1];
 
     double rho = prim[RHO];
-    double vr = prim[URR];
-    double vp = r*prim[UPP];
+
+    double V[3] = {prim[URR], prim[UPP], prim[UZZ]};
+    get_vec_covariant(x, V, V);
+    double Vrpz[3];
+    get_vec_rpz(x, V, Vrpz);
+    double vr = Vrpz[0];
+    double vp = Vrpz[1];
+    double vz = Vrpz[2];
 
     double cosp = cos(phi);
     double sinp = sin(phi);
@@ -132,13 +138,15 @@ void get_distributed_integral_reports(double *x, double *prim, double *Q,
     {
         if((r > ra + s*dr) && (r <= ra + (s+1)*dr))
         {
-            double v2 = vr*vr + vp*vp;
-            double rdv = r*vr;
+            double v2 = vr*vr + vp*vp + vz*vz;
+            double rdv = r*vr + z*vz;
             double vx = vr*cosp - vp*sinp;
             double vy = vr*sinp + vp*cosp;
 
-            double ex = (r*v2-1)*cosp - rdv*vx;
-            double ey = (r*v2-1)*sinp - rdv*vy;
+            double sinTh = r / sqrt(r*r + z*z);
+
+            double ex = (r*v2-sinTh)*cosp - rdv*vx;
+            double ey = (r*v2-sinTh)*sinp - rdv*vy;
 
             Q[a_start + s*nvals + 0] = 1.0;
             Q[a_start + s*nvals + 1] = rho;
