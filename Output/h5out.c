@@ -288,6 +288,8 @@ void writePars(struct domain *theDomain, char filename[])
                     H5T_NATIVE_DOUBLE);
     dumpVal(filename, "Pars", "Drift_Exp", &(pars->Drift_Exp),
                     H5T_NATIVE_DOUBLE);
+    dumpVal(filename, "Pars", "Grav2D", &(pars->grav2D),
+                    H5T_NATIVE_INT);
     
     dumpVal(filename, "Pars", "Constrained_Transport", &(pars->CT),
                     H5T_NATIVE_INT);

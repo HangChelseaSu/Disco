@@ -13,8 +13,6 @@ static double redge = 0.0;
 static double rswitch = 0.0;
 static double epsfl = 0.0;
 
-double get_nu( const double *, const double *);
-
 
 void setICparams( struct domain * theDomain )
 {
