@@ -103,6 +103,12 @@ void setSinkParams(struct domain *theDomain)
 
 double intpow(double x, int p)
 {
+    /*
+     * This computes x^p where p is an integer. Substantially
+     * faster than pow(). Only multiplications, bit operations, and
+     * (possibly) one division.
+     */
+
     if(p < 0)
     {
         x = 1.0 / x;
@@ -172,10 +178,15 @@ void sink_src(const double *prim, double *cons, const double *xp,
       double r = x[0];
       double z = x[2];
 
+      double Vrpz[3];
+      double V[3] = {prim[URR], prim[UPP], prim[UZZ]};
+      get_vec_covariant(x, V, V);  // V in orthonormal basis
+      get_vec_rpz(x, V, Vrpz);     // Vrpz in orthonormal, cylindrical basis
+
       double rho = prim[RHO];
-      double vr  = prim[URR];
-      double vp  = prim[UPP]*r;
-      double vz  = prim[UZZ];
+      double vr  = Vrpz[0];
+      double vp  = Vrpz[1];
+      double vz  = Vrpz[2];
       double press  = prim[PPP];
       double specenth = press*(1.0 + 1.0/(gamma_law - 1.0))/rho;
 
@@ -267,11 +278,16 @@ void sink_src(const double *prim, double *cons, const double *xp,
           vg_r =  vxg*cosg + vyg*sing;
           vg_p = -vxg*sing + vyg*cosg;
 
+          double Vs_rpz[3] = {vg_r, vg_p, vz};
+          double Vs[3];
+          get_vec_from_rpz(x, Vs_rpz, Vs);
+          get_vec_covariant(x, Vs, Vs);
+
           cons[DDD] -= dM;
-          cons[SRR] -= vg_r*dM;
-          cons[LLL] -= r*vg_p*dM;
-          cons[SZZ] -= vz*dM;
-          double v2 = vxg*vxg + vyg*vyg;
+          cons[SRR] -= Vs[0]*dM;
+          cons[LLL] -= Vs[1]*dM;
+          cons[SZZ] -= Vs[2]*dM;
+          double v2 = vxg*vxg + vyg*vyg + vz*vz;
           cons[TAU] -= dM*(specenth + 0.5*v2
                     - 0.5*((vxg-vxg1)*(vxg-vxg1) + (vyg-vyg1)*(vyg-vyg1)));
 

@@ -166,14 +166,14 @@ void get_distributed_integral_reports(const double *x, const double *prim,
     rb = 2.0;
     int nwindows = 3;
     int nwindowvals = 7;
-    double dr = 0.05;
+    double dr_win = 0.05;
     double rspacing = (rb-ra) / (nwindows - 1);
 
     for(s=0; s < nwindows; s++)
     {
         int idx = b_start + s*nwindowvals;
         
-        if((r > ra + s * rspacing) && (r < ra + s * rspacing + dr))
+        if((r > ra + s * rspacing) && (r < ra + s * rspacing + dr_win))
         {
             Q[idx + 0] = 1.0;
             Q[idx + 1] = rho;
