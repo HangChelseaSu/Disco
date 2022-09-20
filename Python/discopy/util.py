@@ -623,19 +623,47 @@ class CBDiscoReport(DiscoReport):
 
     @property
     def dV_cav(self):
-        return self.dist_int[9::4]
+        return self.dist_int[9:29:4]
 
     @property
     def dM_cav(self):
-        return self.dist_int[10::4]
+        return self.dist_int[10:29:4]
 
     @property
     def dMex_cav(self):
-        return self.dist_int[11::4]
+        return self.dist_int[11:29:4]
 
     @property
     def dMey_cav(self):
-        return self.dist_int[12::4]
+        return self.dist_int[12:29:4]
+
+    @property
+    def dV_win(self):
+        return self.dist_int[29:50:7]
+
+    @property
+    def dM_win(self):
+        return self.dist_int[30:50:7]
+
+    @property
+    def dJ_win(self):
+        return self.dist_int[31:50:7]
+
+    @property
+    def dMdot_win(self):
+        return self.dist_int[32:50:7]
+
+    @property
+    def dMdot_absV_win(self):
+        return self.dist_int[33:50:7]
+
+    @property
+    def dJdot_adv_win(self):
+        return self.dist_int[34:50:7]
+
+    @property
+    def dJdot_adv_absV_win(self):
+        return self.dist_int[35:50:7]
 
 
 def interpolate_timeseries(t1, x1, t2):

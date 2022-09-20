@@ -32,7 +32,7 @@ void get_diagnostics(const double *x, const double *prim, double *Qrz,
     double Pp = prim[PPP];
 
     double V[3] = {prim[URR], prim[UPP], prim[UZZ]};
-    get_vec_covariant(x, V, V);
+    get_vec_covariant(x, V, V); // V is now in the orthonormal basis
     double Vrpz[3];
     get_vec_rpz(x, V, Vrpz);
     double vr = Vrpz[0];
@@ -41,11 +41,11 @@ void get_diagnostics(const double *x, const double *prim, double *Qrz,
 
 
     Qrz[0] = rho;           // Sigma
-    Qrz[1] = rho*vr;        // Mdot
-    Qrz[2] = rho*fabs(vr);  // Mdot |vr|
+    Qrz[1] = rho*V[0];        // Mdot
+    Qrz[2] = rho*fabs(V[0]);  // Mdot |vr|
     Qrz[3] = rho * r*vp;    // angular momentum
-    Qrz[4] = rho*r*vp*vr;	// (advective) angular momentum flux
-    Qrz[5] = rho*r*vp*fabs(vr); 
+    Qrz[4] = rho*r*vp*V[0];	// (advective) angular momentum flux
+    Qrz[5] = rho*r*vp*fabs(V[0]); 
     Qrz[6] = Pp;
 
     double cosp = cos(phi);

@@ -36,7 +36,7 @@ int num_distributed_aux_reports()
 
 int num_distributed_integral_reports()
 {
-    return 29;
+    return 9 + 20 + 21;
 }
 
 void get_shared_reports(double *Q, struct domain *theDomain)
@@ -157,6 +157,36 @@ void get_distributed_integral_reports(const double *x, const double *prim,
         {
             for(q=0; q<nvals; q++)
                 Q[a_start + s*nvals + q] = 0.0;
+        }
+    }
+
+    int b_start = a_start + nvals*nsplit;
+
+    ra = 1.0;
+    rb = 2.0;
+    int nwindows = 3;
+    int nwindowvals = 7;
+    double dr = 0.05;
+    double rspacing = (rb-ra) / (nwindows - 1);
+
+    for(s=0; s < nwindows; s++)
+    {
+        int idx = b_start + s*nwindowvals;
+        
+        if((r > ra + s * rspacing) && (r < ra + s * rspacing + dr))
+        {
+            Q[idx + 0] = 1.0;
+            Q[idx + 1] = rho;
+            Q[idx + 2] = rho * r*vp;
+            Q[idx + 3] = rho * V[0];
+            Q[idx + 4] = rho * fabs(V[0]);
+            Q[idx + 5] = rho * r*vp * V[0];
+            Q[idx + 6] = rho * r*vp * fabs(V[0]);
+        }
+        else
+        {
+            for(q=0; q<nwindowvals; q++)
+                Q[idx + q] = 0.0;
         }
     }
 }
