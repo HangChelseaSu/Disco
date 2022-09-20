@@ -175,12 +175,14 @@ void sink_src(const double *prim, double *cons, const double *xp,
 
       double x[3];
       get_centroid_arr(xp, xm, x);
-      double r = x[0];
-      double z = x[2];
+      double rpz[3];
+      get_rpz(x, rpz);
+      double r = rpz[0];
+      double z = rpz[2];
 
       double Vrpz[3];
       double V[3] = {prim[URR], prim[UPP], prim[UZZ]};
-      get_vec_covariant(x, V, V);  // V in orthonormal basis
+      get_vec_covariant(x, V, V);  // V in orthonormal, native basis
       get_vec_rpz(x, V, Vrpz);     // Vrpz in orthonormal, cylindrical basis
 
       double rho = prim[RHO];
@@ -280,8 +282,11 @@ void sink_src(const double *prim, double *cons, const double *xp,
 
           double Vs_rpz[3] = {vg_r, vg_p, vz};
           double Vs[3];
-          get_vec_from_rpz(x, Vs_rpz, Vs);
-          get_vec_covariant(x, Vs, Vs);
+          get_vec_from_rpz(x, Vs_rpz, Vs); //Vs is now in the orthonormal,
+                                           //native basis
+          get_vec_covariant(x, Vs, Vs);    //Vs is now in the covariant, 
+                                           //native basis, appropriate for the
+                                           //conserved momenta.
 
           cons[DDD] -= dM;
           cons[SRR] -= Vs[0]*dM;
