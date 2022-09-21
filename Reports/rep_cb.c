@@ -75,7 +75,7 @@ void get_distributed_integral_reports(const double *x, const double *prim,
 
     double r = rpz[0];
     double phi = rpz[1];
-    double z = rpz[1];
+    double z = rpz[2];
 
     double rho = prim[RHO];
 
