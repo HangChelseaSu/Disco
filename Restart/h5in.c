@@ -260,24 +260,30 @@ void restart( struct domain * theDomain ){
       //you don't really know where the different radial
       //tracks belong in memory, they might not be 
       //contiguous, and they definitely are not in a rectangular block.
-      for( k=0 ; k<Nz ; ++k ){
-         for( j=0 ; j<Nr ; ++j ){
-            int jk = j+Nr*k;
-            start2[0] = Index[jk];
-            start2[1] = 0;
-            loc_size2[0] = Np[jk];
-            loc_size2[1] = Nq;
-            glo_size2[0] = Nc;
-            glo_size2[1] = Nq;
-            double TrackData[Np[jk]*Nq];
-            readPatch( filename , group2 ,"Cells", TrackData , H5T_NATIVE_DOUBLE , 2 , start2 , loc_size2 , glo_size2 );
-            theDomain->theCells[jk] = (struct cell *) malloc( Np[jk]*sizeof(struct cell) );
-            for( i=0 ; i<Np[jk] ; ++i ){
-               struct cell * c = theCells[jk]+i;
-               Doub2Cell( TrackData + i*Nq , c );
+        for(k = 0; k < Nz; ++k)
+        {
+            for(j = 0; j < Nr; ++j)
+            {
+                int jk = j+Nr*k;
+                start2[0] = Index[jk];
+                start2[1] = 0;
+                loc_size2[0] = Np[jk];
+                loc_size2[1] = Nq;
+                glo_size2[0] = Nc;
+                glo_size2[1] = Nq;
+                double TrackData[Np[jk]*Nq];
+                readPatch(filename, group2, "Cells", TrackData,
+                          H5T_NATIVE_DOUBLE, 2, start2, loc_size2, glo_size2);
+                theDomain->theCells[jk] = (struct cell *) malloc(
+                        Np[jk] * sizeof(struct cell));
+            
+                for(i = 0; i < Np[jk]; ++i)
+                {
+                    struct cell * c = theCells[jk]+i;
+                    Doub2Cell( TrackData + i*Nq , c );
+                }
             }
-         }
-      }
+        }
 
        // Setup Planets
        setPlanetParams( theDomain );
@@ -306,6 +312,7 @@ void restart( struct domain * theDomain ){
            theDomain->pl_RK_aux = (double *) malloc(
                                     Npl * NUM_PL_AUX * sizeof(double));
        }
+      
       initializePlanets( theDomain->thePlanets );
       
       getH5dims( filename , group2 ,"Planets", dims );
@@ -345,7 +352,8 @@ void restart( struct domain * theDomain ){
              planet_init_kin(theDomain->thePlanets + p,
                              theDomain->pl_kin + p*NUM_PL_KIN);
       }
-
+      
+      setPlanetsXYZ(theDomain);
       zeroAuxPlanets(theDomain);
       initializePlanetTracking(theDomain);
    }

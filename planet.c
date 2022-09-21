@@ -155,96 +155,77 @@ void adjust_gas( struct planet * pl , double * x , double * prim , double gam ){
 
 }
 
-double planetaryPotential(struct planet *pl, double r, double phi, double z)
+double planetaryPotential(struct planet *pl, const double *xyz)
 {
     /*
      * Returns the gravitational potential (with correct sign) at position
      * (r, phi, z) from planet pl.
      */
+    
+    double xp = pl->xyz[0];
+    double yp = pl->xyz[1];
+    double zp = pl->xyz[2];
 
-    double rp = pl->r;
-    double pp = pl->phi;
+    double z = xyz[2];
+
     if(grav2D == 1)
-        z = 0.0;
+        z = zp;
     else if(grav2D == 2)
     {
-        rp = r;
-        pp = phi;
+        xp = xyz[0];
+        yp = xyz[1];
         z = 1.0;
     }
 
-    double cosp = cos(phi);
-    double sinp = sin(phi);
-    double dx = r*cosp-rp*cos(pp);
-    double dy = r*sinp-rp*sin(pp);
-    double script_r = sqrt(dx*dx+dy*dy+z*z);
+    double dx = xyz[0] - xp;
+    double dy = xyz[1] - yp;
+    double dz = z - zp;
+    double script_r = sqrt(dx*dx + dy*dy + dz*dz);
 
     return -phigrav(pl->M, script_r, pl->eps, pl->type);
 }
 
-void planetaryForce( struct planet * pl , double r , double phi , double z , double * fr , double * fp , double * fz , int mode )
+void planetaryForce( struct planet * pl , const double *xyz, double *Fxyz)
 {
     /*
-     * Calculates the specific gravitational force (ie. acceleration) between
-     * the gas and planet.
-     * The force is returned in an orthonormal basis in cylindrical coords:
-     *    |F| = sqrt(fr*fr + fp*fp + fz*fz)
-     * mode == 0 computes the force components At The Gas Position
-     * mode == 1 computes the force components At The Planet Position
+     * Calculates the specific gravitational force (ie. acceleration) from a
+     * planet at location xyz. The force on the planet is the -'ve of this
+     * value.
      */
+    
+    double xp = pl->xyz[0];
+    double yp = pl->xyz[1];
+    double zp = pl->xyz[2];
 
-   double rp = pl->r;
-   double pp = pl->phi;
-   if(grav2D == 1)
-      z = 0.0;
-   else if(grav2D == 2)
-   {
-       rp = r;
-       pp = phi;
-       z = 1.0;
-   }
+    double z = xyz[2];
 
-   double cosp = cos(phi);
-   double sinp = sin(phi);
-   double dx = r*cosp-rp*cos(pp);
-   double dy = r*sinp-rp*sin(pp);
-   double script_r = sqrt(dx*dx+dy*dy+z*z);
-   double script_r_perp = sqrt(dx*dx+dy*dy);
+    if(grav2D == 1)
+        z = zp;
+    else if(grav2D == 2)
+    {
+        xp = xyz[0];
+        yp = xyz[1];
+        z = 1.0;
+    }
 
-   double f1 = -fgrav( pl->M , script_r , pl->eps , pl->type);
+    double dx = xyz[0] - xp;
+    double dy = xyz[1] - yp;
+    double dz = z - zp;
+    double script_r = sqrt(dx*dx + dy*dy + dz*dz);
 
-   double cosa = dx/script_r_perp;
-   double sina = dy/script_r_perp;
+    double f1 = -fgrav( pl->M , script_r , pl->eps , pl->type);
 
-   double cosap = cosa*cosp+sina*sinp;
-   double sinap = sina*cosp-cosa*sinp;
+    double ir = 1.0 / script_r;
 
-   if( mode==1 ){
-      cosap = cosa*cos(pp)+sina*sin(pp);
-      sinap = sina*cos(pp)-cosa*sin(pp);
-   }
-
-   if(script_r_perp <= 0.0)
-   {
-       cosap = 0.0;
-       sinap = 0.0;
-   }
-   /*
-   double rH = rp*pow( pl->M/3.,1./3.);
-   double pd = 0.8; 
-   double fd = 1./(1.+exp(-( script_r/rH-pd)/(pd/10.)));
-   */
-
-   double sint = script_r_perp/script_r;
-   double cost = z/script_r;
-
-   *fr = cosap*f1*sint; //*fd;
-   *fp = sinap*f1*sint; //*fd;
-   *fz = f1*cost;
+    Fxyz[0] = f1 * dx * ir;
+    Fxyz[1] = f1 * dy * ir;
+    Fxyz[2] = f1 * dz * ir;
 }
 
-void planet_src( struct planet * pl , double * prim , double * cons , double * xp , double * xm , double dV, double dt, double *pl_gas_track ){
-
+void planet_src( struct planet * pl, const double * prim, double * cons,
+                const double * xp, const double * xm, const double *xyz,
+                double dV, double dt, double *pl_gas_track )
+{
    double rho = prim[RHO];
    double vr  = prim[URR];
    double vz  = prim[UZZ];
@@ -253,23 +234,16 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
    //double rp = xp[0];
    //double rm = xm[0];
    //double r = 0.5*(rp+rm);
+  
+   double x[3];
+   get_centroid_arr(xp, xm, x);
    
-   double dphi = get_dp(xp[1],xm[1]);
-   double phi = xm[1] + 0.5*dphi;
-   double x[3] = {get_centroid(xp[0],xm[0],1), phi, 
-                    get_centroid(xp[2],xm[2],2)};
-   double xcyl[3];
-   get_rpz(x, xcyl);
-   
-   double Fcyl[3], F[3];
-   planetaryForce( pl, xcyl[0], xcyl[1], xcyl[2],
-                    &(Fcyl[0]), &(Fcyl[1]), &(Fcyl[2]), 0);
-   get_vec_from_rpz(x, Fcyl, F);
+   double Fxyz[3], F[3];
+   planetaryForce( pl, xyz, Fxyz);
+   get_vec_from_xyz(x, Fxyz, F);
 
-   double hr = get_scale_factor(x, 1);
-   double hp = get_scale_factor(x, 0);
-   double hz = get_scale_factor(x, 2);
 
+   // if we're doing polar stuff, F[] gets modified
    if(polar_sources_r || polar_sources_p || polar_sources_z)
    {
        double adjust[3];
@@ -280,31 +254,36 @@ void planet_src( struct planet * pl , double * prim , double * cons , double * x
            F[1] *= adjust[1];
        if(polar_sources_z)
            F[2] *= adjust[2];
+
+       // Modified F[], so re-calculate Fxyz
+       get_vec_xyz(x, F, Fxyz);
    }
+
+   //Put F in the covariant basis. In cylindrical coords, this multiplies
+   //F_phi by 'r'. This is the form needed for the source terms and for
+   //dotting against the velocities.
+   get_vec_covariant(x, F, F);
 
    double dVdt = dV*dt;
 
-   cons[SRR] += rho*hr*F[0]*dVdt;
-   cons[LLL] += rho*hp*F[1]*dVdt;
-   cons[SZZ] += rho*hz*F[2]*dVdt;
-   cons[TAU] += rho*( hr*F[0]*vr + hz*F[2]*vz + hp*F[1]*omega )*dVdt;
+   cons[SRR] += rho*F[0]*dVdt;
+   cons[LLL] += rho*F[1]*dVdt;
+   cons[SZZ] += rho*F[2]*dVdt;
+   cons[TAU] += rho*( F[0]*vr + F[1]*omega + F[2]*vz )*dVdt;
 
-   //TODO: WAY TOO MANY sincos calls!
-   double Fp_xyz[3];
-   get_vec_xyz(x, F, Fp_xyz);
-   double cosp = cos(pl->phi);
-   double sinp = sin(pl->phi);
-   double Fp[3] = {cosp*Fp_xyz[0] + sinp*Fp_xyz[1],
-                   -sinp*Fp_xyz[0] + cosp*Fp_xyz[1], Fp_xyz[2]};
+   double irp = 1.0 / pl->r;
+   double cosp = pl->xyz[0] * irp;
+   double sinp = pl->xyz[1] * irp;
+   double Fp[3] = {cosp*Fxyz[0] + sinp*Fxyz[1],
+                  -sinp*Fxyz[0] + cosp*Fxyz[1], Fxyz[2]};
 
-   double Phi = planetaryPotential(pl, xcyl[0], xcyl[1], xcyl[2]);
+   double Phi = planetaryPotential(pl, xyz);
 
-   pl_gas_track[PL_GRV_PX] -= rho*Fp_xyz[0]*dVdt;
-   pl_gas_track[PL_GRV_PY] -= rho*Fp_xyz[1]*dVdt;
-   pl_gas_track[PL_GRV_PZ] -= rho*Fp_xyz[2]*dVdt;
+   pl_gas_track[PL_GRV_PX] -= rho*Fxyz[0]*dVdt;
+   pl_gas_track[PL_GRV_PY] -= rho*Fxyz[1]*dVdt;
+   pl_gas_track[PL_GRV_PZ] -= rho*Fxyz[2]*dVdt;
    pl_gas_track[PL_GRV_JZ] -= rho*(pl->r)*Fp[1]*dVdt;
-   pl_gas_track[PL_GRV_EGAS] -= rho*(hr*F[0]*vr + hz*F[2]*vz
-                                      + hp*F[1]*omega )*dVdt;
+   pl_gas_track[PL_GRV_EGAS] -= rho*(F[0]*vr + F[1]*omega + F[2]*vz)*dVdt;
    pl->Uf += rho*Phi*dV;
 }
 
@@ -374,6 +353,7 @@ void zeroAuxPlanets( struct domain *theDomain)
 void setupPlanets(struct domain *theDomain)
 {
    initializePlanets( theDomain->thePlanets );
+   setPlanetsXYZ(theDomain);
   
    int Npl = theDomain->Npl;
    int p;
@@ -385,6 +365,18 @@ void setupPlanets(struct domain *theDomain)
 
    zeroAuxPlanets(theDomain);
    initializePlanetTracking(theDomain);
+}
+
+void setPlanetsXYZ(struct domain *theDomain)
+{
+    int p;
+    for(p=0; p<theDomain->Npl; p++)
+    {
+        struct planet *pl = theDomain->thePlanets + p;
+        pl->xyz[0] = pl->r * cos(pl->phi);
+        pl->xyz[1] = pl->r * sin(pl->phi);
+        pl->xyz[2] = 0.0;
+    }
 }
 
 void movePlanetsLive(struct domain *theDomain)

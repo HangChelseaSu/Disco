@@ -87,12 +87,12 @@ Include_Atmos	0
 
 //Initial Condition Parameters
 Init_Par0       0       // int
-Init_Par1       1.0e-2  // rho0 - asymptotic density
+Init_Par1       1.0e-2  // sig0 - asymptotic density
 Init_Par2       1.0e-5  // d0 - density floor in cavity
 Init_Par3       2.5     // Rcav - location of cavity
 Init_Par4       0.0     // Rout - outer disk edge if > 0, else  infinite disk
 Init_Par5       1.0e-4  // v0 - velocity kick magnitude
-Init_Par6       0.0     // doub
+Init_Par6       0.0     // rho_atm
 Init_Par7       0.0     // doub
 Init_Par8       0.0     // doub
 

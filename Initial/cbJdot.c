@@ -13,8 +13,6 @@ static double redge = 0.0;
 static double l0 = 0.0;
 static double epsfl = 0.0;
 
-double get_cs2(double *);
-double get_nu(double *, double *);
 
 void setICparams( struct domain * theDomain )
 {

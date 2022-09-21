@@ -3,6 +3,7 @@
 #include "geometry.h"
 #include "planet.h"
 #include "hydro.h"
+#include "sink.h"
 
 static int sinkType = 0;
 static int sinkNumber = 0;
@@ -100,8 +101,39 @@ void setSinkParams(struct domain *theDomain)
     dampLenLower = theDomain->theParList.dampLenLower;
 }
 
-void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
-              double dt, double *pl_gas_track)
+double intpow(double x, int p)
+{
+    /*
+     * This computes x^p where p is an integer. Substantially
+     * faster than pow(). Only multiplications, bit operations, and
+     * (possibly) one division.
+     */
+
+    if(p < 0)
+    {
+        x = 1.0 / x;
+        p = -p;
+    }
+
+    unsigned int n = p;
+    
+    double y = 1.0;
+
+    while(n != 0)
+    {
+        if(n & 1u)
+            y *= x;
+
+        x *= x;
+        n >>= 1;
+    }
+
+    return y;
+}
+
+void sink_src(const double *prim, double *cons, const double *xp,
+                const double *xm, const double *xyz, double dV,
+                double dt, double *pl_gas_track)
 {
     if(nozzleType == 1)
     {
@@ -143,21 +175,28 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
 
       double x[3];
       get_centroid_arr(xp, xm, x);
-      double r = x[0];
-      double phi = x[1];
-      double z = x[2];
+      double rpz[3];
+      get_rpz(x, rpz);
+      double r = rpz[0];
+      double z = rpz[2];
+
+      double Vrpz[3];
+      double V[3] = {prim[URR], prim[UPP], prim[UZZ]};
+      get_vec_covariant(x, V, V);  // V in orthonormal, native basis
+      get_vec_rpz(x, V, Vrpz);     // Vrpz in orthonormal, cylindrical basis
 
       double rho = prim[RHO];
-      double vr  = prim[URR];
-      double vp  = prim[UPP]*r;
-      double vz  = prim[UZZ];
+      double vr  = Vrpz[0];
+      double vp  = Vrpz[1];
+      double vz  = Vrpz[2];
       double press  = prim[PPP];
       double specenth = press*(1.0 + 1.0/(gamma_law - 1.0))/rho;
 
-      double cosg = cos(phi);
-      double sing = sin(phi);
-      double gx = r*cosg;
-      double gy = r*sing;
+      double ir = 1.0 / r;
+      double cosg = xyz[0] * ir;
+      double sing = xyz[1] * ir;
+      double gx = xyz[0];
+      double gy = xyz[1];
 
       double px, py, dx, dy, mag, eps, epsfactor;
       double rate, surfdiff;
@@ -167,11 +206,11 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
       if ((sinkNumber>0) && (sinkNumber<numSinks)) numSinks = sinkNumber;
       for (pi=0; pi<numSinks; pi++){
 
-
-          double cosp = cos(thePlanets[pi].phi);
-          double sinp = sin(thePlanets[pi].phi);
-          px = thePlanets[pi].r*cosp;
-          py = thePlanets[pi].r*sinp;
+          double irp = 1.0 / thePlanets[pi].r;
+          double cosp = thePlanets[pi].xyz[0] * irp;
+          double sinp = thePlanets[pi].xyz[1] * irp;
+          px = thePlanets[pi].xyz[0];
+          py = thePlanets[pi].xyz[1];
 
           dx = gx-px;
           dy = gy-py;
@@ -185,18 +224,18 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
           }
           else if(sinkType == 2){	//exponential
             eps = sinkPar3;
-            eps = pow(eps, sinkPar4);
+            eps = intpow(eps, (int)sinkPar4);
             epsfactor = sinkPar5;
             if(epsfactor <= 0.0) epsfactor = 1.0;
-            double magPow = pow(mag, sinkPar4);
+            double magPow = intpow(mag, (int)sinkPar4);
             f_acc = exp(-magPow/(eps*epsfactor));
           }
           else if(sinkType == 1){	//polynomial, compact support
             eps = sinkPar3;
-            double pwrM = sinkPar4;
-            double pwrN = sinkPar5;
-            f_acc = 1.0 - pow((mag/eps),pwrM);
-            f_acc = pow(f_acc, pwrN);
+            int pwrM = (int)sinkPar4;
+            int pwrN = (int)sinkPar5;
+            f_acc = 1.0 - intpow((mag/eps),pwrM);
+            f_acc = intpow(f_acc, pwrN);
             if (mag >= eps){
               f_acc = 0.0;
             }
@@ -241,11 +280,19 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
           vg_r =  vxg*cosg + vyg*sing;
           vg_p = -vxg*sing + vyg*cosg;
 
+          double Vs_rpz[3] = {vg_r, vg_p, vz};
+          double Vs[3];
+          get_vec_from_rpz(x, Vs_rpz, Vs); //Vs is now in the orthonormal,
+                                           //native basis
+          get_vec_covariant(x, Vs, Vs);    //Vs is now in the covariant, 
+                                           //native basis, appropriate for the
+                                           //conserved momenta.
+
           cons[DDD] -= dM;
-          cons[SRR] -= vg_r*dM;
-          cons[LLL] -= r*vg_p*dM;
-          cons[SZZ] -= vz*dM;
-          double v2 = vxg*vxg + vyg*vyg;
+          cons[SRR] -= Vs[0]*dM;
+          cons[LLL] -= Vs[1]*dM;
+          cons[SZZ] -= Vs[2]*dM;
+          double v2 = vxg*vxg + vyg*vyg + vz*vz;
           cons[TAU] -= dM*(specenth + 0.5*v2
                     - 0.5*((vxg-vxg1)*(vxg-vxg1) + (vyg-vyg1)*(vyg-vyg1)));
 
@@ -265,7 +312,7 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
           int pi2;
           for(pi2=0; pi2<Npl; pi2++)
           {
-              double Phi = planetaryPotential(thePlanets+pi2, r, phi, z);
+              double Phi = planetaryPotential(thePlanets+pi2, xyz);
               pl_gas_track[NUM_PL_INTEGRALS*pi2 + PL_SNK_UGAS] += dM * Phi;
           }
       }
@@ -275,7 +322,9 @@ void sink_src(double *prim, double *cons, double *xp, double *xm, double dV,
 
 
 
-void cooling(double *prim, double *cons, double *xp, double *xm, double dV, double dt )
+void cooling(const double *prim, double *cons,
+             const double *xp, const double *xm, const double *xyz,
+             double dV, double dt )
 {
   if(coolType == COOL_BETA || coolType == COOL_BETA_RELAX)
   {
@@ -292,30 +341,23 @@ void cooling(double *prim, double *cons, double *xp, double *xm, double dV, doub
 
     if(coolType == COOL_BETA_RELAX || enCurrent > enTarget)
     {
-      double r = x[0];
-      double phi = x[1];
-      double z = x[2];
-
-      double cosg = cos(phi);
-      double sing = sin(phi);
-      double gx = r*cosg;
-      double gy = r*sing;
+      double gx = xyz[0];
+      double gy = xyz[1];
 
       int pi;
-      double fr,fp,fz, cosp, sinp, px, py, dx, dy, mag;
+      double px, py, dx, dy, mag;
+      double Fxyz[3];
       for (pi=0; pi<Npl; pi++)
       {
-        cosp = cos(thePlanets[pi].phi);
-        sinp = sin(thePlanets[pi].phi);
-        px = thePlanets[pi].r*cosp;
-        py = thePlanets[pi].r*sinp;
+        px = thePlanets[pi].xyz[0];
+        py = thePlanets[pi].xyz[1];
 
         dx = gx-px;
         dy = gy-py;
         mag = dx*dx + dy*dy;
         mag = sqrt(mag);
-        planetaryForce( thePlanets + pi, r, phi, z, &fr, &fp, &fz, 1);
-        omtot += sqrt(fr*fr + fp*fp + fz*fz)/mag;
+        planetaryForce( thePlanets + pi, xyz, Fxyz);
+        omtot += sqrt(Fxyz[0]*Fxyz[0] + Fxyz[1]*Fxyz[1] + Fxyz[2]*Fxyz[2])/mag;
       }
       omtot = sqrt(omtot);
 
@@ -330,7 +372,8 @@ void cooling(double *prim, double *cons, double *xp, double *xm, double dV, doub
 }
 
 
-void damping(double *prim, double *cons, double *xp, double *xm, double dV, double dt )
+void damping(const double *prim, double *cons, const double *xp,
+            const double *xm, const double *xyz, double dV, double dt )
 {
   if (DAMP_INNER + DAMP_OUTER + DAMP_LOWER + DAMP_UPPER > 0){
     double x[3];
@@ -338,31 +381,24 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
 
     double omtot = 1.0;
     if (DAMP_INNER==2 || DAMP_OUTER==2 || DAMP_LOWER==2 || DAMP_UPPER==2){
-      double r = x[0];
-      double phi = x[1];
-      double z = x[2];
-
-      double cosg = cos(phi);
-      double sing = sin(phi);
-      double gx = r*cosg;
-      double gy = r*sing;
+      double gx = xyz[0];
+      double gy = xyz[1];
 
       int pi;
       omtot = 0.0;
-      double fr,fp,fz, cosp, sinp, px, py, dx, dy, mag;
+      double px, py, dx, dy, mag;
+      double Fxyz[3];
       for (pi=0; pi<Npl; pi++)
       {
-        cosp = cos(thePlanets[pi].phi);
-        sinp = sin(thePlanets[pi].phi);
-        px = thePlanets[pi].r*cosp;
-        py = thePlanets[pi].r*sinp;
+        px = thePlanets[pi].xyz[0];
+        py = thePlanets[pi].xyz[1];
 
         dx = gx-px;
         dy = gy-py;
         mag = dx*dx + dy*dy;
         mag = sqrt(mag);
-        planetaryForce( thePlanets + pi, r, phi, z, &fr, &fp, &fz, 1);
-        omtot += sqrt(fr*fr + fp*fp + fz*fz)/mag;
+        planetaryForce( thePlanets + pi, xyz, Fxyz);
+        omtot += sqrt(Fxyz[0]*Fxyz[0] + Fxyz[1]*Fxyz[1] + Fxyz[2]*Fxyz[2])/mag;
       }
       omtot = sqrt(omtot);
     }
@@ -378,7 +414,7 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
       dampLen = dampLenInner;
       theta = (x[0]-rmin)/dampLen;
       if (theta > 1.0) dampFactor = 0.0;
-      else dampFactor = 1.0 - pow(1.0 - pow(theta,2.0), 2.0);
+      else dampFactor = 1.0 - intpow(1.0 - intpow(theta,2), 2);
       ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
       count = count + 1.0;
     }
@@ -388,7 +424,7 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
       dampLen = dampLenOuter;
       theta = (rmax-x[0])/dampLen;
       if (theta > 1.0) dampFactor = 0.0;
-      else dampFactor = pow(1.0 - pow(theta,2.0), 2.0);
+      else dampFactor = intpow(1.0 - intpow(theta,2), 2);
       ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
       count = count + 1.0;
     }
@@ -399,7 +435,7 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
         dampLen = dampLenUpper;
         theta = (zmax-x[2])/dampLen;
         if (theta > 1.0) dampFactor = 0.0;
-        else dampFactor = pow(1.0 - pow(theta,2.0), 2.0);
+        else dampFactor = intpow(1.0 - intpow(theta,2), 2);
         ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
         count = count + 1.0;
       }
@@ -409,7 +445,7 @@ void damping(double *prim, double *cons, double *xp, double *xm, double dV, doub
         dampLen = dampLenLower;
         theta = (zmax-x[2])/dampLen;
         if (theta > 1.0) dampFactor = 0.0;
-        else dampFactor = 1.0-pow(1.0 - pow(theta,2.0), 2.0);
+        else dampFactor = 1.0-intpow(1.0 - intpow(theta,2), 2);
         ratetot = (count*ratetot + dampFactor/dampTime)/(1.0+count);
         count = count + 1.0;
       }

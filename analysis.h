@@ -7,7 +7,7 @@ void setDiagParams(struct domain *theDomain);
 int num_diagnostics(void);
 int num_inst_diagnostics(void);
 
-void get_diagnostics( double * x , double * prim , double * Qrz, 
+void get_diagnostics(const double *x, const double *prim, double *Qrz, 
                         struct domain * theDomain );
 void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
                            struct domain * theDomain );

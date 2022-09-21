@@ -81,6 +81,8 @@ int main( int argc , char * argv[] ){
       prof_tick(&prof, PROF_TIMESTEP);
       timestep( &theDomain , dt );
       prof_tock(&prof, PROF_TIMESTEP);
+
+      theDomain.startup = 0;
    }
 
    possiblyOutput( &theDomain , 1 );

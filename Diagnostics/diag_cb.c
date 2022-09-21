@@ -1,5 +1,7 @@
 
 #include "../paul.h"
+#include "../geometry.h"
+#include "../planet.h"
 
 static double gamma_law = 0.0;
 
@@ -15,46 +17,57 @@ int num_inst_diagnostics(void){
    return(0);
 }
 
-void planetaryForce( struct planet * , double , double , double , double * , double * , double * , int );
-
 /* Generic Diagnostics for Euler*/
 
-void get_diagnostics( double * x , double * prim , double * Qrz, 
+void get_diagnostics(const double *x, const double *prim, double *Qrz, 
                         struct domain * theDomain )
 {
-    double r = x[0];
-    double phi = x[1];
-    double z = x[2];
+    double rpz[3];
+    get_rpz(x, rpz);
+    double r = rpz[0];
+    double phi = rpz[1];
+    double z = rpz[2];
 
     double rho = prim[RHO];
-    double vr = prim[URR];
-    double omega = prim[UPP];
     double Pp = prim[PPP];
-    double vp = r*omega;
+
+    double V[3] = {prim[URR], prim[UPP], prim[UZZ]};
+    get_vec_covariant(x, V, V); // V is now in the orthonormal basis
+    double Vrpz[3];
+    get_vec_rpz(x, V, Vrpz);
+    double vr = Vrpz[0];
+    double vp = Vrpz[1];
+    double vz = Vrpz[2];
+
 
     Qrz[0] = rho;           // Sigma
-    Qrz[1] = rho*vr;        // Mdot
-    Qrz[2] = rho*fabs(vr);  // Mdot |vr|
+    Qrz[1] = rho*V[0];        // Mdot
+    Qrz[2] = rho*fabs(V[0]);  // Mdot |vr|
     Qrz[3] = rho * r*vp;    // angular momentum
-    Qrz[4] = rho*r*vp*vr;	// (advective) angular momentum flux
-    Qrz[5] = rho*r*vp*fabs(vr); 
+    Qrz[4] = rho*r*vp*V[0];	// (advective) angular momentum flux
+    Qrz[5] = rho*r*vp*fabs(V[0]); 
     Qrz[6] = Pp;
 
     double cosp = cos(phi);
     double sinp = sin(phi);
+    double xyz[3] = {r*cosp, r*sinp, z};
 
     double vx = vr*cosp - vp*sinp;
     double vy = vr*sinp + vp*cosp;
-    double v2 =  vr*vr + vp*vp;
-    double rdv = r * vr;
-    Qrz[7] = rho * ((r*v2 - 1)*cosp - rdv*vx);	//e_x
-    Qrz[8] = rho * ((r*v2 - 1)*sinp - rdv*vy);	//e_y
+    double v2 =  vr*vr + vp*vp + vz*vz;
+    double rdv = r * vr + z * vz;
+    double sinTh = r / sqrt(r*r + z*z);
+    Qrz[7] = rho * ((r*v2 - sinTh)*cosp - rdv*vx);	//e_x
+    Qrz[8] = rho * ((r*v2 - sinTh)*sinp - rdv*vy);	//e_y
 
-    double Fr, Fp, Fz;
+    double Fxyz[3];
+    double Fp;
 
-    planetaryForce( theDomain->thePlanets + 0, r, phi, z, &Fr, &Fp, &Fz, 0);
+    planetaryForce( theDomain->thePlanets + 0, xyz, Fxyz);
+    Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
     Qrz[9] = rho * r * Fp;				//Torque density from pl 0
-    planetaryForce( theDomain->thePlanets + 1, r, phi, z, &Fr, &Fp, &Fz, 0);
+    planetaryForce( theDomain->thePlanets + 1, xyz, Fxyz);
+    Fp = cosp * Fxyz[1] - sinp * Fxyz[0];
     Qrz[10] = rho * r * Fp;				//Torque density from pl 1
 
     double cos2p = (cosp - sinp) * (cosp + sinp);

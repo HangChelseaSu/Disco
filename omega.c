@@ -2,6 +2,7 @@
 #include "paul.h"
 #include "omega.h"
 #include "planet.h"
+#include "geometry.h"
 
 static int meshOmChoice = 0;
 static double meshOmPar = 0.0;
@@ -155,10 +156,8 @@ double get_height_om( const double *x){
 
     double px, py, script_r;
     for (pi=0; pi<Npl; pi++){
-      cosp = cos(thePlanets[pi].phi);
-      sinp = sin(thePlanets[pi].phi);
-      px = thePlanets[pi].r*cosp;
-      py = thePlanets[pi].r*sinp;
+      px = thePlanets[pi].xyz[0];
+      py = thePlanets[pi].xyz[1];
       script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
       double f1 = fgrav( thePlanets[pi].M , script_r , thePlanets[pi].eps , thePlanets[pi].type);
       omtot2 += f1/(script_r + 0.0625*thePlanets[pi].eps);	//Technically, should not include any extra softening, but avoid dividing by zero
@@ -167,7 +166,6 @@ double get_height_om( const double *x){
 }
 
 double get_cs2( const double *x ){
-    double r = x[0];
     double cs2;
 
     if(cs2Choice == 1)
@@ -175,6 +173,7 @@ double get_cs2( const double *x ){
     else if(cs2Choice == 2)
     {
         double nu = .5;
+        double r = x[0];
         cs2 = .5/Mach/Mach/pow(r,2.*nu);
     }
     else if(cs2Choice == 3)
@@ -183,33 +182,31 @@ double get_cs2( const double *x ){
     }
     else if(cs2Choice == 4)
     {
+        double r = x[0];
         r = sqrt(r*r + eps*eps);
         double v2 = M/r;
         cs2 = v2/(Mach*Mach);
     }
     else if(cs2Choice == 5) 
     {
-      double r = x[0];
-      double phi = x[1];
+        double xyz[3];
+        get_xyz(x, xyz);
 
-      double cosp = cos(phi);
-      double sinp = sin(phi);
-      double gx = r*cosp;
-      double gy = r*sinp;
-      int pi;
-      double px, py, pr;
-      double phip = 0.0;
+        double gx = xyz[0];
+        double gy = xyz[1];
+        int pi;
+        double phip = 0.0;
  
-      for (pi = 0; pi<Npl; pi++)
-      {
-        cosp = cos(thePlanets[pi].phi);
-        sinp = sin(thePlanets[pi].phi);
-        px = thePlanets[pi].r*cosp;
-        py = thePlanets[pi].r*sinp;
-        pr = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
-        phip += phigrav( thePlanets[pi].M , pr , thePlanets[pi].eps , thePlanets[pi].type );
-      }
-      cs2 = phip/(Mach*Mach);        
+        for (pi = 0; pi<Npl; pi++)
+        {
+            double px, py, pr;
+            px = thePlanets[pi].xyz[0];
+            py = thePlanets[pi].xyz[1];
+            pr = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy));
+            phip += phigrav( thePlanets[pi].M , pr , thePlanets[pi].eps , thePlanets[pi].type );
+        }
+
+        cs2 = phip/(Mach*Mach);        
     }
     else
         cs2 = 1.0;
@@ -230,17 +227,16 @@ double get_nu(const double x[], const double prim[]){
   }
   //power law for overall potential (e.g. for binaries)
   if (viscChoice == 3){
-    double cosp, sinp, px, py, script_r;
+    double script_r;
     int pi;
     double gx = x[0]*cos(x[1]);
     double gy = x[0]*sin(x[1]);
     double powsum = 0.0;
     for (pi=0; pi<Npl; pi++){
-      cosp = cos(thePlanets[pi].phi);
-      sinp = sin(thePlanets[pi].phi);
-      px = thePlanets[pi].r*cosp;
-      py = thePlanets[pi].r*sinp;
-      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy) + pow(thePlanets[pi].eps, 2.0) );
+      double px = thePlanets[pi].xyz[0];
+      double py = thePlanets[pi].xyz[1];
+      double eps = thePlanets[pi].eps;
+      script_r = sqrt((px-gx)*(px-gx) + (py-gy)*(py-gy) + eps*eps);
       powsum += thePlanets[pi].M*pow(script_r, viscPar);
     }
     nu *= powsum;

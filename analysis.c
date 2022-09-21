@@ -3,71 +3,43 @@
 #include "geometry.h"
 #include "analysis.h"
 
-void zero_diagnostics( struct domain * theDomain ){
+void zero_diagnostics( struct domain * theDomain )
+{
+    int Nr = theDomain->Nr;
+    int Nz = theDomain->Nz;
+    int Nq = theDomain->num_tools;
+    struct diagnostic_avg * theTools = &(theDomain->theTools);
 
-   int Nr = theDomain->Nr;
-   int Nz = theDomain->Nz;
-   int Nq = theDomain->num_tools;
-   struct diagnostic_avg * theTools = &(theDomain->theTools);
+    if(Nq > 0)
+    {
+        memset(theTools->Qrz, 0, Nz*Nr*Nq * sizeof(double));
+    }
 
-   int j,k,q;
-   for( k=0 ; k<Nz ; ++k ){
-      for( j=0 ; j<Nr ; ++j ){
-         for( q=0 ; q<Nq ; ++q ){
-            int iq = k*Nr*Nq + j*Nq + q;
-               theTools->Qrz[iq] = 0.0;
-         }
-      }
-   }
-   
-   for( k=0 ; k<Nz ; ++k ){
-      for( j=0 ; j<Nr-1 ; ++j ){
-         int jk = k*(Nr-1) + j;
-         for( q=0 ; q<NUM_Q ; ++q ){
-               int iq = NUM_Q*jk + q;
-               theTools->F_r[iq] = 0.0;
-               theTools->Fvisc_r[iq] = 0.0;
-               theTools->RK_F_r[iq] = 0.0;
-               theTools->RK_Fvisc_r[iq] = 0.0;
-         }
-      }
-   }
-   for( k=0 ; k<Nz-1 ; ++k ){
-      for( j=0 ; j<Nr ; ++j ){
-         int jk = k*Nr + j;
-         for( q=0 ; q<NUM_Q ; ++q ){
-               int iq = NUM_Q*jk + q;
-               theTools->F_z[iq] = 0.0;
-               theTools->Fvisc_z[iq] = 0.0;
-               theTools->RK_F_z[iq] = 0.0;
-               theTools->RK_Fvisc_z[iq] = 0.0;
-         }
-      }
-   }
+    if(Nr > 1)
+    {
+        memset(theTools->F_r,        0, Nz*(Nr-1)*NUM_Q * sizeof(double));
+        memset(theTools->Fvisc_r,    0, Nz*(Nr-1)*NUM_Q * sizeof(double));
+        memset(theTools->RK_F_r,     0, Nz*(Nr-1)*NUM_Q * sizeof(double));
+        memset(theTools->RK_Fvisc_r, 0, Nz*(Nr-1)*NUM_Q * sizeof(double));
+    }
 
-   for(k=0; k<Nz; k++) {
-       for(j=0; j<Nr; j++) {
-           int jk = k*Nr + j;
-           for(q=0; q<NUM_Q; q++) {
-               int iq = NUM_Q*jk + q;
-               theTools->S[iq] = 0.0;
-               theTools->Sgrav[iq] = 0.0;
-               theTools->Svisc[iq] = 0.0;
-               theTools->Ssink[iq] = 0.0;
-               theTools->Scool[iq] = 0.0;
-               theTools->Sdamp[iq] = 0.0;
-               theTools->RK_S[iq] = 0.0;
-               theTools->RK_Sgrav[iq] = 0.0;
-               theTools->RK_Svisc[iq] = 0.0;
-               theTools->RK_Ssink[iq] = 0.0;
-               theTools->RK_Scool[iq] = 0.0;
-               theTools->RK_Sdamp[iq] = 0.0;
-           }
-       }
-   }
-   
-   theTools->t_avg = 0.0;
+    if(Nz > 1)
+    {
+        memset(theTools->F_z,        0, (Nz-1)*Nr*NUM_Q * sizeof(double));
+        memset(theTools->Fvisc_z,    0, (Nz-1)*Nr*NUM_Q * sizeof(double));
+        memset(theTools->RK_F_z,     0, (Nz-1)*Nr*NUM_Q * sizeof(double));
+        memset(theTools->RK_Fvisc_z, 0, (Nz-1)*Nr*NUM_Q * sizeof(double));
+    }
 
+
+    memset(theTools->S,     0, Nz*Nr*NUM_Q * sizeof(double));
+    memset(theTools->Sgrav, 0, Nz*Nr*NUM_Q * sizeof(double));
+    memset(theTools->Svisc, 0, Nz*Nr*NUM_Q * sizeof(double));
+    memset(theTools->Ssink, 0, Nz*Nr*NUM_Q * sizeof(double));
+    memset(theTools->Scool, 0, Nz*Nr*NUM_Q * sizeof(double));
+    memset(theTools->Sdamp, 0, Nz*Nr*NUM_Q * sizeof(double));
+
+    theTools->t_avg = 0.0;
 }
 
 void avg_diagnostics( struct domain * theDomain ){

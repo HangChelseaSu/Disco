@@ -675,6 +675,60 @@ void drawZCell(double x1p, double x1m, double x2p, double x2m, double x3,
             glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff);
         }
     }
+    else if(geometry == 3)
+    {
+        double mup = x1p;
+        double mum = x1m;
+        double phip = x2p;
+        double phim = x2m;
+        double s_nu = sin(x3);
+        double c_nu = cos(x3);
+        double dp = phip-phim;
+
+        double rm = sinh(mum) * s_nu / rescale;
+        double zm = cosh(mum) * c_nu / rescale; 
+        double rp = sinh(mup) * s_nu / rescale;
+        double zp = cosh(mup) * c_nu / rescale; 
+
+        double c0 = rm*cos(phim);
+        double c1 = rm*sin(phim);
+        double c2 = zm;
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff );
+
+        int np = (int) (rp*(phip-phim) / (rp-rm)) + 1;
+        int nm = (int) (rm*(phip-phim) / (rp-rm)) + 1;
+
+        c0 = rp*cos(phim);
+        c1 = rp*sin(phim);
+        c2 = zp;
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff );
+
+        int p;
+        for(p=1; p<np; p++)
+        {
+            double ph = phim + (p*(phip-phim))/np;
+            c0 = rp*cos(ph)/cos(dp/np);
+            c1 = rp*sin(ph)/cos(dp/np);
+            glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff);
+        }
+
+        c0 = rp*cos(phip);
+        c1 = rp*sin(phip);
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff);
+
+        c0 = rm*cos(phip);
+        c1 = rm*sin(phip);
+        c2 = zm;
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff);
+
+        for(p=nm-1; p>0; p--)
+        {
+            double ph = phim + (p*(phip-phim))/nm;
+            c0 = rm*cos(ph);
+            c1 = rm*sin(ph);
+            glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff);
+        }
+    }
     else
     {
         double xm = x1m/rescale;
@@ -757,6 +811,54 @@ void drawPhiCell(double x1p, double x1m, double x3p, double x3m, double x2,
             c2 = rp*cos(th);
             glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff);
         }
+    }
+    else if(geometry == 3)
+    {
+        double mup = x1p;
+        double mum = x1m;
+        double nup = x3p;
+        double num = x3m;
+        double sinp = sin(x2);
+        double cosp = cos(x2);
+
+        double sh_mum = sinh(mum);
+        double ch_mum = cosh(mum);
+        double sh_mup = sinh(mup);
+        double ch_mup = cosh(mup);
+        double s_num = sin(num);
+        double c_num = cos(num);
+        double s_nup = sin(nup);
+        double c_nup = cos(nup);
+        
+        double rmm = sh_mum * s_num / rescale;
+        double rmp = sh_mum * s_nup / rescale;
+        double rpm = sh_mup * s_num / rescale;
+        double rpp = sh_mup * s_nup / rescale;
+
+        double zmm = ch_mum * c_num / rescale;
+        double zmp = ch_mum * c_nup / rescale;
+        double zpm = ch_mup * c_num / rescale;
+        double zpp = ch_mup * c_nup / rescale;
+
+        double c0 = rmm*cosp;
+        double c1 = rmm*sinp;
+        double c2 = zmm;
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff );
+
+        c0 = rpm*cosp;
+        c1 = rpm*sinp;
+        c2 = zpm;
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff );
+
+        c0 = rpp*cosp;
+        c1 = rpp*sinp;
+        c2 = zpp;
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff );
+
+        c0 = rmp*cosp;
+        c1 = rmp*sinp;
+        c2 = zmp;
+        glVertex3f( c0-xoff, c1-yoff, c2+camdist-zoff );
     }
     else
     {
@@ -1481,6 +1583,8 @@ void loadGrid(char *filename)
       geometry = 1;
    else if(strcmp(buf, "spherical") == 0)
       geometry = 2;
+   else if(strcmp(buf, "prolateSpheroidal") == 0)
+      geometry = 3;
    else
       geometry = 0;
 

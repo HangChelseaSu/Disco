@@ -46,10 +46,9 @@ void get_distributed_integral_reports(double *x, double *prim, double *Q,
 
     for(p=0; p<Npl; p++)
     {
-        double rpz[3];
-        get_rpz(x, rpz);
-        Q[p] = prim[RHO] * planetaryPotential(theDomain->thePlanets+p,
-                                                rpz[0], rpz[1], rpz[2]);
+        double xyz[3];
+        get_xyz(x, xyz);
+        Q[p] = prim[RHO] * planetaryPotential(theDomain->thePlanets+p, xyz);
     }
 }
 

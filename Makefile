@@ -5,7 +5,7 @@ include $(MAKEFILE_OPT)
 MAKEFILE_H5  = $(PWD)/Makefile_dir.in
 include $(MAKEFILE_H5)
 
-TEMPLATES = bexp bx3d earth fieldloop flock flock_grmhd isentropic jupiter kepler kh mri2 rotor shear shocktube spinring spread vortex sorathia_grmhd blast_grmhd fieldloop_grmhd bl kep_ring torus_fm isentropic_RAM entropywave acousticwave cb acousticwave_cart bondi binarybondi alfvenwave alfvenwave_cart magnetosonicwave_cart magnetosonicwave_cart3d bondi_mhd fieldloop_linear_cart ecc tde acousticwave_sph cartesian_shear cartesian_shear_sph vortexShedding cb_cc
+TEMPLATES = bexp bx3d earth fieldloop flock flock_grmhd isentropic jupiter kepler kh mri2 rotor shear shocktube spinring spread vortex sorathia_grmhd blast_grmhd fieldloop_grmhd bl kep_ring torus_fm isentropic_RAM entropywave acousticwave cb acousticwave_cart bondi binarybondi alfvenwave alfvenwave_cart magnetosonicwave_cart magnetosonicwave_cart3d bondi_mhd fieldloop_linear_cart ecc tde acousticwave_sph cartesian_shear cartesian_shear_sph vortexShedding cb_cc cb_cc3d cb_amv
 
 GIT_VERSION = $(shell git describe --dirty --always --tags)
 
@@ -34,7 +34,7 @@ OPT_DEFS += -DCT_MODE=$(CT_MODE)
 
 DIR_DEFS = -DUSE_MPI=$(USE_MPI)
 
-DEBUG_FLAGS = -g -fno-omit-frame-pointer -rdynamic
+DEBUG_FLAGS = -g
 
 FLAGS = -Wall -O3 $(OPT_DEFS) $(DIR_DEFS) $(DEBUG_FLAGS)
 

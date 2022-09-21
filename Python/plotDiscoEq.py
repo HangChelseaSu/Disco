@@ -9,7 +9,7 @@ import discopy.util as util
 import discopy.plot as plot
 
 def plotCheckpoint(file, vars=None, logvars=None, noGhost=False, om=None,
-                    bounds=None, rmax=None, planets=False, k=None):
+                    bounds=None, rmax=None, planets=False, k=None, dpi=300):
     
     print("Loading {0:s}...".format(file))
 
@@ -79,27 +79,31 @@ def plotCheckpoint(file, vars=None, logvars=None, noGhost=False, om=None,
 
                 fig, ax = plt.subplots(1,1, figsize=(12,9))
 
-                plot.plotZSlice(fig, ax, rjph, piph1, r, prim[:,q], Z, vartex[q],
+                plot.plotZSlice(fig, ax, rjph, piph1, r, prim[:,q], Z,
+                                vartex[q],
                                 pars, opts, vmin=vmin, vmax=vmax, rmax=rmax, 
                                 planets=planetDat)
                 fig.suptitle(title, fontsize=24)
-                plotname = "plot_eq_{0:s}_lin_{1:s}.png".format(name, varnames[q])
+                plotname = "plot_eq_{0:s}_lin_{1:s}.png".format(name,
+                        varnames[q])
                 
                 print("   Saving {0:s}...".format(plotname))
-                fig.savefig(plotname, dpi=1000)
+                fig.savefig(plotname, dpi=dpi)
                 plt.close(fig)
 
             if q in logvars:
                 fig, ax = plt.subplots(1,1, figsize=(12,9))
 
-                plot.plotZSlice(fig, ax, rjph, piph1, r, prim[:,q], Z, vartex[q],
+                plot.plotZSlice(fig, ax, rjph, piph1, r, prim[:,q], Z, 
+                                vartex[q],
                                 pars, opts, vmin=vmin, vmax=vmax, rmax=rmax, 
                                 planets=planetDat, log=True)
                 fig.suptitle(title, fontsize=24)
-                plotname = "plot_eq_{0:s}_log_{1:s}.png".format(name, varnames[q])
+                plotname = "plot_eq_{0:s}_log_{1:s}.png".format(name,
+                        varnames[q])
 
                 print("   Saving {0:s}...".format(plotname))
-                fig.savefig(plotname, dpi=1000)
+                fig.savefig(plotname, dpi=dpi)
                 plt.close(fig)
 
     
@@ -140,6 +144,8 @@ if __name__ == "__main__":
                             help="Rotate frame at rate OMEGA.")
     parser.add_argument('--noghost', action='store_true', 
                             help="Do not plot ghost zones.")
+    parser.add_argument('-d', '--dpi', type=int, default=300,
+                            help="DPI of final image")
 
     args = parser.parse_args()
 
@@ -150,6 +156,7 @@ if __name__ == "__main__":
     use_bounds = args.bounds
     planets = args.planets
     noghost = args.noghost
+    dpi = args.dpi
 
     files = args.checkpoints
 
@@ -159,5 +166,5 @@ if __name__ == "__main__":
 
     for f in files:
         plotCheckpoint(f, vars=vars, logvars=logvars, bounds=bounds, om=om, 
-                        rmax=rmax, noGhost=noghost, planets=planets)
+                        rmax=rmax, noGhost=noghost, planets=planets, dpi=dpi)
 

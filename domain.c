@@ -7,18 +7,15 @@
 #include "analysis.h"
 #include "planet.h"
 #include "report.h"
-
-
+#include "riemann.h"
+#include "sink.h"
 
 void setICparams( struct domain * );
-void setRiemannParams( struct domain * );
-void setGravParams( struct domain * );
 void setHlldParams( struct domain * );
 void setRotFrameParams( struct domain * );
 void setMetricParams( struct domain * );
 void setFrameParams(struct domain * );
 void setNoiseParams( struct domain * );
-void setSinkParams( struct domain * );
 
 int get_num_rzFaces( int , int , int );
 
@@ -111,6 +108,7 @@ void setupDomain( struct domain * theDomain ){
             rand();
 
     int i;
+
     for( k=0 ; k<Nz ; ++k )
     {
         //Discard randoms from inner (global) annuli
@@ -121,14 +119,15 @@ void setupDomain( struct domain * theDomain ){
         for( j=0 ; j<Nr ; ++j )
         {
             jk = k*Nr + j;
+
             double p0 = Pmax*(double)rand()/(double)RAND_MAX;
             double dp = Pmax/(double)Np[jk];
             for( i=0 ; i<Np[jk] ; ++i )
             {
                 double phi = p0+dp*(double)i;
                 if( phi > Pmax ) phi -= Pmax;
-                    theDomain->theCells[jk][i].piph = phi;
-                    theDomain->theCells[jk][i].dphi = dp;
+                theDomain->theCells[jk][i].piph = phi;
+                theDomain->theCells[jk][i].dphi = dp;
             }
         }
         //Discard randoms from outer (global) annuli
@@ -151,6 +150,7 @@ void setupDomain( struct domain * theDomain ){
    theDomain->count_steps = 0;
    theDomain->final_step  = 0;
    theDomain->check_plz   = 0;
+   theDomain->startup = 1;
 
    theDomain->nrpt=-1;
    theDomain->nsnp=-1;
@@ -182,6 +182,7 @@ void setupDomain( struct domain * theDomain ){
 void initial( double * , double * ); 
 void restart( struct domain * ); 
 void calc_dp( struct domain * );
+void set_cell_xyz( struct domain * );
 void set_wcell( struct domain * );
 void adjust_gas( struct planet * , double * , double * , double );
 void set_B_fields( struct domain * );
@@ -197,6 +198,7 @@ void setupCells( struct domain * theDomain ){
    int noiseType = theDomain->theParList.noiseType;
 
    calc_dp( theDomain );
+   set_cell_xyz(theDomain);
 
    int i,j,k;
    struct cell ** theCells = theDomain->theCells;
@@ -415,6 +417,7 @@ void possiblyOutput( struct domain * theDomain , int override ){
    double Nsnp = theDomain->N_snp;
    double Nchk = theDomain->N_chk;
    int LogOut = theDomain->theParList.Out_LogTime;
+   int restart_flag = theDomain->theParList.restart_flag;
    int n0;
 
    n0 = (int)( t*Nrpt/t_fin );
@@ -432,8 +435,12 @@ void possiblyOutput( struct domain * theDomain , int override ){
       char filename[256];
       if( !override ){
          if( !theDomain->check_plz ){
-            if(theDomain->rank==0) printf("Creating Checkpoint #%04d...\n",n0);
-            sprintf(filename,"checkpoint_%04d",n0);
+            if(theDomain->rank==0)
+                printf("Creating Checkpoint #%04d...\n",n0);
+            if(theDomain->startup && restart_flag)
+               sprintf(filename,"checkpoint_restart_%04d",n0);
+            else
+               sprintf(filename,"checkpoint_%04d",n0);
          }else{
             if(theDomain->rank==0) printf("Creating Requested Checkpoint...\n");
             sprintf(filename,"checkpoint_latest");

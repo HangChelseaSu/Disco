@@ -3,6 +3,8 @@
 #include "hydro.h"
 #include "omega.h"
 #include "planet.h"
+#include "sink.h"
+#include "riemann.h"
 
 #include <string.h>
 
@@ -265,6 +267,37 @@ void move_cells( struct domain * theDomain , double dt){
    }
 }
 
+void set_cell_xyz(struct domain * theDomain)
+{
+    int Nr = theDomain->Nr;
+    int Nz = theDomain->Nz;
+    int * Np = theDomain->Np;
+    int i,j,k;
+   
+    for(k=0; k<Nz; k++)
+    {
+        double zm = theDomain->z_kph[k-1];
+        double zp = theDomain->z_kph[k];
+        
+        for(j=0; j<Nr; j++)
+        {
+            int jk = k*Nr + j;
+            double rm = theDomain->r_jph[j-1];
+            double rp = theDomain->r_jph[j];
+
+            for( i=0 ; i<Np[jk] ; ++i )
+            {
+                struct cell *c = theDomain->theCells[jk] + i;
+                double x[3];
+                double xp[3] = {rp, c->piph, zp};
+                double xm[3] = {rm, c->piph - c->dphi, zm};
+                get_centroid_arr(xp, xm, x);
+                get_xyz(x, c->xyz);
+            }
+        }
+   }
+}
+
 
 void calc_dp( struct domain * theDomain ){
    struct cell ** theCells = theDomain->theCells;
@@ -361,8 +394,6 @@ void calc_cons( struct domain * theDomain ){
    }
 }
 
-void riemann_phi( struct cell * , struct cell * , double * , const double *,
-                 const double *, double );
 
 void phi_flux( struct domain * theDomain , double dt ){
 
@@ -425,8 +456,6 @@ void phi_flux( struct domain * theDomain , double dt ){
 }
 
 void buildfaces( struct domain * , int , int );
-void riemann_trans( struct face * , double , int , double, double, double,
-                   double, double *, double *);
 
 void trans_flux( struct domain * theDomain , double dt , int dim ){
 
@@ -568,10 +597,6 @@ void setup_faces( struct domain * theDomain , int dim ){
 }
 
 void omega_src( double * , double * , double * , double * , double );
-void sink_src( double * , double * , double * , double * , double, double,
-                double *);
-void cooling( double * , double * , double * , double * , double, double);
-void damping( double * , double * , double * , double * , double, double);
 
 void add_source( struct domain * theDomain , double dt ){
 
@@ -613,17 +638,17 @@ void add_source( struct domain * theDomain , double dt ){
             source( c->prim , sdVdt_hydro, xp , xm , dV*dt  );
             
             for( p=0 ; p<Npl ; ++p ){
-               planet_src( thePlanets+p, c->prim, sdVdt_grav, xp, xm, dV, dt,
-                          theDomain->pl_gas_track + p*NUM_PL_INTEGRALS);
+               planet_src( thePlanets+p, c->prim, sdVdt_grav, xp, xm, c->xyz,
+                        dV, dt, theDomain->pl_gas_track + p*NUM_PL_INTEGRALS);
             }
             if(visc_flag)
                 visc_source( c->prim, c->gradr, c->gradp, c->gradz, sdVdt_visc,
                             xp, xm, dV*dt);
             omega_src( c->prim , sdVdt_hydro , xp , xm , dV*dt );
-            sink_src( c->prim , sdVdt_sink , xp , xm , dV, dt,
+            sink_src( c->prim , sdVdt_sink , xp , xm , c->xyz, dV, dt,
                       theDomain->pl_gas_track);
-            cooling( c->prim , sdVdt_cool , xp , xm , dV, dt );
-            damping( c->prim , sdVdt_damp , xp , xm , dV, dt );
+            cooling( c->prim , sdVdt_cool , xp , xm , c->xyz, dV, dt );
+            damping( c->prim , sdVdt_damp , xp , xm , c->xyz, dV, dt );
 
             int q;
             for(q=0; q<NUM_Q; q++)
