@@ -17,7 +17,7 @@ int num_inst_diagnostics(void){
    return(0);
 }
 
-/* Generic Diagnostics for Euler*/
+/* Diagnostics for Circumbinary Disks */
 
 void get_diagnostics(const double *x, const double *prim, double *Qrz, 
                         struct domain * theDomain )
