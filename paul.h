@@ -197,9 +197,11 @@ struct diagnostic_avg{
    double t_avg;
 };
 
-struct diagnostic_inst {
+struct snapshot_data {
     double *Qrz;
-    int Ntools;
+    double *Qarr;
+    int num_Qrz;
+    int num_Qarr;
 };
 
 struct domain{
@@ -243,6 +245,7 @@ struct domain{
    struct param_list theParList;
    int num_tools;
    struct diagnostic_avg theTools;
+   struct snapshot_data theSnap;
 
    double t;
    int count_steps;

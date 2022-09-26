@@ -13,8 +13,12 @@ int num_diagnostics(void){
    return(15);
 }
 
-int num_inst_diagnostics(void){
-   return(0);
+int num_snapshot_rz(void){
+   return NUM_Q;
+}
+
+int num_snapshot_arr(void){
+   return 2;
 }
 
 /* Diagnostics for Circumbinary Disks */
@@ -79,8 +83,17 @@ void get_diagnostics(const double *x, const double *prim, double *Qrz,
 }
 
 
-void get_inst_diagnostics( double * x , double * prim , double * Qrz, 
+void get_snapshot_rz(const double *x, const double *prim, double *Qrz, 
                         struct domain * theDomain )
 {
-    //Silence is golden.
+    int q;
+    for(q=0; q<NUM_Q; q++)
+        Qrz[q] = prim[q];
+}
+
+void get_snapshot_arr(const double *x, const double *prim, double *Qarr, 
+                        struct domain * theDomain )
+{
+    Qarr[0] = 1.0;
+    Qarr[1] = prim[RHO];
 }

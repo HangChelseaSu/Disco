@@ -399,8 +399,6 @@ void output( struct domain * theDomain , char * filestart ){
 
    double diag_dt = theDomain->theTools.t_avg;
    avg_diagnostics( theDomain );
-   struct diagnostic_inst theSlowTools = {0};
-   run_inst_diagnostics(theDomain, &theSlowTools);
 
    char filename[256];
    sprintf(filename,"%s.h5",filestart);
@@ -469,10 +467,6 @@ void output( struct domain * theDomain , char * filestart ){
       
       hsize_t fdims3[3] = {Nz_Tot, Nr_Tot, Ntools};
       createDataset(filename,"Data","Diagnostics",3,fdims3,H5T_NATIVE_DOUBLE);
-      
-      hsize_t fdims3_instDiag[3] = {Nz_Tot, Nr_Tot, theSlowTools.Ntools};
-      createDataset(filename,"Data","InstDiagnostics",3,
-                    fdims3_instDiag, H5T_NATIVE_DOUBLE);
       
       hsize_t fdims3_fr[3] = {Nz_Tot, Nr_Tot-1, NUM_Q};
       createDataset(filename, "Data", "FluxHydroAvgR", 3, fdims3_fr,
@@ -572,16 +566,10 @@ void output( struct domain * theDomain , char * filestart ){
    int * Size    = (int *) malloc( jSize*kSize*sizeof(int) );
    int * Id_phi0 = (int *) malloc( jSize*kSize*sizeof(int) );
    double * diagRZwrite = (double *) malloc( jSize*kSize*Ntools*sizeof(double) );
-   double * instDiagRZwrite = NULL;
    double *fluxRwrite = NULL; 
    double *fluxViscRwrite = NULL;
    double *fluxZwrite = NULL; 
    double *fluxViscZwrite = NULL;
-   if(theSlowTools.Ntools > 0)
-   {
-        instDiagRZwrite = (double *) malloc(
-                        jSize*kSize * theSlowTools.Ntools * sizeof(double) );
-   }
    if(jFrSize > 0)
    {
        fluxRwrite = (double *)malloc(jFrSize*kSize*NUM_Q*sizeof(double));
@@ -623,11 +611,6 @@ void output( struct domain * theDomain , char * filestart ){
          Size[jk] = Np[j+Nr*k];
          for(q=0; q<Ntools; q++)
             diagRZwrite[Ntools*jk+q] = Qrz[Ntools*(j+Nr*k)+q];
-         for(q=0; q<theSlowTools.Ntools; q++)
-         {
-             instDiagRZwrite[theSlowTools.Ntools * jk + q]
-                 = theSlowTools.Qrz[theSlowTools.Ntools*(j+Nr*k)+q];
-         }
  
          double phi0 = M_PI;
          int Id = 0;
@@ -721,17 +704,6 @@ void output( struct domain * theDomain , char * filestart ){
          int glo_size3[3] = {Nz_Tot, Nr_Tot, Ntools};
          writePatch( filename , "Data" , "Diagnostics" , diagRZwrite , H5T_NATIVE_DOUBLE , 3 , start3 , loc_size3 , glo_size3 );
 
-         // RZ Instantaneous Diagnostics
-         if(theSlowTools.Ntools > 0)
-         {
-             int start3_instDiag[3] = {k0, j0, 0};
-             int loc_size3_instDiag[3] = {kSize, jSize, theSlowTools.Ntools};
-             int glo_size3_instDiag[3] = {Nz_Tot, Nr_Tot, theSlowTools.Ntools};
-             writePatch( filename , "Data" , "InstDiagnostics" ,
-                 instDiagRZwrite , H5T_NATIVE_DOUBLE , 3 ,
-                 start3_instDiag , loc_size3_instDiag , glo_size3_instDiag );
-         }
-         
          // Flux Diagnostics
          if(jFrSize > 0)
          {
@@ -809,15 +781,12 @@ void output( struct domain * theDomain , char * filestart ){
 #endif
    }
    zero_diagnostics( theDomain );
-   free_inst_diagnostics(&theSlowTools);
 
    free(Index);
    free(Size);
    free(Id_phi0);
    free(Qwrite);
    free(diagRZwrite);
-   if(instDiagRZwrite != NULL)
-       free(instDiagRZwrite);
    if(fluxRwrite != NULL)
        free(fluxRwrite);
    if(fluxViscRwrite != NULL)
@@ -837,4 +806,13 @@ void output( struct domain * theDomain , char * filestart ){
 #endif
 }
 
+void writeSnapshot(struct domain *theDomain, char filestart[])
+{
+    int rank = theDomain->rank;
 
+    char filename[256];
+    sprintf(filename, "%s.h5", filestart);
+    
+    if(rank == 0)
+        printf("Writing %s ...\n", filename);
+}
