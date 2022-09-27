@@ -369,9 +369,38 @@ void writePars(struct domain *theDomain, char filename[])
 
 }
 
-double get_dV( double * , double * );
-void prim2cons( double * , double * , double *, double );
-void cons2prim( double * , double * , double *, double );
+void writePlanets(struct domain *theDomain, char filename[])
+{
+    int Npl = theDomain->Npl;
+
+    int NpDat = 7 + NUM_PL_KIN;
+
+    double PlanetData[Npl*NpDat];
+    int p;
+    for( p=0 ; p<Npl ; ++p )
+    {
+        struct planet * pl = theDomain->thePlanets+p;
+        PlanetData[NpDat*p + 0] = pl->M;
+        PlanetData[NpDat*p + 1] = pl->vr;
+        PlanetData[NpDat*p + 2] = pl->omega;
+        PlanetData[NpDat*p + 3] = pl->r;
+        PlanetData[NpDat*p + 4] = pl->phi;
+        PlanetData[NpDat*p + 5] = pl->eps;
+        PlanetData[NpDat*p + 6] = (double)pl->type;
+
+        int q;
+        for(q=0; q<NUM_PL_KIN; q++)
+            PlanetData[NpDat*p + q + 7] = theDomain->pl_kin[p*NUM_PL_KIN + q];
+    }
+
+    hsize_t fdims2[2];
+    fdims2[0] = Npl;
+    fdims2[1] = NpDat;
+    createDataset(filename, "Data", "Planets", 2, fdims2, H5T_NATIVE_DOUBLE);
+
+    writeSimple(filename, "Data", "Planets", PlanetData, H5T_NATIVE_DOUBLE);
+}
+
 
 void output( struct domain * theDomain , char * filestart ){
 
@@ -379,7 +408,6 @@ void output( struct domain * theDomain , char * filestart ){
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int * Np = theDomain->Np;
-   int Npl = theDomain->Npl;
    int Ng = theDomain->Ng;
    int NgRa = theDomain->NgRa;
    int NgRb = theDomain->NgRb;
@@ -394,7 +422,6 @@ void output( struct domain * theDomain , char * filestart ){
    int * dim_rank = theDomain->dim_rank;
    int * dim_size = theDomain->dim_size;
 
-   int NpDat = 7 + NUM_PL_KIN;
    int Ntools = theDomain->num_tools;
 
    double diag_dt = theDomain->theTools.t_avg;
@@ -457,9 +484,6 @@ void output( struct domain * theDomain , char * filestart ){
       fdims2[0] = Ntot;
       fdims2[1] = Ndoub;
       createDataset(filename,"Data","Cells",2,fdims2,H5T_NATIVE_DOUBLE);
-      fdims2[0] = Npl;
-      fdims2[1] = NpDat;
-      createDataset(filename,"Data","Planets",2,fdims2,H5T_NATIVE_DOUBLE);
       
       fdims1[0] = 1;
       createDataset(filename,"Data","Diagnostics_DT", 1, fdims1,
@@ -502,23 +526,7 @@ void output( struct domain * theDomain , char * filestart ){
                   H5T_NATIVE_DOUBLE);
       writePars(theDomain, filename);
       writeOpts(theDomain, filename);
-      double PlanetData[Npl*NpDat];
-      int p;
-      for( p=0 ; p<Npl ; ++p ){
-         struct planet * pl = theDomain->thePlanets+p;
-         PlanetData[NpDat*p + 0] = pl->M;
-         PlanetData[NpDat*p + 1] = pl->vr;
-         PlanetData[NpDat*p + 2] = pl->omega;
-         PlanetData[NpDat*p + 3] = pl->r;
-         PlanetData[NpDat*p + 4] = pl->phi;
-         PlanetData[NpDat*p + 5] = pl->eps;
-         PlanetData[NpDat*p + 6] = (double)pl->type;
-
-         int q;
-         for(q=0; q<NUM_PL_KIN; q++)
-             PlanetData[NpDat*p + q + 7] = theDomain->pl_kin[p*NUM_PL_KIN + q];
-      }
-      writeSimple(filename,"Data","Planets",PlanetData,H5T_NATIVE_DOUBLE);
+      writePlanets(theDomain, filename);
    }
 
    int jSize = jmax-jmin;
@@ -812,7 +820,48 @@ void writeSnapshot(struct domain *theDomain, char filestart[])
 
     char filename[256];
     sprintf(filename, "%s.h5", filestart);
+
+    int Nr_Tot = theDomain->Nr_glob;
+    int Nz_Tot = theDomain->Nz_glob;
+    struct snapshot_data *theSnap = &(theDomain->theSnap);
     
+    int num_Qrz = theSnap->num_Qrz;
+    int num_Qarr = theSnap->num_Qarr;
+    
+    hsize_t fdims1[1];
+    hsize_t fdims3[3];
+
     if(rank == 0)
+    {
         printf("Writing %s ...\n", filename);
+        
+        createFile(filename);
+        createGroup(filename,"Grid");
+        createGroup(filename,"Data");
+        createGroup(filename, "Snapshot");
+
+        fdims1[0] = 1;
+        createDataset(filename, "Grid", "T", 1, fdims1, H5T_NATIVE_DOUBLE);
+        fdims1[0] = Nr_Tot+1;
+        createDataset(filename, "Grid", "r_jph", 1,fdims1,H5T_NATIVE_DOUBLE);
+        fdims1[0] = Nz_Tot+1;
+        createDataset(filename, "Grid", "z_kph", 1,fdims1,H5T_NATIVE_DOUBLE);
+        
+        writeSimple(filename, "Grid", "T", &(theDomain->t), H5T_NATIVE_DOUBLE);
+        writePars(theDomain, filename);
+        writeOpts(theDomain, filename);
+        writePlanets(theDomain, filename);
+
+        fdims3[0] = Nz_Tot;
+        fdims3[1] = Nr_Tot;
+        fdims3[2] = num_Qrz;
+        createDataset(filename, "Snapshot", "Qrz", 3, fdims3,
+                      H5T_NATIVE_DOUBLE);
+        
+        fdims1[0] = num_Qarr;
+        createDataset(filename, "Snapshot", "Qarr", 1, fdims1,
+                      H5T_NATIVE_DOUBLE);
+        writeSimple(filename, "Snapshot", "Qarr", theSnap->Qarr,
+                    H5T_NATIVE_DOUBLE);
+    }
 }
