@@ -366,7 +366,7 @@ void snapshot(struct domain *theDomain, char filename[])
                MPI_DOUBLE, MPI_SUM, 0, theDomain->theComm);
 #endif
 
-   writeSnapshot(theDomain, filename); 
+    writeSnapshot(theDomain, filename); 
 }
 
 
