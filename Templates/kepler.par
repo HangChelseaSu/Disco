@@ -32,7 +32,7 @@ P_Times_2pi		1
 Z_Times_pi      0
 Log_Zoning		1	//0=Uniform, 1=Log, 2=Hybrid
 Log_Radius		0.25	//Only for option 2 of Log_Zoning
-NoBC_Rmin       1   //0 = Regular boundary. Ghost zones added and
+NoBC_Rmin       0   //0 = Regular boundary. Ghost zones added and
 NoBC_Rmax       0   //    boundary condition applied.
 NoBC_Zmin       0   //1 = Coordinate boundary (like r=0 origin).
 NoBC_Zmax       0   //    No ghost zones or explicit BC applied.
