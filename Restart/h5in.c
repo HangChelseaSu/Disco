@@ -330,7 +330,14 @@ void restart( struct domain * theDomain ){
       readPatch( filename , group2 ,"Planets", PlanetData , H5T_NATIVE_DOUBLE,
                     2, start2 , loc_size2 , glo_size2 );
       int p, q;
-      for(p=0; p<Npl; ++p){
+      for(p=0; p<Npl; ++p)
+      {
+          /*
+           * This is a little ugly to preserve backwards-compatibility.
+           * The checkpoint we're restarting from may have been made from a
+           * version of the code that did not include the KIN parameters
+           * or vertical position & velocity.
+           */
          struct planet * pl = theDomain->thePlanets+p;
          pl->M     = PlanetData[NpDat*p + 0];
          pl->vr    = PlanetData[NpDat*p + 1];
@@ -345,12 +352,28 @@ void restart( struct domain * theDomain ){
 
          if(NpDat == 7 + NUM_PL_KIN)
          {
+             pl->z = 0.0;
+             pl->vz = 0.0;
+
              for(q=0; q<NUM_PL_KIN; q++)
                  theDomain->pl_kin[p*NUM_PL_KIN+q] = PlanetData[NpDat*p+q+7];
          }
+         else if(NpDat == 9 + NUM_PL_KIN)
+         {
+             pl->vz = PlanetData[NpDat*p + 7];
+             pl->z = PlanetData[NpDat*p + 8];
+             
+             for(q=0; q<NUM_PL_KIN; q++)
+                 theDomain->pl_kin[p*NUM_PL_KIN+q] = PlanetData[NpDat*p+q+9];
+         }
          else
+         {
+             pl->z = 0.0;
+             pl->vz = 0.0;
+
              planet_init_kin(theDomain->thePlanets + p,
                              theDomain->pl_kin + p*NUM_PL_KIN);
+         }
       }
       
       setPlanetsXYZ(theDomain);

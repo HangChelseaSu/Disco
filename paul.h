@@ -317,9 +317,11 @@ struct face{
 struct planet{
    double r;
    double phi; 
+   double z;
    double M;
    double omega;
    double vr;
+   double vz;
 
    double eps;
 

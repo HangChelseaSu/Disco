@@ -373,7 +373,7 @@ void writePlanets(struct domain *theDomain, char filename[])
 {
     int Npl = theDomain->Npl;
 
-    int NpDat = 7 + NUM_PL_KIN;
+    int NpDat = 9 + NUM_PL_KIN;
 
     double PlanetData[Npl*NpDat];
     int p;
@@ -387,10 +387,12 @@ void writePlanets(struct domain *theDomain, char filename[])
         PlanetData[NpDat*p + 4] = pl->phi;
         PlanetData[NpDat*p + 5] = pl->eps;
         PlanetData[NpDat*p + 6] = (double)pl->type;
+        PlanetData[NpDat*p + 7] = pl->vz;
+        PlanetData[NpDat*p + 8] = pl->z;
 
         int q;
         for(q=0; q<NUM_PL_KIN; q++)
-            PlanetData[NpDat*p + q + 7] = theDomain->pl_kin[p*NUM_PL_KIN + q];
+            PlanetData[NpDat*p + q + 9] = theDomain->pl_kin[p*NUM_PL_KIN + q];
     }
 
     hsize_t fdims2[2];
