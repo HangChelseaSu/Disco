@@ -86,14 +86,14 @@ void report( struct domain * theDomain )
     //Allocate the arrays if needed
     if(N_shared > 0)
     {
-        Q_shared = (double *)malloc(N_shared * sizeof(double));
-        memset(Q_shared, 0, N_shared * sizeof(double));
+        Q_shared = (double *)malloc(((size_t) N_shared) * sizeof(double));
+        memset(Q_shared, 0, ((size_t) N_shared) * sizeof(double));
     }
    
     if(N_dist > 0)
     {
-        Q_dist = (double *)malloc(N_dist * sizeof(double));
-        memset(Q_dist, 0, N_dist * sizeof(double));
+        Q_dist = (double *)malloc(((size_t) N_dist) * sizeof(double));
+        memset(Q_dist, 0, ((size_t) N_dist) * sizeof(double));
     }
 
     // Get the shared entries
