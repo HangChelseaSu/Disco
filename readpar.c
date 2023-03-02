@@ -29,10 +29,10 @@ int readvar( char * filename , char * varname , int vartype , void * ptr ){
    char * s2 = s1+strlen(nm)+strspn(s1+strlen(nm),"\t :=>_");
 
    double temp;
-   char stringval[256];
+   char stringval[512];
 
    sscanf(s2,"%lf",&temp);
-   sscanf(s2,"%256s",stringval);
+   sscanf(s2,"%s",stringval);
 
    if( vartype == VAR_INT ){
       *((int *)   ptr) = (int)temp;

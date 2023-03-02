@@ -54,7 +54,7 @@ OPT_DEFS += -DCT_MODE=$(CT_MODE)
 DIR_DEFS = -DUSE_MPI=$(USE_MPI)
 
 DEBUG_FLAGS = -g
-WARNING_FLAGS = -Wall -Wextra -Wshadow -Wconversion -Wpedantic -Werror -std=c11
+WARNING_FLAGS = -Wall -Wextra -Wshadow -Wconversion -Werror
 
 FLAGS = -O3 $(OPT_DEFS) $(DIR_DEFS) $(DEBUG_FLAGS) $(WARNING_FLAGS)
 
