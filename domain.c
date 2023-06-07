@@ -302,7 +302,7 @@ void freeDomain( struct domain * theDomain ){
    int Nr = theDomain->Nr;
    int Nz = theDomain->Nz;
    int jk;
-   for( jk=0 ; jk<Nr*Nz ; ++jk ){
+   for( jk=0 ; jk<Nr*Nz ; jk++ ){
       free( theDomain->theCells[jk] );
    }
    free( theDomain->theCells );

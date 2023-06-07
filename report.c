@@ -123,7 +123,8 @@ void report( struct domain * theDomain )
     int kmin = NgZa;
     int kmax = Nz-NgZb;
 
-    int j, k, i, q;
+    int j, k, i;
+
     for(k = kmin; k < kmax; k++)
     {
         for(j = jmin; j < jmax; j++)
@@ -133,6 +134,7 @@ void report( struct domain * theDomain )
             {
                 struct cell * c = &(theCells[jk][i]);
             
+                unsigned int q;
                 for(q=0; q<NUM_Q; q++)
                     cons_tot[q] += c->cons[q];
             }
@@ -163,6 +165,7 @@ void report( struct domain * theDomain )
 
                     get_distributed_integral_reports(x, c->prim, Q, theDomain);
 
+                    unsigned int q;
                     for(q=0; q<N_dist_int; q++)
                         Q_dist[N_dist_aux+q] += Q[q] * dV;
                 }
@@ -188,7 +191,7 @@ void report( struct domain * theDomain )
 
     if(rank == 0)
     {
-        int q;
+        unsigned int q;
 
         FILE *rFile = fopen("report.dat","a");
         fprintf(rFile, "%.15le", t);
