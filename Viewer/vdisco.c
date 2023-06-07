@@ -56,6 +56,7 @@ int cmap = 6;
 int draw_1d = 0;
 int draw_bar = 0;
 int draw_t   = 0;
+int t_orb   = 0;
 int draw_spiral = 0;
 int draw_jet = 0;
 int draw_planet = 0;
@@ -1155,7 +1156,10 @@ void drawText(double RotationAngleX, double RotationAngleY,
                     double yoff, double zoff)
 {
     char tprint[256];
-    sprintf(tprint,"t = %.2e",t);
+    if(t_orb)
+        sprintf(tprint,"t/2pi = %.2e",t/(2*M_PI));
+    else
+        sprintf(tprint,"t = %.2e",t);
     glutPrint( -.6 , .5 , camdist + .001 , glutFonts[6] , tprint , 0.0f, 0.0f , 0.0f , 0.5f );
     //    sprintf(tprint,"uMax = %.1f",uMax);
     //    glutPrint( -.8 , .4 , camdist + .001 , glutFonts[6] , tprint , 0.0f, 0.0f , 0.0f , 0.5f );
@@ -1305,7 +1309,8 @@ void keyPressed(unsigned char key, int x, int y)
    if( key == 'h' ) help_screen = !help_screen;
    if( key == 'l' ) logscale = !logscale;
    if( key == 's' ) draw_scale = !draw_scale;
-   if( key == 't' ) draw_t = !draw_t;
+   if( key == 't' ) {t_orb = 0;  draw_t = !draw_t;}
+   if( key == 'T' ) {t_orb = 1;  draw_t = !draw_t;}
    if( key == 'u' ) draw_1d = !draw_1d;
    if( key == 'x' ){
       rescale *= 1.3;

@@ -28,5 +28,8 @@ void initializePlanets( struct planet * thePlanets ){
 
 void movePlanets( struct planet * thePlanets , double t, double dt ){
    //Silence is golden.
+   UNUSED(t);
+   UNUSED(dt);
+   UNUSED(thePlanets);
 }
 
