@@ -35,3 +35,5 @@ test*
 out
 UnitTest
 disco.dSYM
+Viewer/vdisco.dSYM/Contents/Info.plist
+Viewer/vdisco.dSYM/Contents/Resources/DWARF/vdisco

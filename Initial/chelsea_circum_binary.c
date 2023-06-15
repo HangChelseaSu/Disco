@@ -42,6 +42,11 @@ void initial( double * prim , double * x ){
    rho = -1 * (J_dot / (sqrt(GM * r)) - M_dot) / (3 * M_PI * nu);
    rho += exp(- (dist * dist) / (width * width)) * amp;
 
+   if (r < 1){
+      vr = 0;
+      omega = 1;
+   }
+
    double X = 0.0;
    if( cos(phi) > 0.0 ) X = 1.0;
 
