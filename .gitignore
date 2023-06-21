@@ -5,6 +5,8 @@ disco
 Makefile_dir.in*
 Makefile_opt.in*
 in.par*
+checkpoint*
+snapshot*
 bins/
 latest
 abort
