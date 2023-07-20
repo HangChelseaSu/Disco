@@ -2,7 +2,7 @@
 #include "../geometry.h"
 #include "../planet.h"
 
-#define N_AUX_PER_PLANET 14
+#define N_AUX_PER_PLANET 16
 
 static double gamma_law = 0.0;
 static int Npl = 0;
@@ -26,7 +26,7 @@ void setReportParams(struct domain *theDomain)
 
 int num_shared_reports()
 {
-    return 6;
+    return 10;
 }
 
 int num_distributed_aux_reports()
@@ -47,6 +47,10 @@ void get_shared_reports(double *Q, struct domain *theDomain)
     Q[3] = theDomain->thePlanets[1].r;
     Q[4] = theDomain->thePlanets[0].phi;
     Q[5] = theDomain->thePlanets[1].phi;
+    Q[6] = theDomain->thePlanets[0].vr;
+    Q[7] = theDomain->thePlanets[1].vr;
+    Q[8] = theDomain->thePlanets[0].omega;
+    Q[9] = theDomain->thePlanets[1].omega;
 }
 
 void get_distributed_aux_reports(double *Q, struct domain *theDomain)
@@ -58,7 +62,7 @@ void get_distributed_aux_reports(double *Q, struct domain *theDomain)
                 PL_SNK_M, PL_GRV_JZ, PL_SNK_JZ, PL_GRV_PX, PL_GRV_PY,
                 PL_SNK_PX, PL_SNK_PY, PL_GRV_K, PL_SNK_K,
                 PL_SNK_MX, PL_SNK_MY, PL_SNK_SZ,
-                PL_GRV_U, PL_SNK_U};
+                PL_GRV_U, PL_SNK_U, PL_SNK_LZ, PL_SNK_UGAS};
 
     int q;
     for(q=0; q<N_AUX_PER_PLANET; q++)
